@@ -1,7 +1,8 @@
 
 import synnax as sy
 import numpy as np
-from time import sleep
+from time import sleep, time
+
 client = sy.Synnax(
     host="localhost",
     port=9090,
@@ -34,7 +35,7 @@ data_channel = client.channels.create(
     retrieve_if_name_exists=True,
 )
 
-time = 0.0
+start = time()
 
 with client.open_writer(
     # We need to provide a start time for the writer, which tells
@@ -48,10 +49,9 @@ with client.open_writer(
 ) as writer:
     while True:
         # Make value
-        value = np.sin(time)
-        time += 0.0001
-        print(f"Time: {time:.5f}, Value: {value:.5f}")
-        sleep(0.001)
+        time_val = time() - start
+        value = np.sin(time_val) 
+        print(f"Time: {time_val:.5f}, Value: {value:.5f}")
         writer.write({
             # The timestamp of when the data was read
             "time_value": sy.TimeStamp.now(),
