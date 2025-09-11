@@ -1,7 +1,7 @@
 
 import synnax as sy
 import numpy as np
-from time import sleep, time
+from time import time
 
 client = sy.Synnax(
     host="localhost",
