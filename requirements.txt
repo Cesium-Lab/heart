@@ -155,7 +155,6 @@ path-and-address==2.0.1
 pexpect==4.9.0
 pillow==11.2.1
 platformdirs==4.3.7
-platformio==6.1.18
 plotly==5.24.1
 pluggy==1.6.0
 prometheus_client==0.23.1
