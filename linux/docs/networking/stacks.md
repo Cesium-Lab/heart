@@ -1,2 +1,0 @@
-- Normal network stack
-- BlueZ Bluetooth stack
