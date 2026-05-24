@@ -14,30 +14,14 @@ SYNC = b'\xaa\x55'
 PKT_LEN = 4 * N_FLOATS            # 12 bytes for 4 floats
 ADXL_EXPECTED_ID = 0xE5
 PKT_DATA_LEN = 4 * N_FLOATS       # 12 bytes of float payload
-PKT_TOTAL = len(SYNC) + PKT_DATA_LEN + 1  # sync + data + trailing '\n'
+PKT_TOTAL = len(SYNC) + 1 + PKT_DATA_LEN + 1  # sync + chip_id + data + '\n'
 
 # ring buffers for plotting
-BUF_N = 20
+BUF_N = 100
 t = deque(maxlen=BUF_N)
 ys = [deque(maxlen=BUF_N) for _ in range(N_FLOATS)]
 
 ser = serial.Serial(PORT, BAUD, timeout=0.1)
-
-# Read startup text lines and verify ADXL375 chip ID before entering packet loop
-ser.timeout = 2.0
-for _ in range(30):
-    line = ser.readline().decode("ascii", errors="ignore").strip()
-    if line.startswith("ADXL375 ID:"):
-        adxl_id = int(line.split()[-1], 16)
-        ok = adxl_id == ADXL_EXPECTED_ID
-        print(f"[{'OK' if ok else 'FAIL'}] ADXL375 ID: 0x{adxl_id:02X} (expected 0x{ADXL_EXPECTED_ID:02X})")
-        if not ok:
-            ser.close()
-            raise SystemExit(1)
-        break
-else:
-    print("[WARN] ADXL375 ID not found in startup output")
-ser.timeout = 0.1
 
 plt.ion()
 fig, ax = plt.subplots()
@@ -62,16 +46,18 @@ while True:
         if len(rx) < PKT_TOTAL:
             break          # wait for more bytes
 
-        pkt = bytes(rx[len(SYNC):len(SYNC) + PKT_DATA_LEN])
+        chip_id = rx[len(SYNC)]
+        data_start = len(SYNC) + 1
+        pkt = bytes(rx[data_start:data_start + PKT_DATA_LEN])
         del rx[:PKT_TOTAL]
-
 
         vals = struct.unpack("<3f", pkt)   # little-endian 3 floats
         t.append(k); k += 1
         for i, v in enumerate(vals):
             ys[i].append(v)
 
-        print(vals)   # print the values to console
+        id_ok = chip_id == ADXL_EXPECTED_ID
+        print(f"[{'OK' if id_ok else 'FAIL'} chip_id=0x{chip_id:02X}] {vals}")
 
     # update plot
     if len(t) > 2:
@@ -83,4 +69,5 @@ while True:
         ax.relim()
         ax.set_ylim(-20, 20)
         ax.autoscale_view()
-        plt.pause(0.001)
+        fig.canvas.draw_idle()
+        fig.canvas.flush_events()
