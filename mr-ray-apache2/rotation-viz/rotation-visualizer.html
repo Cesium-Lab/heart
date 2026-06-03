@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
+<meta property="og:title" content="I rotate things. You rotate things. We all spin spieen">
+<meta property="og:description" content="R. Or more formally: convert between quats, R, Euler, and axis-angle">
+<meta property="og:image" content="https://cesiumlab.net/rotation-viz/quaternions.png">
+<meta property="og:url" content="https://cesiumlab.net/rotation-viz/rotation-visualizer.html">
+<meta property="og:type" content="website">
+
+
+
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rotation Visualizer</title>
@@ -567,7 +577,7 @@ header h1 {
       </div>
 
       <!-- Axis-Angle -->
-      <div id="input-axis-angle" style="display:none">
+      <div id="input-axis_angle" style="display:none">
         <div class="input-group">
           <label>Rotation Axis (will normalize)</label>
           <div class="input-row" style="margin-bottom:4px">
@@ -1001,7 +1011,7 @@ async function doConvert() {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/convert`, {
+    const res = await fetch(`${API_BASE}/api/rotation/convert`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -1096,7 +1106,7 @@ function loadPreset(name) {
 // ═══════════════════════════════════════════════════════════════════
 async function checkBackend() {
   try {
-    const res = await fetch(`${API_BASE}/api/health`);
+    const res = await fetch(`${API_BASE}/api/rotation/health`);
     const ok = res.ok;
     setStatusDot(ok);
     return ok;

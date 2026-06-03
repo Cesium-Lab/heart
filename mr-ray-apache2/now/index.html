@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Current Time - cesiumlab.net/now</title>
+<meta property="og:title" content="What Time Is It?">
+<meta property="og:description" content="Every clock format. All the time. All the time.">
+<meta property="og:url" content="https://cesiumlab.net/now">
+<style>
+body {
+  background: #008080;
+  margin: 0;
+  padding: 8px;
+  font-family: "Times New Roman", Times, serif;
+  min-height: 100vh;
+}
+
+/* window chrome */
+.win {
+  background: #c0c0c0;
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+  margin-bottom: 6px;
+}
+.win-title {
+  background: #000080;
+  color: #ffffff;
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+.win-controls {
+  display: flex;
+  gap: 2px;
+}
+.win-btn {
+  width: 16px; height: 14px;
+  background: #c0c0c0;
+  border-top: 1px solid #ffffff;
+  border-left: 1px solid #ffffff;
+  border-right: 1px solid #404040;
+  border-bottom: 1px solid #404040;
+  font-size: 9px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: default;
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-weight: bold;
+}
+.win-body { padding: 8px 10px; }
+
+/* inset / sunken */
+.inset {
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #ffffff;
+  border-bottom: 1px solid #ffffff;
+  background: #ffffff;
+  padding: 4px 6px;
+  font-family: "Courier New", Courier, monospace;
+}
+
+/* raised button */
+.btn {
+  background: #c0c0c0;
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  text-decoration: none;
+  color: #000000;
+  display: inline-block;
+}
+.btn:active {
+  border-top: 2px solid #404040;
+  border-left: 2px solid #404040;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+}
+
+/* status bar */
+.statusbar {
+  background: #c0c0c0;
+  border-top: 1px solid #808080;
+  padding: 2px 6px;
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  display: flex;
+  gap: 8px;
+}
+.status-cell {
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #ffffff;
+  border-bottom: 1px solid #ffffff;
+  padding: 1px 6px;
+  flex: 1;
+}
+
+/* marquee */
+.marquee-wrap {
+  background: #000080;
+  color: #ffff00;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  padding: 2px 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.marquee-inner {
+  display: inline-block;
+  animation: marquee 28s linear infinite;
+}
+@keyframes marquee { from { transform: translateX(100vw); } to { transform: translateX(-100%); } }
+
+/* horizontal rule */
+hr.win { border: none; border-top: 1px solid #808080; border-bottom: 1px solid #ffffff; margin: 6px 0; }
+
+/* table grid */
+.grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+}
+.grid-table th {
+  background: #000080;
+  color: #ffffff;
+  padding: 2px 6px;
+  text-align: left;
+  font-size: 11px;
+  border-right: 1px solid #404080;
+}
+.grid-table td {
+  padding: 2px 6px;
+  border-bottom: 1px solid #c0c0c0;
+  vertical-align: top;
+}
+.grid-table tr:nth-child(even) td { background: #e0e0e0; }
+.grid-table .val {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  font-weight: bold;
+  color: #000080;
+}
+.grid-table .desc { color: #444444; font-size: 10px; }
+
+/* big time */
+.bigtime {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 36px;
+  font-weight: bold;
+  color: #000080;
+  text-align: center;
+  letter-spacing: 4px;
+  padding: 8px 0 4px;
+  text-shadow: 1px 1px 0 #808080;
+}
+.bigdate {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+  color: #000000;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+/* blink */
+.blink { animation: blink 1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* visitor counter */
+.counter {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 13px;
+  background: #000000;
+  color: #ff0000;
+  padding: 2px 6px;
+  letter-spacing: 2px;
+  display: inline-block;
+  border: 2px inset #808080;
+}
+
+/* progress meter */
+.meter-wrap {
+  background: #ffffff;
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #ffffff;
+  border-bottom: 1px solid #ffffff;
+  height: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  background: #000080;
+  transition: width 1s linear;
+  position: relative;
+}
+.meter-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent, transparent 6px,
+    rgba(255,255,255,0.15) 6px, rgba(255,255,255,0.15) 8px
+  );
+}
+.meter-label {
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-size: 10px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+  color: #000000;
+}
+
+/* binary bits */
+.bit {
+  display: inline-block;
+  width: 14px; height: 14px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 14px;
+  border: 1px solid #808080;
+  margin-right: 2px;
+  background: #ffffff;
+  color: #000000;
+}
+.bit.on { background: #000080; color: #ffffff; }
+
+/* fancy link */
+a.fancy { color: #0000ff; }
+a.fancy:visited { color: #800080; }
+
+/* swiss button */
+.swiss-btn {
+  background: #c0c0c0;
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+  font-family: "Arial", sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 12px;
+  cursor: pointer;
+  color: #000000;
+  text-decoration: none;
+  display: inline-block;
+  letter-spacing: 0.05em;
+}
+.swiss-btn:active {
+  border-top: 2px solid #404040;
+  border-left: 2px solid #404040;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+}
+
+/* taskbar */
+.taskbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 28px;
+  background: #c0c0c0;
+  border-top: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  gap: 4px;
+  z-index: 99;
+}
+.start-btn {
+  background: #c0c0c0;
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+  cursor: default;
+}
+.taskbar-clock {
+  margin-left: auto;
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #ffffff;
+  border-bottom: 1px solid #ffffff;
+  padding: 2px 8px;
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+}
+.taskbar-item {
+  background: #c0c0c0;
+  border-top: 1px solid #ffffff;
+  border-left: 1px solid #ffffff;
+  border-right: 1px solid #808080;
+  border-bottom: 1px solid #808080;
+  padding: 2px 8px;
+  font-family: "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  cursor: default;
+}
+</style>
+</head>
+<body>
+
+<!-- marquee -->
+<div class="marquee-wrap">
+  <span class="marquee-inner">
+    &nbsp;&nbsp;&nbsp;
+    *** WELCOME TO CESIUMLAB TIME SERVER ***
+    &nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;
+    ALL TIMES ARE APPROXIMATE
+    &nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;
+    ATOMIC CLOCK ACCURACY NOT GUARANTEED
+    &nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;
+    BEST VIEWED IN NETSCAPE NAVIGATOR 4.0 AT 800x600
+    &nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;
+    LAST UPDATED: <span id="marquee-time">now</span>
+    &nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;
+    *** CESIUMLAB.NET ***
+    &nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;
+  </span>
+</div>
+
+<!-- main window -->
+<div class="win" style="max-width:800px;margin:6px auto;">
+  <div class="win-title">
+    <span>⏱ Current Time — cesiumlab.net/now</span>
+    <div class="win-controls">
+      <div class="win-btn">_</div>
+      <div class="win-btn">□</div>
+      <div class="win-btn" style="font-weight:bold">✕</div>
+    </div>
+  </div>
+  <div class="win-body">
+
+    <div class="bigtime" id="big-time">00:00:00</div>
+    <div class="bigdate" id="big-date">Loading...</div>
+
+    <hr class="win">
+
+    <!-- progress meters -->
+    <table style="width:100%;font-family:'MS Sans Serif',Arial,sans-serif;font-size:11px;margin-bottom:8px">
+      <tr>
+        <td style="width:32px;padding-right:6px;white-space:nowrap">Day</td>
+        <td><div class="meter-wrap"><div class="meter-fill" id="bar-day" style="width:0%"></div></div></td>
+        <td style="width:48px;text-align:right;font-family:'Courier New',monospace;font-size:10px" id="pct-day">0%</td>
+      </tr>
+      <tr><td colspan="3" style="height:3px"></td></tr>
+      <tr>
+        <td style="padding-right:6px;white-space:nowrap">Year</td>
+        <td><div class="meter-wrap"><div class="meter-fill" id="bar-year" style="width:0%"></div></div></td>
+        <td style="text-align:right;font-family:'Courier New',monospace;font-size:10px" id="pct-year">0%</td>
+      </tr>
+      <tr><td colspan="3" style="height:3px"></td></tr>
+      <tr>
+        <td style="padding-right:6px;white-space:nowrap">Week</td>
+        <td><div class="meter-wrap"><div class="meter-fill" id="bar-week" style="width:0%"></div></div></td>
+        <td style="text-align:right;font-family:'Courier New',monospace;font-size:10px" id="pct-week">0%</td>
+      </tr>
+    </table>
+
+    <hr class="win">
+
+    <!-- time table -->
+    <table class="grid-table">
+      <thead>
+        <tr>
+          <th>Format</th>
+          <th>Value</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>UTC</td>                  <td class="val" id="t-utc">—</td>        <td class="desc">Coordinated Universal Time</td></tr>
+        <tr><td>Local</td>               <td class="val" id="t-local">—</td>      <td class="desc" id="d-local">Your timezone</td></tr>
+        <tr><td>ISO 8601</td>            <td class="val" id="t-iso" style="font-size:10px">—</td><td class="desc">Machine-readable standard</td></tr>
+        <tr><td>Unix</td>                <td class="val" id="t-unix">—</td>        <td class="desc">Seconds since 1970-01-01</td></tr>
+        <tr><td>Unix (ms)</td>           <td class="val" id="t-unixms" style="font-size:10px">—</td><td class="desc">Milliseconds (Date.now())</td></tr>
+        <tr><td>Unix (hex)</td>          <td class="val" id="t-hex">—</td>         <td class="desc">Hex. 0x80000000 = Y2K38</td></tr>
+        <tr><td>GPS Week</td>            <td class="val" id="t-gps">—</td>         <td class="desc">Week + TOW, 18s ahead of UTC</td></tr>
+        <tr><td>TAI</td>                 <td class="val" id="t-tai">—</td>         <td class="desc">Atomic time, UTC+37s, no leap sec</td></tr>
+        <tr><td>TT</td>                  <td class="val" id="t-tt">—</td>          <td class="desc">Terrestrial Time = TAI+32.184s</td></tr>
+        <tr><td>Julian Date</td>         <td class="val" id="t-jd">—</td>          <td class="desc">Days since 4713 BC Jan 1 noon</td></tr>
+        <tr><td>MJD</td>                 <td class="val" id="t-mjd">—</td>         <td class="desc">JD − 2400000.5, epoch 1858</td></tr>
+        <tr><td>ISO Week</td>            <td class="val" id="t-week">—</td>        <td class="desc">Week date format</td></tr>
+        <tr><td>Day of Year</td>         <td class="val" id="t-doy">—</td>         <td class="desc">Ordinal date</td></tr>
+        <tr><td>Swatch .beat</td>        <td class="val" id="t-beat">—</td>        <td class="desc">@000–@999, no timezones</td></tr>
+        <tr><td>Seconds Today</td>       <td class="val" id="t-sectod">—</td>      <td class="desc">Seconds since midnight UTC</td></tr>
+        <tr><td>Minutes Today</td>       <td class="val" id="t-mintod">—</td>      <td class="desc">Minutes since midnight UTC</td></tr>
+        <tr><td>Loran-C Era</td>         <td class="val" id="t-loran">—</td>       <td class="desc">Days since 1958-01-01</td></tr>
+      </tbody>
+    </table>
+
+    <hr class="win">
+
+    <!-- binary clock -->
+    <div class="win" style="display:inline-block;margin-right:10px;vertical-align:top">
+      <div class="win-title">Binary Clock (BCD)</div>
+      <div class="win-body" style="padding:6px 8px">
+        <div style="font-family:'MS Sans Serif',Arial,sans-serif;font-size:10px;margin-bottom:4px">
+          HH &nbsp; MM &nbsp; SS
+        </div>
+        <div id="binary-display"></div>
+        <div style="font-family:'MS Sans Serif',Arial,sans-serif;font-size:9px;color:#444;margin-top:4px">
+          <a href="https://en.wikipedia.org/wiki/Binary_number">Read top-to-bottom: 8, 4, 2, 1</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- visitor counter + fun -->
+    <div class="win" style="display:inline-block;vertical-align:top">
+      <div class="win-title">Site Stats</div>
+      <div class="win-body" style="font-family:'MS Sans Serif',Arial,sans-serif;font-size:11px">
+        <div style="margin-bottom:6px">
+          You are visitor # <span class="counter" id="visitor-counter">000000</span>
+        </div>
+        <div style="margin-bottom:4px">Page loaded: <span id="load-time" style="font-family:'Courier New',monospace">—</span></div>
+        <div style="margin-bottom:4px">Time on page: <span id="time-on-page" style="font-family:'Courier New',monospace">00:00</span></div>
+        <div style="margin-bottom:6px">Updates: <span id="update-count" style="font-family:'Courier New',monospace">0</span></div>
+        <div>
+          <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+               width="88" height="31" 
+               style="border:1px solid #808080;background:#c0c0c0;display:inline-block"
+               alt="[Under Construction]">
+          <span style="font-size:10px;color:#800000;font-weight:bold"> UNDER CONSTRUCTION</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="win">
+
+    <!-- footer links -->
+    <div style="font-family:'MS Sans Serif',Arial,sans-serif;font-size:11px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+      <div>
+        <a class="btn" href="/">🏠 Home</a>
+        &nbsp;
+        <a class="swiss-btn" href="/now/swiss-versionnnn">🕐 View Swiss Edition →</a>
+      </div>
+      <div style="color:#444444;font-size:10px">
+        All times computed client-side &nbsp;·&nbsp; No server requests &nbsp;·&nbsp;
+        <a class="fancy" href="https://cesiumlab.net">cesiumlab.net</a>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="statusbar">
+    <div class="status-cell" id="status-left">Ready</div>
+    <div class="status-cell" id="status-right" style="max-width:200px;text-align:right"></div>
+  </div>
+</div>
+
+<!-- taskbar -->
+<div class="taskbar">
+  <div class="start-btn">🪟 Start</div>
+  <div class="taskbar-item">⏱ Current Time</div>
+  <div class="taskbar-clock" id="taskbar-clock">00:00 AM</div>
+</div>
+
+<script>
+const GPS_EPOCH = Date.UTC(1980, 0, 6);
+const LEAP = 37, GPS_LEAP = 18;
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function pad2(n) { return String(Math.floor(n)).padStart(2,'0'); }
+function pad3(n) { return String(Math.floor(n)).padStart(3,'0'); }
+function isLeap(y) { return (y%4===0&&y%100!==0)||y%400===0; }
+function doy(d) { return Math.floor((d - Date.UTC(d.getUTCFullYear(),0,1))/86400000)+1; }
+function jd(ms) { return ms/86400000 + 2440587.5; }
+function isoWeek(d) {
+  const j4 = new Date(Date.UTC(d.getUTCFullYear(),0,4));
+  const s = j4 - ((j4.getUTCDay()+6)%7)*86400000;
+  const w = Math.floor((d-s)/(7*86400000))+1;
+  if (w<1) return isoWeek(new Date(+d-7*86400000));
+  return w;
+}
+function beat(d) {
+  const b = ((d.getUTCHours()+1)*3600+d.getUTCMinutes()*60+d.getUTCSeconds()+d.getUTCMilliseconds()/1000)%86400/86.4;
+  return b;
+}
+
+const loadedAt = Date.now();
+let updateCount = 0;
+const loadTimeStr = new Date().toLocaleTimeString();
+document.getElementById('load-time').textContent = loadTimeStr;
+
+// fake visitor counter
+const base = 67; // + Math.floor(Math.random()*12);
+document.getElementById('visitor-counter').textContent = "67";//String(base).padStart(6,'0');
+
+function buildBinary(h, m, s) {
+  const cols = [
+    [Math.floor(h/10), 2], [h%10, 4],
+    [Math.floor(m/10), 3], [m%10, 4],
+    [Math.floor(s/10), 3], [s%10, 4],
+  ];
+  const sep = [2,4,6]; // after these indices add space
+  let html = '';
+  cols.forEach(([val, bits], ci) => {
+    for (let i=bits-1;i>=0;i--) {
+      const on = (val>>i)&1;
+      html += `<span class="bit${on?' on':''}">${on?1:0}</span>`;
+    }
+    if (ci===1||ci===3) html += '&nbsp;&nbsp;';
+    else html += '&nbsp;';
+  });
+  document.getElementById('binary-display').innerHTML = html;
+}
+
+function tick() {
+  const now = new Date();
+  const ms = now.getTime();
+  const unix = Math.floor(ms/1000);
+  const H=now.getUTCHours(), M=now.getUTCMinutes(), S=now.getUTCSeconds(), ms3=now.getUTCMilliseconds();
+  const lH=now.getHours(), lM=now.getMinutes(), lS=now.getSeconds();
+
+  updateCount++;
+  document.getElementById('update-count').textContent = updateCount.toLocaleString();
+
+  const elapsed = Math.floor((Date.now()-loadedAt)/1000);
+  document.getElementById('time-on-page').textContent = `${pad2(Math.floor(elapsed/60))}:${pad2(elapsed%60)}`;
+
+  // hero
+  document.getElementById('big-time').textContent = `${pad2(lH)}:${pad2(lM)}:${pad2(lS)}`;
+  const tzOff = -now.getTimezoneOffset();
+  const tzSign = tzOff>=0?'+':'-';
+  document.getElementById('big-date').textContent =
+    `${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}  ·  UTC${tzSign}${pad2(Math.floor(Math.abs(tzOff)/60))}:${pad2(Math.abs(tzOff)%60)}`;
+
+  // progress
+  const sod = H*3600+M*60+S+ms3/1000;
+  const dp = (sod/86400*100).toFixed(2);
+  document.getElementById('bar-day').style.width=dp+'%';
+  document.getElementById('pct-day').textContent=dp+'%';
+  const dy = doy(now), tot = isLeap(now.getUTCFullYear())?366:365;
+  const yp = ((dy-1+sod/86400)/tot*100).toFixed(3);
+  document.getElementById('bar-year').style.width=yp+'%';
+  document.getElementById('pct-year').textContent=yp+'%';
+  const dow0=now.getUTCDay(), ws=((dow0===0?6:dow0-1)*86400)+sod;
+  const wp=(ws/(7*86400)*100).toFixed(2);
+  document.getElementById('bar-week').style.width=wp+'%';
+  document.getElementById('pct-week').textContent=wp+'%';
+
+  // table
+  document.getElementById('t-utc').textContent=`${pad2(H)}:${pad2(M)}:${pad2(S)}.${pad3(ms3)}`;
+  document.getElementById('t-local').textContent=`${pad2(lH)}:${pad2(lM)}:${pad2(lS)}`;
+  document.getElementById('d-local').textContent=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById('t-iso').textContent=now.toISOString();
+  document.getElementById('t-unix').textContent=unix.toLocaleString();
+  document.getElementById('t-unixms').textContent=ms.toLocaleString();
+  document.getElementById('t-hex').textContent='0x'+unix.toString(16).toUpperCase();
+  const gpsSec=(ms-GPS_EPOCH)/1000+GPS_LEAP;
+  document.getElementById('t-gps').textContent=`week ${Math.floor(gpsSec/604800)}  ·  ${(gpsSec%604800).toFixed(0)}s`;
+  const taiD=new Date(ms+LEAP*1000);
+  document.getElementById('t-tai').textContent=`${pad2(taiD.getUTCHours())}:${pad2(taiD.getUTCMinutes())}:${pad2(taiD.getUTCSeconds())}`;
+  const ttD=new Date(ms+(LEAP+32.184)*1000);
+  document.getElementById('t-tt').textContent=`${pad2(ttD.getUTCHours())}:${pad2(ttD.getUTCMinutes())}:${pad2(ttD.getUTCSeconds())}.${pad3(ttD.getUTCMilliseconds())}`;
+  const j=jd(ms);
+  document.getElementById('t-jd').textContent=j.toFixed(7);
+  document.getElementById('t-mjd').textContent=(j-2400000.5).toFixed(7);
+  document.getElementById('t-week').textContent=`${now.getUTCFullYear()}-W${pad2(isoWeek(now))}-${now.getUTCDay()||7}`;
+  document.getElementById('t-doy').textContent=`${dy} / ${tot}`;
+  document.getElementById('t-beat').textContent=`@${beat(now).toFixed(2).padStart(6,'0')}`;
+  document.getElementById('t-sectod').textContent=`${(H*3600+M*60+S).toLocaleString()} / 86,400`;
+  document.getElementById('t-mintod').textContent=`${(H*60+M).toLocaleString()} / 1,440`;
+  document.getElementById('t-loran').textContent=`day ${Math.floor((ms-Date.UTC(1958,0,1))/86400000).toLocaleString()}`;
+
+  // binary
+  buildBinary(H, M, S);
+
+  // marquee time
+  document.getElementById('marquee-time').textContent=now.toUTCString();
+
+  // taskbar clock
+  let th=lH%12||12, ampm=lH>=12?'PM':'AM';
+  document.getElementById('taskbar-clock').textContent=`${pad2(th)}:${pad2(lM)} ${ampm}`;
+
+  // status bar
+  document.getElementById('status-left').textContent=`UTC ${pad2(H)}:${pad2(M)}:${pad2(S)}`;
+  document.getElementById('status-right').textContent=`Unix: ${unix}`;
+}
+
+tick();
+setInterval(tick, 100);
+</script>
+</body>
+</html>

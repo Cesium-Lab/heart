@@ -166,7 +166,7 @@ def compute_all(R):
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
-@app.route("/api/convert", methods=["POST"])
+@app.route("/api/rotation/convert", methods=["POST"])
 def convert():
     data = request.get_json()
     source = data.get("source")  # "quaternion", "rotmat", "euler", "axis_angle"
@@ -204,7 +204,7 @@ def convert():
         return jsonify({"error": f"Computation error: {str(e)}"}), 500
 
 
-@app.route("/api/health", methods=["GET"])
+@app.route("/api/rotation/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
 
