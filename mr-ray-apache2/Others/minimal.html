@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>colin // cesium-lab</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --ink: #1a1a1a;
+    --muted: #6b6b66;
+    --line: #e5e3dc;
+    --accent: #c4541c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14140f;
+      --surface: #1c1c17;
+      --ink: #f5f3ec;
+      --muted: #8a8a82;
+      --line: #2a2a23;
+      --accent: #f0997b;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 64px 32px 96px; }
+  header { margin-bottom: 64px; }
+  .eyebrow { font-size: 13px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  h1 { font-size: 32px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 12px; }
+  .lede { font-size: 17px; color: var(--muted); max-width: 540px; }
+  .accent { color: var(--accent); }
+  section { margin-bottom: 48px; }
+  h2 { font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .grid { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .grid > div { background: var(--surface); padding: 16px 20px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .row .label { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; color: var(--muted); }
+  .row .val { font-size: 14px; }
+  .row .val.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); transition: border-color 0.15s; }
+  a:hover { border-bottom-color: var(--accent); color: var(--accent); }
+  .links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .link-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; transition: border-color 0.15s, transform 0.15s; }
+  .link-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .link-card a { border: none; display: block; }
+  .link-card .title { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+  .link-card .desc { font-size: 13px; color: var(--muted); }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: middle; }
+  .dot.green { background: #639922; }
+  .dot.amber { background: #ef9f27; }
+  .dot.gray { background: var(--muted); opacity: 0.5; }
+  footer { margin-top: 96px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  @media (max-width: 600px) {
+    .wrap { padding: 48px 20px 64px; }
+    h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">cesium-lab // <span id="host">host</span></div>
+  <h1>hey, you've reached a computer on my network.</h1>
+  <p class="lede">if you're here on purpose, the things you're probably looking for are below. if you're not, sorry there's nothing fun to see.</p>
+</header>
+
+<section>
+  <h2>system</h2>
+  <div class="grid" style="grid-template-columns: 1fr 1fr;">
+    <div class="row"><span class="label">hostname</span><span class="val mono" id="host2">--</span></div>
+    <div class="row"><span class="label">status</span><span class="val"><span class="dot green"></span>online</span></div>
+    <div class="row"><span class="label">role</span><span class="val">homelab node</span></div>
+    <div class="row"><span class="label">uptime</span><span class="val mono" id="up">--</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>services</h2>
+  <div class="grid">
+    <div class="row"><span><span class="dot green"></span><span class="val mono">ssh</span></span><span class="label">:22 // key auth</span></div>
+    <div class="row"><span><span class="dot green"></span><span class="val mono">http</span></span><span class="label">:80 // this page</span></div>
+    <div class="row"><span><span class="dot amber"></span><span class="val mono">jupyter</span></span><span class="label">:8888 // on demand</span></div>
+    <div class="row"><span><span class="dot green"></span><span class="val mono">syncthing</span></span><span class="label">:8384 // internal</span></div>
+    <div class="row"><span><span class="dot gray"></span><span class="val mono">postgres</span></span><span class="label">:5432 // stopped</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>elsewhere</h2>
+  <div class="links-grid">
+    <div class="link-card">
+      <a href="https://github.com/Cesium-Lab" target="_blank">
+        <div class="title">github</div>
+        <div class="desc">cesium-lab org</div>
+      </a>
+    </div>
+    <div class="link-card">
+      <a href="#">
+        <div class="title">portfolio</div>
+        <div class="desc">writing &amp; projects</div>
+      </a>
+    </div>
+    <div class="link-card">
+      <a href="#">
+        <div class="title">atlas</div>
+        <div class="desc">notes &amp; reference</div>
+      </a>
+    </div>
+    <div class="link-card">
+      <a href="mailto:#">
+        <div class="title">email</div>
+        <div class="desc">best way to reach me</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="mono">colin // aero/astro ms @ stanford</div>
+  <div class="mono"><span id="datetime">--</span></div>
+</footer>
+
+</div>
+
+<script>
+  const host = window.location.hostname || 'localhost';
+  document.getElementById('host').textContent = host;
+  document.getElementById('host2').textContent = host;
+  const start = Date.now();
+  const tick = () => {
+    const d = new Date();
+    document.getElementById('datetime').textContent = d.toLocaleString();
+    const s = Math.floor((Date.now() - start) / 1000);
+    document.getElementById('up').textContent = `session ${s}s`;
+  };
+  tick();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>

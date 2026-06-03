@@ -1,0 +1,14 @@
+[Unit]
+Description=Rotation Visualizer Flask Backend
+After=network.target
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/var/www/html/rotation-viz
+ExecStart=/usr/bin/python3 /var/www/html/rotation-viz/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

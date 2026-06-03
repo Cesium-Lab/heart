@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>vibes // decorative</title>
+<style>
+  :root {
+    --bg: #0a0a14;
+    --panel: #12121e;
+    --line: #252538;
+    --fg: #e0e0f0;
+    --dim: #6b6b8a;
+    --c1: #ff5edb;
+    --c2: #4dd9ff;
+    --c3: #ffcb6b;
+    --c4: #6bff9e;
+    --c5: #b07eff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', ui-monospace, monospace; padding: 28px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-family: -apple-system, 'Inter', sans-serif; font-size: 24px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .sub { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 24px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+  .panel h3 { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 400; margin-bottom: 12px; }
+  .panel .cap { font-size: 11px; color: var(--dim); margin-top: 8px; font-style: italic; }
+  svg { display: block; margin: 0 auto; }
+  /* readout */
+  .readout { display: flex; align-items: baseline; gap: 8px; font-size: 11px; margin-bottom: 8px; }
+  .readout .v { font-size: 22px; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>vibes.dashboard</h1>
+<div class="sub">▸ decorative charts // no real data, just for the aesthetic</div>
+
+<!-- row 1 -->
+<div class="grid2">
+  <!-- waveform / oscilloscope -->
+  <div class="panel">
+    <h3>▸ live signal</h3>
+    <div class="readout"><span style="color: var(--dim);">freq</span><span class="v" style="color: var(--c2);">2.4 kHz</span></div>
+    <svg viewBox="0 0 400 120" width="100%" height="120">
+      <!-- grid -->
+      <g stroke="#252538" stroke-width="0.5" fill="none">
+        <line x1="0" y1="30" x2="400" y2="30"/>
+        <line x1="0" y1="60" x2="400" y2="60"/>
+        <line x1="0" y1="90" x2="400" y2="90"/>
+        <line x1="80" y1="0" x2="80" y2="120"/>
+        <line x1="160" y1="0" x2="160" y2="120"/>
+        <line x1="240" y1="0" x2="240" y2="120"/>
+        <line x1="320" y1="0" x2="320" y2="120"/>
+      </g>
+      <!-- waveform: damped sine -->
+      <path d="M 0 60 Q 20 10, 40 60 T 80 60 T 120 60 T 160 60 T 200 60 T 240 60 T 280 60 T 320 60 T 360 60 T 400 60"
+            stroke="#4dd9ff" stroke-width="1.5" fill="none"/>
+      <!-- noise overlay -->
+      <path d="M 0 60 L 20 14 L 40 58 L 60 18 L 80 62 L 100 22 L 120 58 L 140 20 L 160 60 L 180 24 L 200 58 L 220 28 L 240 62 L 260 32 L 280 60 L 300 36 L 320 60 L 340 40 L 360 60 L 380 44 L 400 60"
+            stroke="#ff5edb" stroke-width="1" fill="none" opacity="0.5"/>
+    </svg>
+  </div>
+
+  <!-- fake stock-style sparkline with annotations -->
+  <div class="panel">
+    <h3>▸ vibes index // 24h</h3>
+    <div class="readout"><span style="color: var(--dim);">current</span><span class="v" style="color: var(--c4);">87.4</span><span style="color: var(--c4);">↑ 12.3%</span></div>
+    <svg viewBox="0 0 400 120" width="100%" height="120">
+      <defs>
+        <linearGradient id="vibegrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#6bff9e" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="#6bff9e" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <!-- area fill -->
+      <path d="M 0 90 L 30 80 L 60 95 L 90 70 L 120 75 L 150 55 L 180 60 L 210 40 L 240 50 L 270 30 L 300 35 L 330 20 L 360 25 L 400 15 L 400 120 L 0 120 Z"
+            fill="url(#vibegrad)"/>
+      <!-- line -->
+      <path d="M 0 90 L 30 80 L 60 95 L 90 70 L 120 75 L 150 55 L 180 60 L 210 40 L 240 50 L 270 30 L 300 35 L 330 20 L 360 25 L 400 15"
+            stroke="#6bff9e" stroke-width="1.5" fill="none"/>
+      <!-- endpoint -->
+      <circle cx="400" cy="15" r="3" fill="#6bff9e"/>
+      <circle cx="400" cy="15" r="6" fill="#6bff9e" opacity="0.3"/>
+    </svg>
+  </div>
+</div>
+
+<!-- row 2 -->
+<div class="grid3">
+  <!-- compass / heading -->
+  <div class="panel">
+    <h3>▸ heading</h3>
+    <svg viewBox="0 0 160 160" width="160" height="160">
+      <circle cx="80" cy="80" r="68" fill="none" stroke="#252538" stroke-width="1"/>
+      <circle cx="80" cy="80" r="50" fill="none" stroke="#252538" stroke-width="0.5"/>
+      <!-- ticks -->
+      <g stroke="#6b6b8a" stroke-width="1">
+        <line x1="80" y1="12" x2="80" y2="22"/>
+        <line x1="148" y1="80" x2="138" y2="80"/>
+        <line x1="80" y1="148" x2="80" y2="138"/>
+        <line x1="12" y1="80" x2="22" y2="80"/>
+      </g>
+      <g font-family="JetBrains Mono" font-size="10" fill="#6b6b8a" text-anchor="middle">
+        <text x="80" y="9">N</text>
+        <text x="155" y="84">E</text>
+        <text x="80" y="158">S</text>
+        <text x="6" y="84">W</text>
+      </g>
+      <!-- needle, pointing 42° -->
+      <g transform="rotate(42 80 80)">
+        <polygon points="80,28 75,80 80,76 85,80" fill="#ff5edb"/>
+        <polygon points="80,132 75,80 80,84 85,80" fill="#4dd9ff" opacity="0.5"/>
+        <circle cx="80" cy="80" r="4" fill="#252538" stroke="#fff" stroke-width="1"/>
+      </g>
+      <text x="80" y="155" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#ff5edb">042°</text>
+    </svg>
+  </div>
+
+  <!-- gauge / dial -->
+  <div class="panel">
+    <h3>▸ power</h3>
+    <svg viewBox="0 0 160 130" width="160" height="130">
+      <!-- arc bg -->
+      <path d="M 20 110 A 60 60 0 0 1 140 110" fill="none" stroke="#252538" stroke-width="10" stroke-linecap="round"/>
+      <!-- arc fill, 72% -->
+      <path d="M 20 110 A 60 60 0 0 1 122 56" fill="none" stroke="#ffcb6b" stroke-width="10" stroke-linecap="round"/>
+      <!-- center text -->
+      <text x="80" y="100" text-anchor="middle" font-family="JetBrains Mono" font-size="26" fill="#ffcb6b" font-weight="500">72</text>
+      <text x="80" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6b6b8a">WATTS</text>
+      <!-- min max labels -->
+      <text x="18" y="125" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6b6b8a">0</text>
+      <text x="142" y="125" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6b6b8a">100</text>
+    </svg>
+  </div>
+
+  <!-- radial pulse -->
+  <div class="panel">
+    <h3>▸ activity</h3>
+    <svg viewBox="0 0 160 160" width="160" height="160">
+      <!-- concentric rings -->
+      <circle cx="80" cy="80" r="65" fill="none" stroke="#252538" stroke-width="1"/>
+      <circle cx="80" cy="80" r="48" fill="none" stroke="#252538" stroke-width="1"/>
+      <circle cx="80" cy="80" r="32" fill="none" stroke="#252538" stroke-width="1"/>
+      <!-- ring fills -->
+      <circle cx="80" cy="80" r="65" fill="none" stroke="#ff5edb" stroke-width="6"
+              stroke-dasharray="306 408" stroke-linecap="round" transform="rotate(-90 80 80)"/>
+      <circle cx="80" cy="80" r="48" fill="none" stroke="#4dd9ff" stroke-width="6"
+              stroke-dasharray="226 301" stroke-linecap="round" transform="rotate(-90 80 80)"/>
+      <circle cx="80" cy="80" r="32" fill="none" stroke="#6bff9e" stroke-width="6"
+              stroke-dasharray="130 201" stroke-linecap="round" transform="rotate(-90 80 80)"/>
+      <text x="80" y="78" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="#e0e0f0" font-weight="500">75%</text>
+      <text x="80" y="92" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6b6b8a">3 of 3</text>
+    </svg>
+  </div>
+</div>
+
+<!-- row 3: orbit + matrix -->
+<div class="grid2">
+  <div class="panel">
+    <h3>▸ orbit.viz</h3>
+    <svg viewBox="0 0 400 200" width="100%" height="200">
+      <!-- earth -->
+      <circle cx="200" cy="100" r="32" fill="#1a2540" stroke="#4dd9ff" stroke-width="1"/>
+      <ellipse cx="200" cy="100" rx="32" ry="10" fill="none" stroke="#4dd9ff" stroke-width="0.5" opacity="0.4"/>
+      <!-- orbits -->
+      <ellipse cx="200" cy="100" rx="70" ry="60" fill="none" stroke="#3a3a50" stroke-width="0.5" stroke-dasharray="2 3"/>
+      <ellipse cx="200" cy="100" rx="120" ry="80" fill="none" stroke="#3a3a50" stroke-width="0.5" stroke-dasharray="2 3"/>
+      <ellipse cx="200" cy="100" rx="180" ry="90" fill="none" stroke="#3a3a50" stroke-width="0.5" stroke-dasharray="2 3"/>
+      <!-- satellites -->
+      <g>
+        <circle cx="270" cy="100" r="3" fill="#ff5edb"/>
+        <circle cx="270" cy="100" r="6" fill="#ff5edb" opacity="0.3"/>
+      </g>
+      <g>
+        <circle cx="80" cy="100" r="3" fill="#ffcb6b"/>
+        <circle cx="80" cy="100" r="6" fill="#ffcb6b" opacity="0.3"/>
+      </g>
+      <g>
+        <circle cx="200" cy="10" r="3" fill="#6bff9e"/>
+        <circle cx="200" cy="10" r="6" fill="#6bff9e" opacity="0.3"/>
+      </g>
+      <!-- labels -->
+      <g font-family="JetBrains Mono" font-size="9" fill="#6b6b8a">
+        <text x="278" y="103">sat-01</text>
+        <text x="60" y="93" text-anchor="end">sat-02</text>
+        <text x="200" y="6" text-anchor="middle">geo-1</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="panel">
+    <h3>▸ data.stream</h3>
+    <svg viewBox="0 0 400 200" width="100%" height="200">
+      <!-- matrix of dots, varying opacity -->
+      <g fill="#ff5edb">
+        <!-- row 0 -->
+        <circle cx="20" cy="20" r="2" opacity="0.3"/>
+        <circle cx="40" cy="20" r="2" opacity="0.8"/>
+        <circle cx="60" cy="20" r="2" opacity="0.2"/>
+        <circle cx="80" cy="20" r="2" opacity="0.6"/>
+        <circle cx="100" cy="20" r="2" opacity="0.9"/>
+        <circle cx="120" cy="20" r="2" opacity="0.4"/>
+        <circle cx="140" cy="20" r="2" opacity="0.7"/>
+        <circle cx="160" cy="20" r="2" opacity="0.3"/>
+        <circle cx="180" cy="20" r="2" opacity="0.8"/>
+        <circle cx="200" cy="20" r="2" opacity="0.5"/>
+        <circle cx="220" cy="20" r="2" opacity="0.2"/>
+        <circle cx="240" cy="20" r="2" opacity="0.7"/>
+        <circle cx="260" cy="20" r="2" opacity="0.9"/>
+        <circle cx="280" cy="20" r="2" opacity="0.3"/>
+        <circle cx="300" cy="20" r="2" opacity="0.6"/>
+        <circle cx="320" cy="20" r="2" opacity="0.4"/>
+        <circle cx="340" cy="20" r="2" opacity="0.8"/>
+        <circle cx="360" cy="20" r="2" opacity="0.5"/>
+        <circle cx="380" cy="20" r="2" opacity="0.2"/>
+      </g>
+      <g fill="#4dd9ff">
+        <circle cx="20" cy="50" r="2" opacity="0.7"/>
+        <circle cx="40" cy="50" r="2" opacity="0.2"/>
+        <circle cx="60" cy="50" r="2" opacity="0.9"/>
+        <circle cx="80" cy="50" r="2" opacity="0.4"/>
+        <circle cx="100" cy="50" r="2" opacity="0.6"/>
+        <circle cx="120" cy="50" r="2" opacity="0.3"/>
+        <circle cx="140" cy="50" r="2" opacity="0.8"/>
+        <circle cx="160" cy="50" r="2" opacity="0.5"/>
+        <circle cx="180" cy="50" r="2" opacity="0.2"/>
+        <circle cx="200" cy="50" r="2" opacity="0.7"/>
+        <circle cx="220" cy="50" r="2" opacity="0.9"/>
+        <circle cx="240" cy="50" r="2" opacity="0.4"/>
+        <circle cx="260" cy="50" r="2" opacity="0.6"/>
+        <circle cx="280" cy="50" r="2" opacity="0.3"/>
+        <circle cx="300" cy="50" r="2" opacity="0.8"/>
+        <circle cx="320" cy="50" r="2" opacity="0.5"/>
+        <circle cx="340" cy="50" r="2" opacity="0.2"/>
+        <circle cx="360" cy="50" r="2" opacity="0.9"/>
+        <circle cx="380" cy="50" r="2" opacity="0.6"/>
+      </g>
+      <g fill="#ffcb6b">
+        <circle cx="20" cy="80" r="2" opacity="0.5"/>
+        <circle cx="40" cy="80" r="2" opacity="0.9"/>
+        <circle cx="60" cy="80" r="2" opacity="0.3"/>
+        <circle cx="80" cy="80" r="2" opacity="0.7"/>
+        <circle cx="100" cy="80" r="2" opacity="0.2"/>
+        <circle cx="120" cy="80" r="2" opacity="0.8"/>
+        <circle cx="140" cy="80" r="2" opacity="0.4"/>
+        <circle cx="160" cy="80" r="2" opacity="0.6"/>
+        <circle cx="180" cy="80" r="2" opacity="0.3"/>
+        <circle cx="200" cy="80" r="2" opacity="0.9"/>
+        <circle cx="220" cy="80" r="2" opacity="0.5"/>
+        <circle cx="240" cy="80" r="2" opacity="0.2"/>
+        <circle cx="260" cy="80" r="2" opacity="0.7"/>
+        <circle cx="280" cy="80" r="2" opacity="0.4"/>
+        <circle cx="300" cy="80" r="2" opacity="0.8"/>
+        <circle cx="320" cy="80" r="2" opacity="0.6"/>
+        <circle cx="340" cy="80" r="2" opacity="0.3"/>
+        <circle cx="360" cy="80" r="2" opacity="0.5"/>
+        <circle cx="380" cy="80" r="2" opacity="0.9"/>
+      </g>
+      <g fill="#6bff9e">
+        <circle cx="20" cy="110" r="2" opacity="0.4"/>
+        <circle cx="40" cy="110" r="2" opacity="0.7"/>
+        <circle cx="60" cy="110" r="2" opacity="0.2"/>
+        <circle cx="80" cy="110" r="2" opacity="0.9"/>
+        <circle cx="100" cy="110" r="2" opacity="0.5"/>
+        <circle cx="120" cy="110" r="2" opacity="0.3"/>
+        <circle cx="140" cy="110" r="2" opacity="0.8"/>
+        <circle cx="160" cy="110" r="2" opacity="0.6"/>
+        <circle cx="180" cy="110" r="2" opacity="0.4"/>
+        <circle cx="200" cy="110" r="2" opacity="0.2"/>
+        <circle cx="220" cy="110" r="2" opacity="0.7"/>
+        <circle cx="240" cy="110" r="2" opacity="0.9"/>
+        <circle cx="260" cy="110" r="2" opacity="0.3"/>
+        <circle cx="280" cy="110" r="2" opacity="0.5"/>
+        <circle cx="300" cy="110" r="2" opacity="0.8"/>
+        <circle cx="320" cy="110" r="2" opacity="0.6"/>
+        <circle cx="340" cy="110" r="2" opacity="0.4"/>
+        <circle cx="360" cy="110" r="2" opacity="0.7"/>
+        <circle cx="380" cy="110" r="2" opacity="0.2"/>
+      </g>
+      <g fill="#b07eff">
+        <circle cx="20" cy="140" r="2" opacity="0.6"/>
+        <circle cx="40" cy="140" r="2" opacity="0.3"/>
+        <circle cx="60" cy="140" r="2" opacity="0.8"/>
+        <circle cx="80" cy="140" r="2" opacity="0.5"/>
+        <circle cx="100" cy="140" r="2" opacity="0.2"/>
+        <circle cx="120" cy="140" r="2" opacity="0.9"/>
+        <circle cx="140" cy="140" r="2" opacity="0.4"/>
+        <circle cx="160" cy="140" r="2" opacity="0.7"/>
+        <circle cx="180" cy="140" r="2" opacity="0.3"/>
+        <circle cx="200" cy="140" r="2" opacity="0.5"/>
+        <circle cx="220" cy="140" r="2" opacity="0.8"/>
+        <circle cx="240" cy="140" r="2" opacity="0.6"/>
+        <circle cx="260" cy="140" r="2" opacity="0.2"/>
+        <circle cx="280" cy="140" r="2" opacity="0.9"/>
+        <circle cx="300" cy="140" r="2" opacity="0.5"/>
+        <circle cx="320" cy="140" r="2" opacity="0.7"/>
+        <circle cx="340" cy="140" r="2" opacity="0.4"/>
+        <circle cx="360" cy="140" r="2" opacity="0.3"/>
+        <circle cx="380" cy="140" r="2" opacity="0.8"/>
+      </g>
+      <text x="200" y="180" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6b6b8a">5 channels · 19 samples · live</text>
+    </svg>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

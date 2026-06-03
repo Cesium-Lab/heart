@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>visitors // stats</title>
+<style>
+  :root {
+    --bg: #1a0f1f;
+    --panel: #241530;
+    --line: #3a2147;
+    --fg: #f0e6ff;
+    --dim: #8a6ba0;
+    --c1: #ff5edb;
+    --c2: #4dd9ff;
+    --c3: #ffcb6b;
+    --c4: #6bff9e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: -apple-system, 'Inter', sans-serif; padding: 28px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .sub { color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .row { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+  .panel h3 { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; }
+  .big { text-align: left; }
+  .big .lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; }
+  .big .num { font-size: 28px; font-weight: 500; margin-top: 4px; }
+  .big .num.c1 { color: var(--c1); }
+  .big .num.c2 { color: var(--c2); }
+  .big .num.c3 { color: var(--c3); }
+  .big .num.c4 { color: var(--c4); }
+  .big .delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c4); margin-top: 4px; }
+  .big .delta.down { color: var(--c1); }
+  /* hourly heatmap */
+  .heat { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; }
+  .heat .cell { aspect-ratio: 1; border-radius: 2px; background: var(--line); }
+  .heat-labels { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--dim); margin-top: 4px; }
+  /* browser list */
+  .row-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+  .row-item .name { flex: 1; }
+  .row-item .pct-bar { flex: 1.5; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .row-item .pct-bar div { height: 100%; }
+  .row-item .num { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim); width: 36px; text-align: right; }
+  /* pages list */
+  .page { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
+  .page:last-child { border-bottom: none; }
+  .page .path { font-family: 'JetBrains Mono', monospace; color: var(--c2); }
+  .page .hits { font-family: 'JetBrains Mono', monospace; color: var(--dim); }
+  /* world map dots */
+  .map-wrap { position: relative; }
+  .map-wrap svg { width: 100%; height: auto; display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>visitor log</h1>
+<div class="sub">▸ last 30 days // hostname.lan</div>
+
+<!-- top metrics -->
+<div class="grid">
+  <div class="panel big">
+    <div class="lbl">total visits</div>
+    <div class="num c1">2,847</div>
+    <div class="delta">↑ 14% vs last month</div>
+  </div>
+  <div class="panel big">
+    <div class="lbl">unique visitors</div>
+    <div class="num c2">412</div>
+    <div class="delta">↑ 8% vs last month</div>
+  </div>
+  <div class="panel big">
+    <div class="lbl">avg session</div>
+    <div class="num c3">2:14</div>
+    <div class="delta down">↓ 22 sec vs last month</div>
+  </div>
+  <div class="panel big">
+    <div class="lbl">bounce rate</div>
+    <div class="num c4">38%</div>
+    <div class="delta">↓ 4 pts vs last month</div>
+  </div>
+</div>
+
+<!-- world map + countries -->
+<div class="row">
+  <div class="panel">
+    <h3>▸ where they're from</h3>
+    <div class="map-wrap">
+      <!-- simplified world dots map, ~700x300 -->
+      <svg viewBox="0 0 700 300">
+        <!-- abstract continent blobs -->
+        <g fill="#3a2147" opacity="0.6">
+          <ellipse cx="170" cy="120" rx="80" ry="50"/>
+          <ellipse cx="350" cy="100" rx="100" ry="40"/>
+          <ellipse cx="500" cy="130" rx="60" ry="60"/>
+          <ellipse cx="200" cy="220" rx="40" ry="40"/>
+          <ellipse cx="560" cy="220" rx="35" ry="30"/>
+        </g>
+        <!-- visitor dots, sized by count -->
+        <!-- USA cluster -->
+        <circle cx="155" cy="110" r="14" fill="#ff5edb" opacity="0.85"/>
+        <circle cx="155" cy="110" r="5" fill="#ff5edb"/>
+        <!-- Europe -->
+        <circle cx="345" cy="95" r="9" fill="#4dd9ff" opacity="0.85"/>
+        <circle cx="345" cy="95" r="3" fill="#4dd9ff"/>
+        <!-- UK -->
+        <circle cx="325" cy="85" r="5" fill="#4dd9ff" opacity="0.85"/>
+        <!-- Asia -->
+        <circle cx="510" cy="125" r="7" fill="#ffcb6b" opacity="0.85"/>
+        <circle cx="510" cy="125" r="2.5" fill="#ffcb6b"/>
+        <!-- India -->
+        <circle cx="475" cy="145" r="4" fill="#ffcb6b" opacity="0.85"/>
+        <!-- Australia -->
+        <circle cx="565" cy="225" r="3" fill="#6bff9e" opacity="0.85"/>
+        <!-- Brazil -->
+        <circle cx="205" cy="215" r="3" fill="#6bff9e" opacity="0.85"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>▸ top countries</h3>
+    <div class="row-item">
+      <span class="name">🇺🇸 usa</span>
+      <span class="pct-bar"><div style="width: 78%; background: var(--c1);"></div></span>
+      <span class="num">68%</span>
+    </div>
+    <div class="row-item">
+      <span class="name">🇩🇪 germany</span>
+      <span class="pct-bar"><div style="width: 22%; background: var(--c2);"></div></span>
+      <span class="num">9%</span>
+    </div>
+    <div class="row-item">
+      <span class="name">🇬🇧 uk</span>
+      <span class="pct-bar"><div style="width: 18%; background: var(--c2);"></div></span>
+      <span class="num">7%</span>
+    </div>
+    <div class="row-item">
+      <span class="name">🇯🇵 japan</span>
+      <span class="pct-bar"><div style="width: 14%; background: var(--c3);"></div></span>
+      <span class="num">5%</span>
+    </div>
+    <div class="row-item">
+      <span class="name">🇨🇦 canada</span>
+      <span class="pct-bar"><div style="width: 10%; background: var(--c4);"></div></span>
+      <span class="num">4%</span>
+    </div>
+    <div class="row-item">
+      <span class="name">other</span>
+      <span class="pct-bar"><div style="width: 18%; background: var(--dim);"></div></span>
+      <span class="num">7%</span>
+    </div>
+  </div>
+</div>
+
+<!-- hourly heat map -->
+<div class="panel" style="margin-bottom: 16px;">
+  <h3>▸ traffic by hour // utc</h3>
+  <div class="heat" id="heat"></div>
+  <div class="heat-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+</div>
+
+<!-- bottom 3 panels -->
+<div class="row3">
+  <div class="panel">
+    <h3>▸ top pages</h3>
+    <div class="page"><span class="path">/</span><span class="hits">1,204</span></div>
+    <div class="page"><span class="path">/projects</span><span class="hits">487</span></div>
+    <div class="page"><span class="path">/atlas</span><span class="hits">312</span></div>
+    <div class="page"><span class="path">/blog/ekf</span><span class="hits">298</span></div>
+    <div class="page"><span class="path">/guestbook</span><span class="hits">156</span></div>
+    <div class="page"><span class="path">/dash</span><span class="hits">89</span></div>
+  </div>
+  <div class="panel">
+    <h3>▸ browsers</h3>
+    <div class="row-item"><span class="name">chrome</span><span class="pct-bar"><div style="width: 62%; background: var(--c1);"></div></span><span class="num">62%</span></div>
+    <div class="row-item"><span class="name">firefox</span><span class="pct-bar"><div style="width: 18%; background: var(--c2);"></div></span><span class="num">18%</span></div>
+    <div class="row-item"><span class="name">safari</span><span class="pct-bar"><div style="width: 14%; background: var(--c3);"></div></span><span class="num">14%</span></div>
+    <div class="row-item"><span class="name">edge</span><span class="pct-bar"><div style="width: 4%; background: var(--c4);"></div></span><span class="num">4%</span></div>
+    <div class="row-item"><span class="name">other</span><span class="pct-bar"><div style="width: 2%; background: var(--dim);"></div></span><span class="num">2%</span></div>
+  </div>
+  <div class="panel">
+    <h3>▸ devices</h3>
+    <div class="row-item"><span class="name">desktop</span><span class="pct-bar"><div style="width: 74%; background: var(--c1);"></div></span><span class="num">74%</span></div>
+    <div class="row-item"><span class="name">mobile</span><span class="pct-bar"><div style="width: 22%; background: var(--c2);"></div></span><span class="num">22%</span></div>
+    <div class="row-item"><span class="name">tablet</span><span class="pct-bar"><div style="width: 4%; background: var(--c3);"></div></span><span class="num">4%</span></div>
+    <h3 style="margin-top: 16px;">▸ referrers</h3>
+    <div class="row-item"><span class="name">direct</span><span class="num" style="margin-left: auto;">58%</span></div>
+    <div class="row-item"><span class="name">github.com</span><span class="num" style="margin-left: auto;">22%</span></div>
+    <div class="row-item"><span class="name">hn</span><span class="num" style="margin-left: auto;">12%</span></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  // generate heatmap cells: 7 rows (mon-sun) x 24 cols
+  const heat = document.getElementById('heat');
+  const colors = ['#3a2147', '#5e2d5f', '#8a3d7f', '#b84d99', '#e85eb6', '#ff5edb'];
+  // fake traffic pattern: weekday business hours peak
+  const pattern = [];
+  for (let day = 0; day < 7; day++) {
+    for (let hr = 0; hr < 24; hr++) {
+      let intensity;
+      const isWeekday = day < 5;
+      if (hr < 6 || hr > 23) intensity = 0;
+      else if (hr >= 9 && hr <= 17 && isWeekday) intensity = 3 + Math.floor(Math.random() * 3);
+      else if (hr >= 19 && hr <= 22) intensity = 2 + Math.floor(Math.random() * 2);
+      else intensity = Math.floor(Math.random() * 2);
+      pattern.push(intensity);
+    }
+  }
+  // just render the most recent 24 hour row as a strip
+  for (let hr = 0; hr < 24; hr++) {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    const intensity = pattern[24 * 2 + hr];
+    if (intensity > 0) d.style.background = colors[Math.min(intensity, 5)];
+    heat.appendChild(d);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>hub // colin</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #14171f;
+    --panel-hi: #1a1e28;
+    --line: #232836;
+    --fg: #e6e9f2;
+    --dim: #6b7299;
+    --c1: #4dd9ff;
+    --c2: #ff5edb;
+    --c3: #ffcb6b;
+    --c4: #6bff9e;
+    --c5: #b07eff;
+    --c-err: #ff6b6b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; font-size: 14px; line-height: 1.5; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 28px 64px; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* header */
+  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  header .left h1 { font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+  header .left .sub { color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+  header .right { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim); }
+  header .right .big { color: var(--c1); font-size: 16px; }
+
+  /* search */
+  .search { display: flex; gap: 8px; margin-bottom: 20px; }
+  .search input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--fg); padding: 10px 14px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 13px; outline: none; }
+  .search input:focus { border-color: var(--c1); }
+  .search button { background: var(--panel); border: 1px solid var(--line); color: var(--fg); padding: 10px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: 'JetBrains Mono', monospace; }
+  .search button:hover { border-color: var(--c1); color: var(--c1); }
+
+  /* main grid */
+  .main { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 1000px) { .main { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 660px) { .main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+  .panel.tall { grid-row: span 2; }
+  .panel.wide { grid-column: span 2; }
+  @media (max-width: 660px) { .panel.wide { grid-column: span 1; } }
+  .panel h3 { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; display: flex; justify-content: space-between; align-items: center; }
+  .panel h3 .acc { color: var(--c1); font-weight: 500; }
+
+  /* weather */
+  .wx-now { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  .wx-temp { font-size: 38px; font-weight: 500; line-height: 1; }
+  .wx-meta { font-size: 12px; color: var(--dim); text-align: right; }
+  .wx-meta .cond { color: var(--fg); margin-bottom: 2px; }
+  .wx-forecast { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .wx-day { text-align: center; font-size: 11px; padding: 6px 2px; background: var(--panel-hi); border-radius: 4px; }
+  .wx-day .d { color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+  .wx-day .t { color: var(--fg); margin-top: 2px; }
+  .wx-day .lo { color: var(--dim); }
+
+  /* launches */
+  .launch { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .launch:last-child { border-bottom: none; }
+  .launch .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .launch .mission { font-weight: 500; font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .launch .when { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c3); flex-shrink: 0; }
+  .launch .meta { font-size: 11px; color: var(--dim); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .launch .countdown { display: inline-block; padding: 1px 6px; background: var(--panel-hi); border-radius: 3px; color: var(--c1); margin-left: 6px; }
+
+  /* stocks */
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .row:last-child { border-bottom: none; }
+  .row .sym { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+  .row .price { font-family: 'JetBrains Mono', monospace; }
+  .row .chg { font-family: 'JetBrains Mono', monospace; font-size: 12px; min-width: 60px; text-align: right; }
+  .up { color: var(--c4); }
+  .down { color: var(--c-err); }
+  .neutral { color: var(--dim); }
+
+  /* feed (news, hn, arxiv) */
+  .feed-item { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .feed-item:last-child { border-bottom: none; }
+  .feed-item a { color: var(--fg); text-decoration: none; display: block; line-height: 1.4; }
+  .feed-item a:hover { color: var(--c1); }
+  .feed-item .meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim); margin-top: 3px; display: flex; gap: 10px; }
+  .feed-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+  .feed-tabs button { background: transparent; border: 1px solid var(--line); color: var(--dim); padding: 4px 10px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; }
+  .feed-tabs button:hover { color: var(--fg); }
+  .feed-tabs button.active { background: var(--c1); border-color: var(--c1); color: var(--bg); }
+  .feed-body { max-height: 360px; overflow-y: auto; }
+  .feed-body::-webkit-scrollbar { width: 4px; }
+  .feed-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
+  /* system stats fake */
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 12px; }
+  .stat-row .lbl { color: var(--dim); font-family: 'JetBrains Mono', monospace; }
+  .stat-row .v { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+  .bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .bar > div { height: 100%; background: var(--c1); transition: width 0.4s; }
+
+  /* launchpad */
+  .pad-section { margin-top: 28px; }
+  .pad-section h2 { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+  .pad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+  .link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 13px;
+    transition: all 0.15s;
+  }
+  .link:hover { border-color: var(--c1); background: var(--panel-hi); transform: translateY(-1px); }
+  .link .icon {
+    width: 24px; height: 24px; border-radius: 4px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
+  }
+  .link .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link .arr { color: var(--dim); font-size: 11px; }
+
+  /* loading skeleton */
+  .skel { color: var(--dim); font-style: italic; font-size: 12px; padding: 6px 0; }
+  .err { color: var(--c-err); font-size: 11px; padding: 4px 0; font-family: 'JetBrains Mono', monospace; }
+
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="left">
+    <h1>hey colin <span style="color: var(--dim); font-weight: 400;">// hub</span></h1>
+    <div class="sub" id="greet">▸ initializing...</div>
+  </div>
+  <div class="right">
+    <div class="big mono" id="clock">--:--</div>
+    <div id="date">--</div>
+  </div>
+</header>
+
+<div class="search">
+  <input id="q" type="text" placeholder="search the web... (try !g, !gh, !yt, !mdn, !wiki, !arxiv, !ddg)" autocomplete="off">
+  <button id="goBtn">go ↗</button>
+</div>
+
+<div class="main">
+
+  <!-- weather -->
+  <div class="panel">
+    <h3>weather <span class="acc" id="wx-loc">stanford</span></h3>
+    <div id="wx-content">
+      <div class="skel">loading weather...</div>
+    </div>
+  </div>
+
+  <!-- launches -->
+  <div class="panel tall">
+    <h3>upcoming launches <span class="acc">▸ live</span></h3>
+    <div id="launches">
+      <div class="skel">loading launches...</div>
+    </div>
+  </div>
+
+  <!-- markets -->
+  <div class="panel">
+    <h3>markets <span class="acc" id="mkt-status">▸ live</span></h3>
+    <div id="markets">
+      <div class="skel">loading markets...</div>
+    </div>
+  </div>
+
+  <!-- news/hn/arxiv tabbed feed -->
+  <div class="panel wide tall">
+    <h3>feed</h3>
+    <div class="feed-tabs">
+      <button class="active" data-feed="hn">hacker news</button>
+      <button data-feed="arxiv">arxiv (controls)</button>
+      <button data-feed="space">space news</button>
+      <button data-feed="world">world news</button>
+    </div>
+    <div class="feed-body" id="feed">
+      <div class="skel">loading feed...</div>
+    </div>
+  </div>
+
+  <!-- system stats -->
+  <div class="panel">
+    <h3>this box (TODO) <span class="acc" id="sys-host">localhost</span></h3>
+    <div id="sysstats">
+      <div class="stat-row"><span class="lbl">cpu</span><span class="v" id="s-cpu">--%</span></div>
+      <div class="bar"><div id="b-cpu" style="width: 0%"></div></div>
+      <div class="stat-row" style="margin-top: 8px;"><span class="lbl">memory</span><span class="v" id="s-mem">--%</span></div>
+      <div class="bar"><div id="b-mem" style="width: 0%"></div></div>
+      <div class="stat-row" style="margin-top: 8px;"><span class="lbl">disk</span><span class="v" id="s-disk">--%</span></div>
+      <div class="bar"><div id="b-disk" style="width: 0%"></div></div>
+      <div class="stat-row" style="margin-top: 12px;"><span class="lbl">uptime</span><span class="v" id="s-up">--</span></div>
+      <div class="stat-row"><span class="lbl">load</span><span class="v" id="s-load">--</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- launchpad sections -->
+<div class="pad-section">
+  <h2>▸ dev &amp; engineering</h2>
+  <div class="pad-grid">
+    <a class="link" href="https://github.com/Cesium-Lab" target="_blank"><span class="icon" style="background:#1a1e28;color:#fff;">gh</span><span class="name">github (cesium-lab)</span><span class="arr">↗</span></a>
+    <a class="link" href="https://github.com//colin-skinner" target="_blank"><span class="icon" style="background:#1a1e28;color:#fff;">gh</span><span class="name">github</span><span class="arr">↗</span></a>
+    <a class="link" href="https://www.st.com/en/microcontrollers-microprocessors/stm32h7-series.html" target="_blank"><span class="icon" style="background:#03234b;color:#4dd9ff;">st</span><span class="name">stm32 datasheets</span><span class="arr">↗</span></a>
+    <a class="link" href="https://docs.kernel.org" target="_blank"><span class="icon" style="background:#1a1e28;color:#6bff9e;">k</span><span class="name">kernel docs</span><span class="arr">↗</span></a>
+    <a class="link" href="https://docs.python.org/3/" target="_blank"><span class="icon" style="background:#2d4f7c;color:#ffd43b;">py</span><span class="name">python docs</span><span class="arr">↗</span></a>
+    <a class="link" href="https://en.cppreference.com" target="_blank"><span class="icon" style="background:#1a1e28;color:#00599C;">c++</span><span class="name">cppreference</span><span class="arr">↗</span></a>
+    <a class="link" href="https://www.kicad.org" target="_blank"><span class="icon" style="background:#1a1e28;color:#314CB0;">k</span><span class="name">kicad</span><span class="arr">↗</span></a>
+    <a class="link" href="https://godbolt.org" target="_blank"><span class="icon" style="background:#1a1e28;color:#67c52a;">cb</span><span class="name">compiler explorer</span><span class="arr">↗</span></a>
+    <a class="link" href="https://chat.openai.com" target="_blank"><span class="icon" style="background:#10a37f;color:#fff;">ai</span><span class="name">chatgpt</span><span class="arr">↗</span></a>
+    <a class="link" href="https://claude.ai" target="_blank"><span class="icon" style="background:#cc785c;color:#fff;">cl</span><span class="name">claude</span><span class="arr">↗</span></a>
+    <a class="link" href="https://arxiv.org/list/cs.RO/recent" target="_blank"><span class="icon" style="background:#b31b1b;color:#fff;">a</span><span class="name">arxiv robotics</span><span class="arr">↗</span></a>
+    <a class="link" href="https://arxiv.org/list/eess.SY/recent" target="_blank"><span class="icon" style="background:#b31b1b;color:#fff;">a</span><span class="name">arxiv controls</span><span class="arr">↗</span></a>
+  </div>
+</div>
+
+<div class="pad-section">
+  <h2>▸ personal</h2>
+  <div class="pad-grid">
+    <a class="link" href="https://mail.google.com" target="_blank"><span class="icon" style="background:#ea4335;color:#fff;">m</span><span class="name">gmail</span><span class="arr">↗</span></a>
+    <a class="link" href="https://calendar.google.com" target="_blank"><span class="icon" style="background:#1a73e8;color:#fff;">cal</span><span class="name">calendar</span><span class="arr">↗</span></a>
+    <a class="link" href="https://drive.google.com" target="_blank"><span class="icon" style="background:#0f9d58;color:#fff;">d</span><span class="name">drive</span><span class="arr">↗</span></a>
+    <a class="link" href="https://notion.so" target="_blank"><span class="icon" style="background:#fff;color:#000;">n</span><span class="name">notion</span><span class="arr">↗</span></a>
+    <a class="link" href="https://canvas.stanford.edu" target="_blank"><span class="icon" style="background:#8c1515;color:#fff;">s</span><span class="name">canvas (stanford)</span><span class="arr">↗</span></a>
+    <a class="link" href="https://www.gradescope.com" target="_blank"><span class="icon" style="background:#0d8c59;color:#fff;">g</span><span class="name">gradescope</span><span class="arr">↗</span></a>
+  </div>
+</div>
+
+<div class="pad-section">
+  <h2>▸ media &amp; social</h2>
+  <div class="pad-grid">
+    <a class="link" href="https://youtube.com" target="_blank"><span class="icon" style="background:#ff0000;color:#fff;">yt</span><span class="name">youtube</span><span class="arr">↗</span></a>
+    <a class="link" href="https://open.spotify.com" target="_blank"><span class="icon" style="background:#1db954;color:#000;">sp</span><span class="name">spotify</span><span class="arr">↗</span></a>
+    <a class="link" href="https://twitch.tv" target="_blank"><span class="icon" style="background:#9146ff;color:#fff;">tw</span><span class="name">twitch</span><span class="arr">↗</span></a>
+    <a class="link" href="https://x.com" target="_blank"><span class="icon" style="background:#000;color:#fff;">x</span><span class="name">x / twitter</span><span class="arr">↗</span></a>
+    <a class="link" href="https://discord.com/app" target="_blank"><span class="icon" style="background:#5865f2;color:#fff;">d</span><span class="name">discord</span><span class="arr">↗</span></a>
+    <a class="link" href="https://reddit.com" target="_blank"><span class="icon" style="background:#ff4500;color:#fff;">r</span><span class="name">reddit</span><span class="arr">↗</span></a>
+  </div>
+</div>
+
+<div class="pad-section">
+  <h2>▸ self-hosted</h2>
+  <div class="pad-grid">
+    <a class="link" href="/" target="_self"><span class="icon" style="background:#4dd9ff;color:#000;">h</span><span class="name">this box (home)</span><span class="arr">↗</span></a>
+    <a class="link" href="/about_me.html" target="_self"><span class="icon" style="background:#ff5edb;color:#000;">a</span><span class="name">about me</span><span class="arr">↗</span></a>
+    <a class="link" href="/system_dash.html" target="_self"><span class="icon" style="background:#6bff9e;color:#000;">s</span><span class="name">system stats</span><span class="arr">↗</span></a>
+    <a class="link" href="http://localhost:8080" target="_blank"><span class="icon" style="background:#007acc;color:#fff;">v</span><span class="name">code-server</span><span class="arr">↗</span></a>
+    <a class="link" href="http://localhost:8888" target="_blank"><span class="icon" style="background:#f37726;color:#fff;">jp</span><span class="name">jupyter</span><span class="arr">↗</span></a>
+    <a class="link" href="http://localhost:3000" target="_blank"><span class="icon" style="background:#609926;color:#fff;">gt</span><span class="name">gitea</span><span class="arr">↗</span></a>
+  </div>
+</div>
+
+<footer>
+  <span>// colin's hub // aero/astro @ stanford</span>
+  <span id="status">▸ ready</span>
+</footer>
+
+</div>
+
+<script>
+// ============ clock + greeting ============
+function tick() {
+  const d = new Date();
+  const h = d.getHours();
+  const m = d.getMinutes();
+  document.getElementById('clock').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  document.getElementById('date').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  const greet = h < 5 ? 'still up?' : h < 12 ? 'good morning' : h < 17 ? 'good afternoon' : h < 22 ? 'good evening' : 'late night vibes';
+  document.getElementById('greet').textContent = `▸ ${greet} // ready when you are`;
+}
+tick(); setInterval(tick, 1000);
+
+// ============ search bangs ============
+const bangs = {
+  '!g': q => `https://www.google.com/search?q=${q}`,
+  '!gh': q => `https://github.com/search?q=${q}&type=repositories`,
+  '!yt': q => `https://www.youtube.com/results?search_query=${q}`,
+  '!mdn': q => `https://developer.mozilla.org/en-US/search?q=${q}`,
+  '!wiki': q => `https://en.wikipedia.org/w/index.php?search=${q}`,
+  '!arxiv': q => `https://arxiv.org/search/?query=${q}&searchtype=all`,
+  '!ddg': q => `https://duckduckgo.com/?q=${q}`,
+  '!so': q => `https://stackoverflow.com/search?q=${q}`,
+  '!npm': q => `https://www.npmjs.com/search?q=${q}`,
+  '!pypi': q => `https://pypi.org/search/?q=${q}`,
+};
+function doSearch() {
+  const v = document.getElementById('q').value.trim();
+  if (!v) return;
+  const parts = v.split(/\s+/);
+  const first = parts[0];
+  if (bangs[first]) {
+    window.open(bangs[first](encodeURIComponent(parts.slice(1).join(' '))), '_blank');
+  } else {
+    window.open(`https://google.com/search?q=${encodeURIComponent(v)}`, '_blank');
+  }
+  document.getElementById('q').value = '';
+}
+document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+document.getElementById('goBtn').addEventListener('click', doSearch);
+
+// quick: focus search with /
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); document.getElementById('q').focus(); }
+});
+
+// ============ host ============
+document.getElementById('sys-host').textContent = window.location.hostname || 'localhost';
+
+// ============ weather (open-meteo, no key) ============
+// stanford coords
+const WX_LAT = 37.4275, WX_LON = -122.1697;
+async function loadWeather() {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${WX_LAT}&longitude=${WX_LON}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=5`;
+    const r = await fetch(url);
+    const d = await r.json();
+    const codes = { 0:'clear', 1:'mostly clear', 2:'partly cloudy', 3:'overcast', 45:'foggy', 48:'foggy', 51:'drizzle', 53:'drizzle', 55:'drizzle', 61:'rain', 63:'rain', 65:'heavy rain', 71:'snow', 73:'snow', 75:'heavy snow', 80:'showers', 81:'showers', 82:'showers', 95:'thunder', 96:'thunder', 99:'thunder' };
+    const cur = d.current;
+    const days = d.daily;
+    const dnames = ['sun','mon','tue','wed','thu','fri','sat'];
+    let html = `<div class="wx-now">
+      <div class="wx-temp">${Math.round(cur.temperature_2m)}°</div>
+      <div class="wx-meta">
+        <div class="cond">${codes[cur.weather_code] || 'unknown'}</div>
+        <div>wind ${Math.round(cur.wind_speed_10m)} mph</div>
+        <div>humidity ${cur.relative_humidity_2m}%</div>
+      </div>
+    </div>
+    <div class="wx-forecast">`;
+    for (let i = 0; i < 5; i++) {
+      const dt = new Date(days.time[i] + 'T12:00:00');
+      html += `<div class="wx-day">
+        <div class="d">${dnames[dt.getDay()]}</div>
+        <div class="t">${Math.round(days.temperature_2m_max[i])}°</div>
+        <div class="lo">${Math.round(days.temperature_2m_min[i])}°</div>
+      </div>`;
+    }
+    html += '</div>';
+    document.getElementById('wx-content').innerHTML = html;
+  } catch (e) {
+    document.getElementById('wx-content').innerHTML = `<div class="err">weather offline: ${e.message}</div>`;
+  }
+}
+loadWeather();
+setInterval(loadWeather, 600000); // 10 min
+
+// ============ launches (thespacedevs ll2) ============
+async function loadLaunches() {
+  try {
+    const r = await fetch('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=6&mode=list');
+    const d = await r.json();
+    if (!d.results) throw new Error('no results');
+    let html = '';
+    for (const L of d.results.slice(0, 6)) {
+      const t = new Date(L.net);
+      const dts = t.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const diff = t - Date.now();
+      let cd = '';
+      if (diff > 0) {
+        const days = Math.floor(diff / 86400000);
+        const hrs = Math.floor((diff % 86400000) / 3600000);
+        cd = days > 0 ? `T-${days}d ${hrs}h` : `T-${hrs}h`;
+      } else {
+        cd = 'LIVE';
+      }
+      const rocket = L.rocket?.configuration?.full_name || 'unknown';
+      const provider = L.launch_service_provider?.name || '';
+      html += `<div class="launch">
+        <div class="head">
+          <span class="mission">${L.name}</span>
+          <span class="when">${dts}<span class="countdown">${cd}</span></span>
+        </div>
+        <div class="meta">${rocket}${provider ? ' // ' + provider : ''}</div>
+      </div>`;
+    }
+    document.getElementById('launches').innerHTML = html;
+  } catch (e) {
+    document.getElementById('launches').innerHTML = `<div class="err">launches offline: ${e.message}</div>`;
+  }
+}
+loadLaunches();
+setInterval(loadLaunches, 1800000); // 30 min
+
+// ============ markets ============
+// yahoo finance v8 quote endpoint, sometimes CORS-friendly via query1
+async function loadMarkets() {
+  const symbols = ['^GSPC', '^IXIC', '^DJI', 'TSLA', 'RKLB', 'LMT', 'NOC', 'BTC-USD'];
+  const labels = { '^GSPC': 'S&P 500', '^IXIC': 'NASDAQ', '^DJI': 'Dow Jones', 'TSLA': 'Tesla', 'RKLB': 'Rocket Lab', 'LMT': 'Lockheed', 'NOC': 'Northrop', 'BTC-USD': 'Bitcoin' };
+  // try direct, fall back to a public CORS proxy
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`;
+  const tryUrls = [url, `https://corsproxy.io/?${encodeURIComponent(url)}`];
+  let data = null;
+  for (const u of tryUrls) {
+    try {
+      const r = await fetch(u);
+      const d = await r.json();
+      if (d.quoteResponse?.result?.length) { data = d.quoteResponse.result; break; }
+    } catch (e) { /* try next */ }
+  }
+  if (!data) {
+    document.getElementById('markets').innerHTML = `<div class="err">markets offline (CORS blocked)</div>`;
+    return;
+  }
+  let html = '';
+  for (const q of data) {
+    const chg = q.regularMarketChangePercent || 0;
+    const price = q.regularMarketPrice;
+    const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : 'neutral';
+    const arrow = chg > 0 ? '▲' : chg < 0 ? '▼' : '─';
+    html += `<div class="row">
+      <span class="sym">${labels[q.symbol] || q.symbol}</span>
+      <span class="price">${price ? price.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '--'}</span>
+      <span class="chg ${cls}">${arrow} ${Math.abs(chg).toFixed(2)}%</span>
+    </div>`;
+  }
+  document.getElementById('markets').innerHTML = html;
+  const now = new Date();
+  const day = now.getDay();
+  const hr = now.getHours() + now.getMinutes()/60;
+  const isOpen = day >= 1 && day <= 5 && hr >= 6.5 && hr < 13;
+  document.getElementById('mkt-status').textContent = isOpen ? '▸ open' : '▸ closed';
+}
+loadMarkets();
+setInterval(loadMarkets, 300000); // 5 min
+
+// ============ feed (HN, arxiv, space, world) ============
+async function loadHN() {
+  const r = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+  const ids = (await r.json()).slice(0, 12);
+  const items = await Promise.all(ids.map(id => fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json())));
+  return items.map(i => ({
+    title: i.title,
+    url: i.url || `https://news.ycombinator.com/item?id=${i.id}`,
+    meta: `${i.score || 0} pts // ${i.descendants || 0} comments // ${i.by}`,
+  }));
+}
+async function loadArxiv() {
+  // controls + robotics
+  const r = await fetch('https://corsproxy.io/?' + encodeURIComponent('http://export.arxiv.org/api/query?search_query=cat:eess.SY+OR+cat:cs.RO&sortBy=submittedDate&sortOrder=descending&max_results=12'));
+  const txt = await r.text();
+  const doc = new DOMParser().parseFromString(txt, 'text/xml');
+  const entries = [...doc.querySelectorAll('entry')];
+  return entries.map(e => {
+    const title = e.querySelector('title').textContent.replace(/\s+/g, ' ').trim();
+    const url = e.querySelector('id').textContent;
+    const auth = [...e.querySelectorAll('author name')].slice(0,2).map(a=>a.textContent).join(', ');
+    return { title, url, meta: auth };
+  });
+}
+async function loadFeedRSS(url, parser) {
+  const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+  const txt = await r.text();
+  const doc = new DOMParser().parseFromString(txt, 'text/xml');
+  const items = [...doc.querySelectorAll('item, entry')].slice(0, 12);
+  return items.map(it => parser(it));
+}
+async function loadSpace() {
+  return loadFeedRSS('https://www.space.com/feeds/all', it => ({
+    title: it.querySelector('title')?.textContent || '',
+    url: it.querySelector('link')?.textContent || '#',
+    meta: 'space.com',
+  }));
+}
+async function loadWorld() {
+  return loadFeedRSS('https://feeds.bbci.co.uk/news/world/rss.xml', it => ({
+    title: it.querySelector('title')?.textContent || '',
+    url: it.querySelector('link')?.textContent || '#',
+    meta: 'bbc world',
+  }));
+}
+async function showFeed(name) {
+  const el = document.getElementById('feed');
+  el.innerHTML = '<div class="skel">loading...</div>';
+  try {
+    let items;
+    if (name === 'hn') items = await loadHN();
+    else if (name === 'arxiv') items = await loadArxiv();
+    else if (name === 'space') items = await loadSpace();
+    else items = await loadWorld();
+    el.innerHTML = items.map(i => `<div class="feed-item"><a href="${i.url}" target="_blank">${i.title}<div class="meta"><span>${i.meta}</span></div></a></div>`).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="err">feed offline: ${e.message}</div>`;
+  }
+}
+showFeed('hn');
+document.querySelectorAll('.feed-tabs button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.feed-tabs button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    showFeed(b.dataset.feed);
+  });
+});
+
+// ============ fake system stats (replace with real endpoint later) ============
+function fakeStats() {
+  const cpu = 20 + Math.floor(Math.random() * 30);
+  const mem = 55 + Math.floor(Math.random() * 20);
+  const disk = 41;
+  document.getElementById('s-cpu').textContent = cpu + '%';
+  document.getElementById('s-mem').textContent = mem + '%';
+  document.getElementById('s-disk').textContent = disk + '%';
+  document.getElementById('b-cpu').style.width = cpu + '%';
+  document.getElementById('b-mem').style.width = mem + '%';
+  document.getElementById('b-disk').style.width = disk + '%';
+  document.getElementById('s-up').textContent = '14d 6h';
+  document.getElementById('s-load').textContent = (0.2 + Math.random() * 0.4).toFixed(2);
+}
+fakeStats();
+setInterval(fakeStats, 5000);
+
+// // for real stats later, hit something like /api/sys.json from apache+php:
+// async function realStats() {
+//   const r = await fetch('/api/sys.json');
+//   const d = await r.json();
+//   // ... fill in
+// }
+</script>
+</body>
+</html>
