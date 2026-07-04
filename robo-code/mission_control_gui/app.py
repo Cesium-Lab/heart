@@ -48,7 +48,6 @@ def send_command():
         result = response.json()
 
         total_commands_sent = result.get("command_count", total_commands_sent)
-        update_commands_sent_label()
 
         status_label.set_text(f"✓ Command sent: {result['command_id']} (#{result.get('command_count', '?')})")
         refresh_pending()
@@ -86,10 +85,6 @@ def clear_form():
     x_input.set_value("")
     y_input.set_value("")
     z_input.set_value("")
-
-def update_commands_sent_label():
-    """Update the commands sent counter at the top"""
-    commands_sent_label.set_text(f"Total Commands Sent: {total_commands_sent}")
 
 def update_pending_table():
     """Update pending commands table (exclude executed commands)"""
@@ -228,7 +223,6 @@ with ui.row().classes("w-full gap-4"):
         auto_refresh_label = ui.label("Auto-refresh: ON").style("font-size: 11px; color: #27ae60; font-weight: bold")
 
         ui.label("Send Command").style("font-size: 16px; font-weight: bold")
-        commands_sent_label = ui.label("Total Commands Sent: 0").style("font-size: 12px; color: #3498db; font-weight: bold")
 
         with ui.row():
             device_select = ui.select(["sat_1", "sat_2", "sat_3", "sat_4", "sat_5", "sat_6", "sat_7", "sat_8", "sat_9", "sat_10"], value="sat_1", label="Device")
@@ -299,7 +293,6 @@ def startup():
     update_freeze_button()
     refresh_pending()
     refresh_executed()
-    update_commands_sent_label()
     # Start auto-refresh by default (refresh both pending and executed)
     auto_refresh_timer = ui.timer(1, lambda: [refresh_pending(), refresh_executed()])
 
