@@ -53,11 +53,17 @@ async def execute_command_async(command_id: str, command_data: dict, seq_num: in
         # Simulate 1 second execution
         await asyncio.sleep(1)
 
-        # Update status to "done" in the list (only if still not frozen)
+        # Only complete if still not frozen
         if not is_frozen:
-            for cmd in executed_commands:
-                if cmd.get("command_id") == command_id:
-                    cmd["status"] = "done"
+            # Remove from queue (pending)
+            command_queue_list = list(command_queue)
+            for cid, cmd in command_queue_list:
+                if cid == command_id:
+                    command_queue.remove((cid, cmd))
+                    # Add to executed with status "done"
+                    cmd_copy = cmd.copy()
+                    cmd_copy["status"] = "done"
+                    executed_commands.append(cmd_copy)
                     break
 
             logger.info(f"Command {command_id} (seq {seq_num}) execution completed")
@@ -66,10 +72,6 @@ async def execute_command_async(command_id: str, command_data: dict, seq_num: in
 
     except Exception as e:
         logger.error(f"Error executing command {command_id}: {e}")
-        for cmd in executed_commands:
-            if cmd.get("command_id") == command_id:
-                cmd["status"] = "error"
-                break
 
 @app.get("/api/v1/status")
 def status():
@@ -138,10 +140,8 @@ async def post_command(command: Command):
         "seq_num": sequence_number,
         "status": "received"
     }
+    # Only add to queue (pending) initially
     command_queue.append((command_id, command_with_id))
-
-    # Store in executed_commands list with "received" status
-    executed_commands.append(command_with_id.copy())
 
     # Send immediate ACK
     immediate_ack = {

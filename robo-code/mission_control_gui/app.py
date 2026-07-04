@@ -89,17 +89,20 @@ def update_commands_sent_label():
     commands_sent_label.set_text(f"Total Commands Sent: {total_commands_sent}")
 
 def update_pending_table():
-    """Update pending commands table"""
+    """Update pending commands table (exclude executed commands)"""
+    executed_ids = {cmd.get("command_id") for cmd in executed_commands}
     rows = []
     for cmd in pending_commands:
-        rows.append({
-            "ID": cmd.get("command_id", ""),
-            "Device": cmd.get("device_id", ""),
-            "Action": cmd.get("action", ""),
-            "X": cmd.get("params", {}).get("x", ""),
-            "Y": cmd.get("params", {}).get("y", ""),
-            "Z": cmd.get("params", {}).get("z", "")
-        })
+        # Only show if not yet executed
+        if cmd.get("command_id") not in executed_ids:
+            rows.append({
+                "ID": cmd.get("command_id", ""),
+                "Device": cmd.get("device_id", ""),
+                "Action": cmd.get("action", ""),
+                "X": cmd.get("params", {}).get("x", ""),
+                "Y": cmd.get("params", {}).get("y", ""),
+                "Z": cmd.get("params", {}).get("z", "")
+            })
     pending_table.rows = rows
 
 def update_executed_table():
@@ -113,10 +116,11 @@ def update_executed_table():
             "action": cmd.get("action", ""),
             "x": cmd.get("params", {}).get("x", ""),
             "y": cmd.get("params", {}).get("y", ""),
-            "z": cmd.get("params", {}).get("z", ""),
-            "status": cmd.get("status", "")
+            "z": cmd.get("params", {}).get("z", "")
         })
     executed_table.rows = rows
+    # Also update pending table to remove executed commands
+    update_pending_table()
 
 def toggle_auto_refresh():
     """Toggle auto-refresh on/off"""
@@ -234,6 +238,7 @@ with ui.card().classes("w-full"):
         {"name": "Z", "label": "Z", "field": "Z"},
     ], rows=[])
     pending_table.classes("w-full")
+    pending_table.style("--row-height: 32px;")
 
 ####################################################################################################
 #               EXECUTED COMMANDS
@@ -241,7 +246,7 @@ with ui.card().classes("w-full"):
 
 with ui.card().classes("w-full"):
     ui.label("Command Execution History").style("font-size: 18px; font-weight: bold")
-    ui.label("Status: 'received' = ACK received, 'done' = execution completed (1s)").style("font-size: 12px; color: #7f8c8d")
+    ui.label("Shows only executed/completed commands").style("font-size: 12px; color: #7f8c8d")
 
     with ui.row():
         ui.button("Refresh History", on_click=refresh_executed).props("color=secondary")
@@ -256,9 +261,9 @@ with ui.card().classes("w-full"):
         {"name": "x", "label": "X", "field": "x"},
         {"name": "y", "label": "Y", "field": "y"},
         {"name": "z", "label": "Z", "field": "z"},
-        {"name": "status", "label": "Status", "field": "status"},
     ], rows=[])
     executed_table.classes("w-full")
+    executed_table.style("max-height: 200px; overflow-y: auto; --row-height: 32px;")
 
 ####################################################################################################
 #               STARTUP
