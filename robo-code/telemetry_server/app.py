@@ -1,9 +1,9 @@
 from nicegui import ui
 import requests
 import logging
+import time
 from collections import defaultdict
 from datetime import datetime
-import plotly.graph_objects as go
 import json
 
 logging.basicConfig(level=logging.INFO)
@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 BACKEND_URL = "http://localhost:42000/api/v1"
 HOST = "0.0.0.0"
 PORT = 42003
+CHART_HEIGHT = 300
+REFRESH_INTERVAL = 0.1
+WINDOW_SECONDS = 10
 
 # Enable dark mode
 ui.dark_mode(True)
@@ -45,26 +48,30 @@ def fetch_telemetry():
 
         logger.info(f"Fetched telemetry for {len(telemetry_data)} devices")
 
+        now = time.time()
+        cutoff = now - WINDOW_SECONDS
+
         for device_id, telem in telemetry_data.items():
-            timestamp = telem.get("timestamp")
             sensors = telem.get("sensors", {})
 
-            # Store in history (keep last 1000 points per device)
-            telemetry_history[device_id]["timestamps"].append(timestamp)
+            # Use local receipt time (sub-second precision) for plotting/windowing
+            telemetry_history[device_id]["timestamps"].append(now)
             telemetry_history[device_id]["temperature"].append(sensors.get("temp"))
             telemetry_history[device_id]["battery"].append(sensors.get("battery"))
             telemetry_history[device_id]["pressure"].append(sensors.get("pressure"))
             telemetry_history[device_id]["azimuth"].append(telem.get("azimuth"))
             telemetry_history[device_id]["elevation"].append(telem.get("elevation"))
 
-            # Keep only last 1000 points
-            for key in telemetry_history[device_id]:
-                if len(telemetry_history[device_id][key]) > 1000:
-                    telemetry_history[device_id][key] = telemetry_history[device_id][key][-1000:]
+            # Sliding window: keep only points within the last WINDOW_SECONDS
+            timestamps = telemetry_history[device_id]["timestamps"]
+            keep_from = next((i for i, t in enumerate(timestamps) if t >= cutoff), len(timestamps))
+            if keep_from > 0:
+                for key in telemetry_history[device_id]:
+                    telemetry_history[device_id][key] = telemetry_history[device_id][key][keep_from:]
 
         total_packets += len(telemetry_data)
         last_update = datetime.now().strftime("%H:%M:%S")
-        update_display()
+        update_display(now)
 
     except Exception as e:
         logger.error(f"Error fetching telemetry: {e}")
@@ -91,25 +98,70 @@ def calculate_stats():
         "last_update": last_update or "--:--:--"
     }
 
-def build_plot_data(sensor_key, sensor_name, sensor_unit):
-    """Build trace data for a sensor"""
-    traces = []
+def build_series_data(sensor_key):
+    """Build series data for ApexCharts, x-axis as unix time in milliseconds"""
+    series = []
 
     for device_id, history in telemetry_history.items():
         if history[sensor_key]:
-            # Convert timestamps to relative time (seconds from first)
-            first_ts = history["timestamps"][0] if history["timestamps"] else 0
-            relative_times = [(t - first_ts) for t in history["timestamps"]]
+            # x-axis is absolute unix time in ms (ApexCharts datetime axis)
+            unix_times_ms = [t * 1000 for t in history["timestamps"]]
 
-            traces.append({
-                "x": relative_times,
-                "y": history[sensor_key],
-                "name": device_id
+            # Create data points as [x, y] pairs
+            data = [[x, y] for x, y in zip(unix_times_ms, history[sensor_key]) if y is not None]
+
+            series.append({
+                "name": device_id,
+                "data": data
             })
 
-    return traces
+    return series
 
-def update_display():
+def _init_charts():
+    """Initialize ApexCharts instances"""
+    init_js = """
+    window.chartConfigs = {
+        'temp_chart': {title: 'Temperature (°C)', yaxis: 'Temperature'},
+        'battery_chart': {title: 'Battery (%)', yaxis: 'Battery'},
+        'pressure_chart': {title: 'Pressure (hPa)', yaxis: 'Pressure'},
+        'azimuth_chart': {title: 'Azimuth (rad)', yaxis: 'Azimuth'},
+        'elevation_chart': {title: 'Elevation (rad)', yaxis: 'Elevation'}
+    };
+
+    Object.keys(window.chartConfigs).forEach(chartId => {
+        const config = window.chartConfigs[chartId];
+        const options = {
+            chart: {
+                type: 'line',
+                id: chartId,
+                height: __CHART_HEIGHT__,
+                width: '100%',
+                toolbar: {show: true},
+                animations: {enabled: true, speed: 100}
+            },
+            title: {text: config.title, style: {fontSize: '14px'}},
+            stroke: {curve: 'smooth', width: 2},
+            grid: {show: true, strokeDashArray: 0},
+            xaxis: {
+                type: 'datetime',
+                title: {text: 'Unix Time'},
+                labels: {datetimeUTC: false}
+            },
+            yaxis: {title: {text: config.yaxis}},
+            tooltip: {shared: true, intersect: false},
+            legend: {show: true, position: 'top'},
+            colors: ['#3498db', '#e74c3c', '#f39c12', '#2ecc71', '#9467bd', '#ff7f0e', '#1f77b4', '#d62728', '#17becf', '#bcbd22']
+        };
+        window[chartId] = new ApexCharts(document.querySelector('#' + chartId), {
+            series: [],
+            ...options
+        });
+        window[chartId].render();
+    });
+    """.replace("__CHART_HEIGHT__", str(CHART_HEIGHT))
+    ui.run_javascript(init_js)
+
+def update_display(now):
     """Update all stats and charts"""
     stats = calculate_stats()
 
@@ -120,73 +172,32 @@ def update_display():
     sats_label.set_text(f"🛰️ Active: {stats['active_sats']}")
     update_label.set_text(f"⏱️ {stats['last_update']}")
 
-    # Update plots via JavaScript (no page flicker)
-    plot_configs = [
-        ("temp_plot", "temperature", "Temperature (°C)"),
-        ("battery_plot", "battery", "Battery (%)"),
-        ("pressure_plot", "pressure", "Pressure (hPa)"),
-        ("azimuth_plot", "azimuth", "Azimuth (rad)"),
-        ("elevation_plot", "elevation", "Elevation (rad)")
+    # Fixed 10-second window ending at "now", regardless of data present
+    max_ms = int(now * 1000)
+    min_ms = int((now - WINDOW_SECONDS) * 1000)
+
+    # Update charts via JavaScript
+    chart_configs = [
+        ("temp_chart", "temperature", "Temperature (°C)"),
+        ("battery_chart", "battery", "Battery (%)"),
+        ("pressure_chart", "pressure", "Pressure (hPa)"),
+        ("azimuth_chart", "azimuth", "Azimuth (rad)"),
+        ("elevation_chart", "elevation", "Elevation (rad)")
     ]
 
-    for plot_id, sensor_key, label in plot_configs:
-        traces = build_plot_data(sensor_key, "", "")
-
-        # Build JavaScript to update Plotly
-        x_data = [t["x"] for t in traces]
-        y_data = [t["y"] for t in traces]
-        names = [t["name"] for t in traces]
-
-        # Convert lists to JSON strings for embedding in JavaScript
-        x_json = json.dumps(x_data)
-        y_json = json.dumps(y_data)
-        names_json = json.dumps(names)
+    for chart_id, sensor_key, title in chart_configs:
+        series = build_series_data(sensor_key)
+        series_json = json.dumps(series)
 
         js_code = f"""
-        const plotDiv = document.getElementById('{plot_id}');
-        if (plotDiv) {{
-            const xData = {x_json};
-            const yData = {y_json};
-            const names = {names_json};
+        const chartId = '{chart_id}';
+        const series = {series_json};
 
-            // Initialize if not yet created
-            if (!plotDiv.data || plotDiv.data.length === 0) {{
-                const traces = [];
-                for (let i = 0; i < names.length; i++) {{
-                    traces.push({{
-                        x: xData[i],
-                        y: yData[i],
-                        name: names[i],
-                        mode: 'lines'
-                    }});
-                }}
-                Plotly.newPlot(plotDiv, traces, {{
-                    title: '{label}',
-                    xaxis: {{title: 'Time (seconds)'}},
-                    yaxis: {{title: '{label}'}},
-                    hovermode: 'x unified',
-                    margin: {{l: 40, r: 20, t: 40, b: 40}}
-                }});
-            }} else {{
-                // Update existing traces
-                if (plotDiv.data.length !== names.length) {{
-                    plotDiv.data = [];
-                    for (let i = 0; i < names.length; i++) {{
-                        plotDiv.data.push({{
-                            x: xData[i],
-                            y: yData[i],
-                            name: names[i],
-                            mode: 'lines'
-                        }});
-                    }}
-                }} else {{
-                    for (let i = 0; i < names.length; i++) {{
-                        plotDiv.data[i].x = xData[i];
-                        plotDiv.data[i].y = yData[i];
-                    }}
-                }}
-                Plotly.redraw(plotDiv);
-            }}
+        if (window[chartId]) {{
+            window[chartId].updateOptions({{
+                series: series,
+                xaxis: {{ type: 'datetime', min: {min_ms}, max: {max_ms} }}
+            }}, false, false);
         }}
         """
 
@@ -200,10 +211,10 @@ def update_display():
 ui.label("Telemetry Dashboard").style("font-size: 28px; font-weight: bold")
 
 # Main 2-column layout
-with ui.row().classes("w-full gap-4"):
+with ui.row().classes("w-full gap-4 flex-nowrap"):
 
     # LEFT COLUMN: Statistics (1/5 width)
-    with ui.card().classes("w-1/5"):
+    with ui.card().classes("w-1/5").style("min-width: 0; flex-shrink: 0;"):
         ui.label("Statistics").style("font-size: 16px; font-weight: bold")
 
         packets_label = ui.label("📊 Packets: 0").style("font-size: 13px; font-weight: bold; color: #3498db")
@@ -212,39 +223,34 @@ with ui.row().classes("w-full gap-4"):
         sats_label = ui.label("🛰️ Active: 0").style("font-size: 13px; font-weight: bold; color: #2ecc71")
         update_label = ui.label("⏱️ --:--:--").style("font-size: 12px; color: #95a5a6")
 
-    # RIGHT COLUMN: Plots (4/5 width)
-    with ui.column().classes("w-4/5"):
-        # Create plot divs with explicit IDs
-        plot_configs = [
-            ("temp_plot", "Temperature", "°C"),
-            ("battery_plot", "Battery", "%"),
-            ("pressure_plot", "Pressure", "hPa"),
-            ("azimuth_plot", "Azimuth", "rad"),
-            ("elevation_plot", "Elevation", "rad")
+    # RIGHT COLUMN: Charts (4/5 width)
+    with ui.column().classes("w-4/5").style("min-width: 0;"):
+        chart_configs = [
+            ("temp_chart", "Temperature (°C)", "#1f77b4"),
+            ("battery_chart", "Battery (%)", "#ff7f0e"),
+            ("pressure_chart", "Pressure (hPa)", "#2ca02c"),
+            ("azimuth_chart", "Azimuth (rad)", "#d62728"),
+            ("elevation_chart", "Elevation (rad)", "#9467bd")
         ]
 
-        with ui.row():
-            for plot_id, label, unit in plot_configs[:2]:
-                with ui.column().classes("flex-1"):
-                    ui.html(f'<div id="{plot_id}" style="height: 300px;"></div>')
+        # One chart per row, full width
+        for chart_id, title, _ in chart_configs:
+            with ui.row().classes("w-full"):
+                ui.html(f'<div id="{chart_id}" style="height: {CHART_HEIGHT}px; width: 95%; margin: 0 auto;"></div>').classes("w-full")
 
-        with ui.row():
-            for plot_id, label, unit in plot_configs[2:4]:
-                with ui.column().classes("flex-1"):
-                    ui.html(f'<div id="{plot_id}" style="height: 300px;"></div>')
-
-        with ui.row():
-            for plot_id, label, unit in plot_configs[4:]:
-                with ui.column().classes("flex-1"):
-                    ui.html(f'<div id="{plot_id}" style="height: 300px;"></div>')
+        # Initialize charts on first data fetch
+        ui.timer(0.1, lambda: _init_charts(), once=True)
 
 ####################################################################################################
 #               STARTUP
 ####################################################################################################
 
+# Load ApexCharts library
+ui.add_body_html('<script src="https://cdn.jsdelivr.net/npm/apexcharts@latest"></script>')
+
 logger.info(f"Starting Telemetry Dashboard on {HOST}:{PORT}")
 
-# Start fetching and updating every 0.5 seconds
-ui.timer(0.5, fetch_telemetry)
+# Start fetching and updating every REFRESH_INTERVAL seconds
+ui.timer(REFRESH_INTERVAL, fetch_telemetry)
 
 ui.run(host=HOST, port=PORT)
