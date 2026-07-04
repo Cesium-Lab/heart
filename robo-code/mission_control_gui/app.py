@@ -184,15 +184,20 @@ def freeze_system():
         status_label.set_text(f"✗ Error freezing: {str(e)}")
         logger.error(f"Error freezing: {e}")
 
+def toggle_freeze():
+    """Toggle freeze state"""
+    if is_frozen:
+        unfreeze_system()
+    else:
+        freeze_system()
+
 def update_freeze_button():
     """Update freeze/unfreeze button display"""
     if is_frozen:
         freeze_button.set_text("🔒 Unfreeze System")
-        freeze_button.on_click(unfreeze_system)
         send_button.props("color=warning")  # Yellow when frozen
     else:
         freeze_button.set_text("▶ Freeze System")
-        freeze_button.on_click(freeze_system)
         send_button.props("color=positive")  # Green when unfrozen
 
 ####################################################################################################
@@ -217,7 +222,10 @@ with ui.row().classes("w-full gap-4"):
 
         # System State
         ui.label("System State").style("font-size: 14px; font-weight: bold")
-        freeze_button = ui.button("🔒 Unfreeze System").props("color=warning")
+        with ui.row():
+            freeze_button = ui.button("🔒 Unfreeze System", on_click=toggle_freeze).props("color=warning")
+            auto_refresh_button = ui.button("⏸ Pause Auto-Refresh", on_click=toggle_auto_refresh).props("color=info")
+        auto_refresh_label = ui.label("Auto-refresh: ON").style("font-size: 11px; color: #27ae60; font-weight: bold")
 
         ui.label("Send Command").style("font-size: 16px; font-weight: bold")
         commands_sent_label = ui.label("Total Commands Sent: 0").style("font-size: 12px; color: #3498db; font-weight: bold")
@@ -237,13 +245,14 @@ with ui.row().classes("w-full gap-4"):
 
     # COLUMN 2: Pending Commands
     with ui.card().classes("flex-1"):
-        ui.label("Pending Commands").style("font-size: 16px; font-weight: bold")
+        with ui.row().classes("w-full items-center"):
+            ui.label("Pending Commands").style("font-size: 16px; font-weight: bold")
+            ui.button("Refresh", on_click=refresh_pending).props("color=secondary")
+
         ui.label("Waiting for execution").style("font-size: 12px; color: #95a5a6")
 
         with ui.card().classes("w-full").style("background-color: rgba(52, 152, 219, 0.1); padding: 8px;"):
             pending_count_label = ui.label("📊 Total Pending: 0").style("font-size: 13px; font-weight: bold; color: #3498db")
-
-        ui.button("Refresh", on_click=refresh_pending).props("color=secondary").classes("w-full")
 
         pending_table = ui.table(columns=[
             {"name": "ID", "label": "ID", "field": "ID"},
@@ -258,17 +267,14 @@ with ui.row().classes("w-full gap-4"):
 
     # COLUMN 3: Executed Commands
     with ui.card().classes("flex-1"):
-        ui.label("Sent Commands").style("font-size: 16px; font-weight: bold")
+        with ui.row().classes("w-full items-center"):
+            ui.label("Sent Commands").style("font-size: 16px; font-weight: bold")
+            ui.button("Refresh", on_click=refresh_executed).props("color=secondary")
+
         ui.label("Execution history").style("font-size: 12px; color: #95a5a6")
 
         with ui.card().classes("w-full").style("background-color: rgba(46, 204, 113, 0.1); padding: 8px;"):
             executed_count_label = ui.label("📊 Total Sent: 0").style("font-size: 13px; font-weight: bold; color: #2ecc71")
-
-        with ui.row():
-            auto_refresh_button = ui.button("⏸ Pause Auto-Refresh", on_click=toggle_auto_refresh).props("color=info").classes("flex-1")
-            ui.button("Refresh", on_click=refresh_executed).props("color=secondary").classes("flex-1")
-
-        auto_refresh_label = ui.label("Auto-refresh: ON").style("font-size: 11px; color: #27ae60; font-weight: bold")
 
         executed_table = ui.table(columns=[
             {"name": "seq", "label": "Seq", "field": "seq"},
