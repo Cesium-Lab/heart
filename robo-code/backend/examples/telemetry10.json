@@ -1,0 +1,72 @@
+[
+  {
+    "id": "sat_1",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 45.2, "battery": 89, "pressure": 1013.25},
+    "azimuth": 1.57,
+    "elevation": 0.785
+  },
+  {
+    "id": "sat_2",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 38.1, "battery": 92, "pressure": 1012.80},
+    "azimuth": 3.14,
+    "elevation": 1.57
+  },
+  {
+    "id": "sat_3",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 52.3, "battery": 76, "pressure": 1014.10},
+    "azimuth": 4.71,
+    "elevation": 0.392
+  },
+  {
+    "id": "sat_4",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 41.5, "battery": 88, "pressure": 1013.50},
+    "azimuth": 0.785,
+    "elevation": 1.178
+  },
+  {
+    "id": "sat_5",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 47.8, "battery": 85, "pressure": 1012.95},
+    "azimuth": 2.356,
+    "elevation": 0.524
+  },
+  {
+    "id": "sat_6",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 43.2, "battery": 91, "pressure": 1013.75},
+    "azimuth": 5.498,
+    "elevation": 1.309
+  },
+  {
+    "id": "sat_7",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 50.1, "battery": 79, "pressure": 1014.20},
+    "azimuth": 1.178,
+    "elevation": 0.262
+  },
+  {
+    "id": "sat_8",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 39.7, "battery": 94, "pressure": 1012.50},
+    "azimuth": 3.927,
+    "elevation": 1.571
+  },
+  {
+    "id": "sat_9",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 55.3, "battery": 72, "pressure": 1014.50},
+    "azimuth": 2.749,
+    "elevation": 0.698
+  },
+  {
+    "id": "sat_10",
+    "timestamp": 1705329045,
+    "sensors": {"temp": 44.6, "battery": 86, "pressure": 1013.40},
+    "azimuth": 0.392,
+    "elevation": 1.047
+  }
+]
