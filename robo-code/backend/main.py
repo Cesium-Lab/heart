@@ -44,18 +44,25 @@ is_frozen = True
 ####################################################################################################
 
 async def execute_command_async(command_id: str, command_data: dict, seq_num: int):
-    """Simulate command execution asynchronously"""
+    """Simulate command execution asynchronously (only if not frozen)"""
     try:
+        # Wait until system is unfrozen
+        while is_frozen:
+            await asyncio.sleep(0.1)
+
         # Simulate 1 second execution
         await asyncio.sleep(1)
 
-        # Update status to "done" in the list
-        for cmd in executed_commands:
-            if cmd.get("command_id") == command_id:
-                cmd["status"] = "done"
-                break
+        # Update status to "done" in the list (only if still not frozen)
+        if not is_frozen:
+            for cmd in executed_commands:
+                if cmd.get("command_id") == command_id:
+                    cmd["status"] = "done"
+                    break
 
-        logger.info(f"Command {command_id} (seq {seq_num}) execution completed")
+            logger.info(f"Command {command_id} (seq {seq_num}) execution completed")
+        else:
+            logger.info(f"Command {command_id} (seq {seq_num}) frozen before completion")
 
     except Exception as e:
         logger.error(f"Error executing command {command_id}: {e}")
