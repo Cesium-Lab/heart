@@ -6,6 +6,7 @@ import uvicorn
 import time
 import asyncio
 import logging
+import random
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -113,12 +114,39 @@ def post_telemetry(data: TelemetryData):
     telemetry_store[data.id] = data.model_dump()
     return {"status": "ok"}
 
+def add_telemetry_jitter(telemetry_dict):
+    """Add random jitter to telemetry values to simulate real sensor changes"""
+    telem = telemetry_dict.copy()
+    sensors = telem.get("sensors", {}).copy()
+
+    # Add jitter to sensor values
+    if "temp" in sensors:
+        sensors["temp"] += random.uniform(-0.5, 0.5)
+    if "battery" in sensors:
+        sensors["battery"] += random.uniform(-0.2, 0.2)
+        sensors["battery"] = max(0, min(100, sensors["battery"]))  # Clamp 0-100
+    if "pressure" in sensors:
+        sensors["pressure"] += random.uniform(-0.5, 0.5)
+
+    # Add jitter to position
+    if "azimuth" in telem:
+        telem["azimuth"] += random.uniform(-0.01, 0.01)
+    if "elevation" in telem:
+        telem["elevation"] += random.uniform(-0.01, 0.01)
+
+    telem["sensors"] = sensors
+    telem["timestamp"] = int(time.time())
+    return telem
+
 @app.get("/api/v1/telemetry/latest")
 def get_latest_telemetry(id: str = None):
-    """Get latest telemetry for all devices or specific device"""
+    """Get latest telemetry for all devices or specific device (with simulated updates)"""
+    # Add jitter to simulate sensor changes
+    jittered_store = {dev_id: add_telemetry_jitter(telem) for dev_id, telem in telemetry_store.items()}
+
     if id:
-        return telemetry_store.get(id, {"error": "Device not found"})
-    return telemetry_store
+        return jittered_store.get(id, {"error": "Device not found"})
+    return jittered_store
 
 ####################################################################################################
 #               COMMANDS

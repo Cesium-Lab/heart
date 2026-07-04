@@ -1,6 +1,6 @@
 # Telemetry Dashboard
 
-Visualization and monitoring server for telemetry data from spacecraft.
+Real-time visualization of satellite telemetry data with live-updating Plotly charts.
 
 ## Setup
 
@@ -13,31 +13,44 @@ Server runs on `http://localhost:42003`
 
 ## How It Works
 
-- Polls backend for telemetry data
-- Displays graphs, statistics, and real-time updates
-- Shows health of all connected devices
-- Calculates aggregate statistics (avg temperature, battery, etc.)
+**Polling:** Telemetry server polls backend every **0.1 seconds** (100ms) for latest telemetry data.
 
-## API Endpoints
+## Layout
 
-Visit `http://localhost:42003/docs` for interactive Swagger UI.
+**Left Column (1/5 width) - Statistics:**
+- 📊 Total packets received
+- 🌡️ Average temperature
+- 🔋 Average battery level
+- 🛰️ Active satellites count
+- ⏱️ Last update timestamp
 
-- `GET /api/v1/telemetry/all` — Get all device telemetry
-- `GET /api/v1/telemetry/{device_id}` — Get specific device telemetry
-- `GET /api/v1/stats` — Get aggregate statistics
-- `GET /api/v1/health` — Health check of system
+**Right Column (4/5 width) - Live Charts:**
+- Temperature over time (all satellites)
+- Battery over time (all satellites)
+- Pressure over time (all satellites)
+- Azimuth over time (all satellites)
+- Elevation over time (all satellites)
 
-## Data Available
+Each chart shows all satellites with color-coded lines.
 
-From each telemetry reading:
-- Temperature
-- Battery level
-- Pressure
-- Azimuth / Elevation angles
-- Timestamp
+## Features
 
-## Notes
+- **Real-time updates** — 0.1 second refresh rate
+- **Historical data** — Keeps last 1000 points per satellite per sensor
+- **Interactive plots** — Hover for details, click legend to toggle satellites
+- **Dark mode** — By default
+- **Live stats** — Auto-calculating averages and counts
 
-- Starts with 10 example satellites from backend
-- Can be extended with real-time WebSocket updates
-- Statistics auto-calculated from current telemetry
+## Data Flow
+
+```
+Backend (42000) 
+    ↓ (polls every 0.1s)
+GET /api/v1/telemetry/latest
+    ↓
+Telemetry Server (42003)
+    ↓
+Update plots + stats
+    ↓
+Display to user
+```
