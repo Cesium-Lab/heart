@@ -9,6 +9,9 @@ logger = logging.getLogger(__name__)
 BACKEND_URL = "http://localhost:42000/api/v1"
 PORT = 42002
 
+# Enable dark mode
+ui.dark_mode(True)
+
 ####################################################################################################
 #               STATE
 ####################################################################################################
@@ -104,9 +107,11 @@ def update_pending_table():
                 "Z": cmd.get("params", {}).get("z", "")
             })
     pending_table.rows = rows
+    # Update count
+    pending_count_label.set_text(f"📊 Total Pending: {len(rows)}")
 
 def update_executed_table():
-    """Update executed commands table"""
+    """Update executed commands table (newest first)"""
     rows = []
     for cmd in executed_commands:
         rows.append({
@@ -118,7 +123,10 @@ def update_executed_table():
             "y": cmd.get("params", {}).get("y", ""),
             "z": cmd.get("params", {}).get("z", "")
         })
-    executed_table.rows = rows
+    # Reverse to show newest first
+    executed_table.rows = list(reversed(rows))
+    # Update count
+    executed_count_label.set_text(f"📊 Total Sent: {len(rows)}")
     # Also update pending table to remove executed commands
     update_pending_table()
 
@@ -181,89 +189,98 @@ def update_freeze_button():
     if is_frozen:
         freeze_button.set_text("🔒 Unfreeze System")
         freeze_button.on_click(unfreeze_system)
+        send_button.props("color=warning")  # Yellow when frozen
     else:
         freeze_button.set_text("▶ Freeze System")
         freeze_button.on_click(freeze_system)
+        send_button.props("color=positive")  # Green when unfrozen
 
 ####################################################################################################
 #               UI LAYOUT
 ####################################################################################################
 
 # Header
-ui.label("Mission Control GUI").style("font-size: 24px; font-weight: bold; color: #2c3e50")
+ui.label("Mission Control GUI").style("font-size: 28px; font-weight: bold")
 
-# Freeze Control
-with ui.card().classes("w-full"):
-    ui.label("System State").style("font-size: 16px; font-weight: bold")
-    with ui.row():
+
+
+####################################################################################################
+#               3-COLUMN LAYOUT
+####################################################################################################
+
+with ui.row().classes("w-full gap-4"):
+
+
+
+    # COLUMN 1: Send Command
+    with ui.card().classes("flex-1"):
+
+        # System State
+        ui.label("System State").style("font-size: 14px; font-weight: bold")
         freeze_button = ui.button("🔒 Unfreeze System").props("color=warning")
-        ui.label("Frozen: Telemetry not updating").style("color: #e74c3c")
 
-####################################################################################################
-#               SEND COMMAND
-####################################################################################################
+        ui.label("Send Command").style("font-size: 16px; font-weight: bold")
+        commands_sent_label = ui.label("Total Commands Sent: 0").style("font-size: 12px; color: #3498db; font-weight: bold")
 
-with ui.card().classes("w-full"):
-    ui.label("Send Command").style("font-size: 18px; font-weight: bold")
-    commands_sent_label = ui.label("Total Commands Sent: 0").style("font-size: 14px; color: #3498db; font-weight: bold")
+        with ui.row():
+            device_select = ui.select(["sat_1", "sat_2", "sat_3", "sat_4", "sat_5", "sat_6", "sat_7", "sat_8", "sat_9", "sat_10"], value="sat_1", label="Device")
+            action_select = ui.select(["thrust"], value="thrust", label="Action")
 
-    with ui.row():
-        device_select = ui.select(["sat_1", "sat_2", "sat_3", "sat_4", "sat_5", "sat_6", "sat_7", "sat_8", "sat_9", "sat_10"], value="sat_1", label="Device")
-        action_select = ui.select(["thrust"], value="thrust", label="Action")
+        ui.label("Parameters").style("font-size: 12px; font-weight: bold")
+        with ui.row():
+            x_input = ui.input(label="X", value="10.5")
+            y_input = ui.input(label="Y", value="20.3")
+            z_input = ui.input(label="Z", value="-5.2")
 
-    ui.label("Thrust Parameters (m/s²)")
-    with ui.row():
-        x_input = ui.input(label="X", value="10.5")
-        y_input = ui.input(label="Y", value="20.3")
-        z_input = ui.input(label="Z", value="-5.2")
+        send_button = ui.button("Send Command", on_click=send_command).props("color=primary").classes("w-full")
+        status_label = ui.label("Ready").style("color: #27ae60; font-weight: bold")
 
-    with ui.row():
-        ui.button("Send Command", on_click=send_command).props("color=primary")
-        ui.button("Refresh", on_click=refresh_pending).props("color=secondary")
+    # COLUMN 2: Pending Commands
+    with ui.card().classes("flex-1"):
+        ui.label("Pending Commands").style("font-size: 16px; font-weight: bold")
+        ui.label("Waiting for execution").style("font-size: 12px; color: #95a5a6")
 
-    status_label = ui.label("Ready").style("color: #27ae60; font-weight: bold")
+        with ui.card().classes("w-full").style("background-color: rgba(52, 152, 219, 0.1); padding: 8px;"):
+            pending_count_label = ui.label("📊 Total Pending: 0").style("font-size: 13px; font-weight: bold; color: #3498db")
 
-####################################################################################################
-#               PENDING COMMANDS
-####################################################################################################
+        ui.button("Refresh", on_click=refresh_pending).props("color=secondary").classes("w-full")
 
-with ui.card().classes("w-full"):
-    ui.label("Pending Commands").style("font-size: 18px; font-weight: bold")
-    pending_table = ui.table(columns=[
-        {"name": "ID", "label": "ID", "field": "ID"},
-        {"name": "Device", "label": "Device", "field": "Device"},
-        {"name": "Action", "label": "Action", "field": "Action"},
-        {"name": "X", "label": "X", "field": "X"},
-        {"name": "Y", "label": "Y", "field": "Y"},
-        {"name": "Z", "label": "Z", "field": "Z"},
-    ], rows=[])
-    pending_table.classes("w-full")
-    pending_table.style("--row-height: 32px;")
+        pending_table = ui.table(columns=[
+            {"name": "ID", "label": "ID", "field": "ID"},
+            {"name": "Device", "label": "Device", "field": "Device"},
+            {"name": "Action", "label": "Action", "field": "Action"},
+            {"name": "X", "label": "X", "field": "X"},
+            {"name": "Y", "label": "Y", "field": "Y"},
+            {"name": "Z", "label": "Z", "field": "Z"},
+        ], rows=[])
+        pending_table.classes("w-full")
+        pending_table.style("--row-height: 32px;")
 
-####################################################################################################
-#               EXECUTED COMMANDS
-####################################################################################################
+    # COLUMN 3: Executed Commands
+    with ui.card().classes("flex-1"):
+        ui.label("Sent Commands").style("font-size: 16px; font-weight: bold")
+        ui.label("Execution history").style("font-size: 12px; color: #95a5a6")
 
-with ui.card().classes("w-full"):
-    ui.label("Command Execution History").style("font-size: 18px; font-weight: bold")
-    ui.label("Shows only executed/completed commands").style("font-size: 12px; color: #7f8c8d")
+        with ui.card().classes("w-full").style("background-color: rgba(46, 204, 113, 0.1); padding: 8px;"):
+            executed_count_label = ui.label("📊 Total Sent: 0").style("font-size: 13px; font-weight: bold; color: #2ecc71")
 
-    with ui.row():
-        ui.button("Refresh History", on_click=refresh_executed).props("color=secondary")
-        auto_refresh_button = ui.button("⏸ Pause Auto-Refresh", on_click=toggle_auto_refresh).props("color=info")
-        auto_refresh_label = ui.label("Auto-refresh: ON").style("font-size: 12px; color: #27ae60; font-weight: bold")
+        with ui.row():
+            auto_refresh_button = ui.button("⏸ Pause Auto-Refresh", on_click=toggle_auto_refresh).props("color=info").classes("flex-1")
+            ui.button("Refresh", on_click=refresh_executed).props("color=secondary").classes("flex-1")
 
-    executed_table = ui.table(columns=[
-        {"name": "seq", "label": "Seq", "field": "seq"},
-        {"name": "id", "label": "Command ID", "field": "id"},
-        {"name": "device", "label": "Device", "field": "device"},
-        {"name": "action", "label": "Action", "field": "action"},
-        {"name": "x", "label": "X", "field": "x"},
-        {"name": "y", "label": "Y", "field": "y"},
-        {"name": "z", "label": "Z", "field": "z"},
-    ], rows=[])
-    executed_table.classes("w-full")
-    executed_table.style("max-height: 200px; overflow-y: auto; --row-height: 32px;")
+        auto_refresh_label = ui.label("Auto-refresh: ON").style("font-size: 11px; color: #27ae60; font-weight: bold")
+
+        executed_table = ui.table(columns=[
+            {"name": "seq", "label": "Seq", "field": "seq"},
+            {"name": "id", "label": "ID", "field": "id"},
+            {"name": "device", "label": "Device", "field": "device"},
+            {"name": "action", "label": "Action", "field": "action"},
+            {"name": "x", "label": "X", "field": "x"},
+            {"name": "y", "label": "Y", "field": "y"},
+            {"name": "z", "label": "Z", "field": "z"},
+        ], rows=[])
+        executed_table.classes("w-full")
+        executed_table.style("max-height: 300px; overflow-y: auto; --row-height: 32px;")
 
 ####################################################################################################
 #               STARTUP
@@ -277,8 +294,8 @@ def startup():
     refresh_pending()
     refresh_executed()
     update_commands_sent_label()
-    # Start auto-refresh by default
-    auto_refresh_timer = ui.timer(1, refresh_executed)
+    # Start auto-refresh by default (refresh both pending and executed)
+    auto_refresh_timer = ui.timer(1, lambda: [refresh_pending(), refresh_executed()])
 
 startup()
 
