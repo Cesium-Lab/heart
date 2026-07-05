@@ -4,7 +4,7 @@ services:
     ports:
       - "42004:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./telemetry_server/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml  # this is where it is moved to in the CONTAINER
 
   grafana:
     image: grafana/grafana:latest
@@ -15,12 +15,13 @@ services:
       - GF_PLUGINS_ALLOW_UNSIGNED_PLUGINS=true
       - GF_PLUGINS_PLUGIN_ADMIN_ENABLED=false
 
-    volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - grafana_data:/var/lib/grafana
+    volumes: # this is where it they get moved to in the CONTAINER
+      - ./telemetry_server/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana  # where grafana stores its data
     depends_on:
       - prometheus
 
 volumes:
   grafana_data:
   
+# user: "admin", password: "rocket"
