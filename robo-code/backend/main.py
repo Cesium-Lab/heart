@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.websockets import WebSocket
 from collections import deque
+from contextlib import asynccontextmanager
+from prometheus_client import Gauge, make_asgi_app
 import json
 import uvicorn
 import time
@@ -13,10 +15,9 @@ logger = logging.getLogger(__name__)
 
 from models import TelemetryData, Command, CommandAck
 
-app = FastAPI(title="Mission Control Backend")
-
 PORT = 42000
 ADDR = "0.0.0.0"
+SIM_INTERVAL = 0.1  # how often telemetry is jittered in the background
 
 ####################################################################################################
 #               STATE
@@ -35,10 +36,36 @@ sequence_number = 0
 is_frozen = True
 
 ####################################################################################################
-#               IMPORTS & ROUTES
+#               PROMETHEUS METRICS
 ####################################################################################################
 
+temp_gauge = Gauge("satellite_temperature_celsius", "Satellite temperature", ["device"])
+battery_gauge = Gauge("satellite_battery_percent", "Satellite battery level", ["device"])
+pressure_gauge = Gauge("satellite_pressure_hpa", "Satellite internal pressure", ["device"])
+azimuth_gauge = Gauge("satellite_azimuth_radians", "Satellite azimuth angle", ["device"])
+elevation_gauge = Gauge("satellite_elevation_radians", "Satellite elevation angle", ["device"])
 
+async def simulate_telemetry_loop():
+    """Continuously jitter telemetry in place so Prometheus has real history to scrape"""
+    while True:
+        for device_id in telemetry_store:
+            telemetry_store[device_id] = add_telemetry_jitter(telemetry_store[device_id])
+            sensors = telemetry_store[device_id]["sensors"]
+            temp_gauge.labels(device=device_id).set(sensors["temp"])
+            battery_gauge.labels(device=device_id).set(sensors["battery"])
+            pressure_gauge.labels(device=device_id).set(sensors["pressure"])
+            azimuth_gauge.labels(device=device_id).set(telemetry_store[device_id]["azimuth"])
+            elevation_gauge.labels(device=device_id).set(telemetry_store[device_id]["elevation"])
+        await asyncio.sleep(SIM_INTERVAL)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(simulate_telemetry_loop())
+    yield
+    task.cancel()
+
+app = FastAPI(title="Mission Control Backend", lifespan=lifespan)
+app.mount("/metrics", make_asgi_app())
 
 ####################################################################################################
 #               ASYNC EXECUTION
@@ -135,18 +162,15 @@ def add_telemetry_jitter(telemetry_dict):
         telem["elevation"] += random.uniform(-0.01, 0.01)
 
     telem["sensors"] = sensors
-    telem["timestamp"] = int(time.time())
+    telem["timestamp"] = time.time()
     return telem
 
 @app.get("/api/v1/telemetry/latest")
 def get_latest_telemetry(id: str = None):
-    """Get latest telemetry for all devices or specific device (with simulated updates)"""
-    # Add jitter to simulate sensor changes
-    jittered_store = {dev_id: add_telemetry_jitter(telem) for dev_id, telem in telemetry_store.items()}
-
+    """Get latest telemetry for all devices or specific device (continuously updated in the background)"""
     if id:
-        return jittered_store.get(id, {"error": "Device not found"})
-    return jittered_store
+        return telemetry_store.get(id, {"error": "Device not found"})
+    return telemetry_store
 
 ####################################################################################################
 #               COMMANDS
