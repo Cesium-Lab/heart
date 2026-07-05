@@ -1,15 +1,15 @@
 | Port Range | Purpose                    |
 | ---------- | -------------------------- |
-| 42000-5099  | Ground station services    |
-| 42100-5199  | Flight computer telemetry  |
-| 42200-5299  | GNC simulation             |
-| 42300-5399  | Hardware-in-the-loop (HITL)|
-| 42400-5499  | Cameras/video              |
-| 42500-5599  | Logging/data archive       |
-| 42600-5699  | Robot control              |
-| 42700-5799  | Sensor streaming           |
-| 42800-5899  | Development/debug          |
-| 42900-5999  | Web dashboards             |
+| 42000-42099  | Ground station services    |
+| 42100-42199  | Flight computer telemetry  |
+| 42200-42299  | GNC simulation             |
+| 42300-42399  | Hardware-in-the-loop (HITL)|
+| 42400-42499  | Cameras/video              |
+| 42500-42599  | Logging/data archive       |
+| 42600-42699  | Robot control              |
+| 42700-42799  | Sensor streaming           |
+| 42800-42899  | Development/debug          |
+| 42900-42999  | Web dashboards             |
 
 | Port | Service                   |
 | ---- | ------------------------- |
