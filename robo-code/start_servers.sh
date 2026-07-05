@@ -45,6 +45,16 @@ tmux select-pane -t $SESSION_NAME:0.2 -T "Grafana (42003) + Prometheus (42004)"
 # Select first pane
 tmux select-pane -t $SESSION_NAME:0.0
 
+# Open browser tabs in background (wait for services to start first)
+(
+  sleep 5
+  open "http://localhost:42002" 2>/dev/null
+  sleep 1
+  open "http://localhost:42003" 2>/dev/null
+  sleep 1
+  open "http://localhost:42004" 2>/dev/null
+) &
+
 # Show status
 echo ""
 echo "======================================"

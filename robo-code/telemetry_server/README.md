@@ -1,20 +1,13 @@
 # Telemetry Dashboard
 
-Real-time visualization of satellite telemetry data with live-updating Plotly charts.
-
-## Setup
-
-```bash
-pip install -r requirements.txt
-python app.py
-```
+Real-time visualization of satellite telemetry data with Grafana.
 
 Server runs on `http://localhost:42003`
 
 ## How It Works
 
-**Polling:** Telemetry server polls backend every **0.1 seconds** (100ms) for latest telemetry data.
-
+**Polling:** Telemetry server polls backend every **second** for latest telemetry data.
+<!-- 
 ## Layout
 
 **Left Column (1/5 width) - Statistics:**
@@ -53,4 +46,4 @@ Telemetry Server (42003)
 Update plots + stats
     ↓
 Display to user
-```
+``` -->
