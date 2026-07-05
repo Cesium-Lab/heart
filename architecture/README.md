@@ -13,8 +13,14 @@
 
 | Port | Service                   |
 | ---- | ------------------------- |
-| 42000 | commands       |
-| 42001 | telemetry       |
+| 42000 | T&C Backend       |
+| 42001 | (reserved)       |
+| 42002 | Mission Control GUI (NiceGUI)       |
+| 42003 | Telemetry Server (Grafana)   |
+| 42004 | Telemetry Database (Prometheus)   |
+
+ Port | Service                   |
+| ---- | ------------------------- |
 | 42100 | Flight Computer Telemetry |
 | 42101 | Flight Computer Commands  |
 | 42200 | 6DOF Simulation           |
