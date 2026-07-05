@@ -33,6 +33,7 @@ telemetry_history = defaultdict(lambda: {
 })
 total_packets = 0
 last_update = None
+device_order = None
 
 ####################################################################################################
 #               FUNCTIONS
@@ -40,13 +41,16 @@ last_update = None
 
 def fetch_telemetry():
     """Fetch latest telemetry from backend"""
-    global total_packets, last_update
+    global total_packets, last_update, device_order
     try:
         response = requests.get(f"{BACKEND_URL}/telemetry/latest", timeout=5)
         response.raise_for_status()
         telemetry_data = response.json()
 
         logger.info(f"Fetched telemetry for {len(telemetry_data)} devices")
+
+        if device_order is None:
+            device_order = sorted(telemetry_data.keys())
 
         now = time.time()
         cutoff = now - WINDOW_SECONDS
@@ -99,21 +103,17 @@ def calculate_stats():
     }
 
 def build_series_data(sensor_key):
-    """Build series data for ApexCharts, x-axis as unix time in milliseconds"""
+    """Build full windowed series data for ApexCharts, x-axis as unix time in ms"""
     series = []
 
-    for device_id, history in telemetry_history.items():
-        if history[sensor_key]:
-            # x-axis is absolute unix time in ms (ApexCharts datetime axis)
-            unix_times_ms = [t * 1000 for t in history["timestamps"]]
-
-            # Create data points as [x, y] pairs
-            data = [[x, y] for x, y in zip(unix_times_ms, history[sensor_key]) if y is not None]
-
-            series.append({
-                "name": device_id,
-                "data": data
-            })
+    for device_id in device_order:
+        history = telemetry_history[device_id]
+        unix_times_ms = [t * 1000 for t in history["timestamps"]]
+        data = [[x, y] for x, y in zip(unix_times_ms, history[sensor_key]) if y is not None]
+        series.append({
+            "name": device_id,
+            "data": data
+        })
 
     return series
 
@@ -137,10 +137,10 @@ def _init_charts():
                 height: __CHART_HEIGHT__,
                 width: '100%',
                 toolbar: {show: true},
-                animations: {enabled: true, speed: 100}
+                animations: {enabled: false}
             },
             title: {text: config.title, style: {fontSize: '14px'}},
-            stroke: {curve: 'smooth', width: 2},
+            stroke: {curve: 'straight', width: 2},
             grid: {show: true, strokeDashArray: 0},
             xaxis: {
                 type: 'datetime',
@@ -158,7 +158,7 @@ def _init_charts():
         });
         window[chartId].render();
     });
-    """.replace("__CHART_HEIGHT__", str(CHART_HEIGHT))
+    """.replace("__CHART_HEIGHT__", str(CHART_HEIGHT)).replace("__WINDOW_MS__", str(int(WINDOW_SECONDS * 1000)))
     ui.run_javascript(init_js)
 
 def update_display(now):
@@ -172,11 +172,6 @@ def update_display(now):
     sats_label.set_text(f"🛰️ Active: {stats['active_sats']}")
     update_label.set_text(f"⏱️ {stats['last_update']}")
 
-    # Fixed 10-second window ending at "now", regardless of data present
-    max_ms = int(now * 1000)
-    min_ms = int((now - WINDOW_SECONDS) * 1000)
-
-    # Update charts via JavaScript
     chart_configs = [
         ("temp_chart", "temperature", "Temperature (°C)"),
         ("battery_chart", "battery", "Battery (%)"),
@@ -185,23 +180,20 @@ def update_display(now):
         ("elevation_chart", "elevation", "Elevation (rad)")
     ]
 
+    # Explicit min/max keeps the axis window locked to "now", since xaxis.range
+    # only auto-tracks the latest point via appendData, not plain updateSeries.
+    max_ms = int(now * 1000)
+    min_ms = int((now - WINDOW_SECONDS) * 1000)
+
     for chart_id, sensor_key, title in chart_configs:
         series = build_series_data(sensor_key)
         series_json = json.dumps(series)
-
-        js_code = f"""
-        const chartId = '{chart_id}';
-        const series = {series_json};
-
-        if (window[chartId]) {{
-            window[chartId].updateOptions({{
-                series: series,
-                xaxis: {{ type: 'datetime', min: {min_ms}, max: {max_ms} }}
-            }}, false, false);
+        ui.run_javascript(f"""
+        if (window['{chart_id}']) {{
+            window['{chart_id}'].updateOptions({{ xaxis: {{ min: {min_ms}, max: {max_ms} }} }}, false, false);
+            window['{chart_id}'].updateSeries({series_json});
         }}
-        """
-
-        ui.run_javascript(js_code)
+        """)
 
 ####################################################################################################
 #               UI LAYOUT
