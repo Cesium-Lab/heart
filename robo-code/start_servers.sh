@@ -3,10 +3,20 @@
 ####################################################################################################
 #               ROBO-CODE SERVER LAUNCHER
 ####################################################################################################
-# Starts all 3 servers in a tmux session with 3 panes
+# Starts all servers (backend, mission control, Prometheus + Grafana) in a tmux session
 
 SESSION_NAME="robo-code"
 PROJECT_DIR="$(pwd)"
+
+# Cleanup trap: stop docker-compose and kill tmux session when script exits
+cleanup() {
+  echo ""
+  echo "Stopping docker-compose containers..."
+  cd "$PROJECT_DIR" && docker-compose down 2>/dev/null
+  echo "Killing tmux session..."
+  tmux kill-session -t $SESSION_NAME 2>/dev/null
+}
+trap cleanup EXIT
 
 # Kill existing session if it exists
 tmux kill-session -t $SESSION_NAME 2>/dev/null
@@ -24,13 +34,13 @@ tmux send-keys -t $SESSION_NAME:0.0 "cd '$PROJECT_DIR/backend' && python main.py
 # Pane 1: Mission Control GUI (top right)
 tmux send-keys -t $SESSION_NAME:0.1 "cd '$PROJECT_DIR/mission_control_gui' && python app.py" Enter
 
-# Pane 2: Telemetry Dashboard (bottom)
-tmux send-keys -t $SESSION_NAME:0.2 "cd '$PROJECT_DIR/telemetry_server' && python app.py" Enter
+# Pane 2: Prometheus + Grafana (bottom)
+tmux send-keys -t $SESSION_NAME:0.2 "cd '$PROJECT_DIR' && docker-compose up" Enter
 
 # Set pane titles
 tmux select-pane -t $SESSION_NAME:0.0 -T "Backend (42000)"
 tmux select-pane -t $SESSION_NAME:0.1 -T "Mission Control (42002)"
-tmux select-pane -t $SESSION_NAME:0.2 -T "Telemetry (42003)"
+tmux select-pane -t $SESSION_NAME:0.2 -T "Grafana (42003) + Prometheus (42004)"
 
 # Select first pane
 tmux select-pane -t $SESSION_NAME:0.0
@@ -41,8 +51,9 @@ echo "======================================"
 echo "  Robo-Code Servers Started"
 echo "======================================"
 echo ""
-echo "  Mission Control: http://localhost:42002/docs"
-echo "  Telemetry:      http://localhost:42003/docs"
+echo "  Mission Control: http://localhost:42002"
+echo "  Grafana:        http://localhost:42003"
+echo "  Prometheus:     http://localhost:42004"
 echo ""
 echo "  Tmux Controls:"
 echo "    Ctrl+B → arrow keys = switch panes"

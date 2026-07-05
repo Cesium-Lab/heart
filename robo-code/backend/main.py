@@ -9,11 +9,12 @@ import time
 import asyncio
 import logging
 import random
+from models import TelemetryData, Command, CommandAck
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from models import TelemetryData, Command, CommandAck
+
 
 PORT = 42000
 ADDR = "0.0.0.0"
