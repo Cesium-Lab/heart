@@ -358,18 +358,23 @@
         throw Error(payload.error || `Search failed (${response.status})`);
       const results = Array.isArray(payload.results) ? payload.results : [];
       $("lookupStatus").textContent = results.length
-        ? `${results.length} matches — choose one to fill the form.`
+        ? `Top ${results.length} matches from GetSongBPM — choose one.`
         : "No matches found.";
-      for (const result of results) {
+      results.forEach((result, index) => {
         const option = document.createElement("button"),
           description = document.createElement("span"),
           name = document.createElement("b"),
           meta = document.createElement("small");
         option.type = "button";
         option.className = "lookup-result";
+        const rank = document.createElement("span");
+        rank.className = "lookup-rank";
+        rank.textContent = `#${index + 1}`;
         name.textContent = result.title || "Untitled";
         meta.textContent = [
           result.artist,
+          result.album || null,
+          result.year || null,
           result.key,
           result.bpm ? `${result.bpm} BPM` : null,
         ]
@@ -378,10 +383,10 @@
         description.append(name, meta);
         const use = document.createElement("span");
         use.textContent = "USE →";
-        option.append(description, use);
+        option.append(rank, description, use);
         option.onclick = () => applyLookup(result);
         box.append(option);
-      }
+      });
       box.hidden = !results.length;
     } catch (error) {
       $("lookupStatus").textContent = error.message;

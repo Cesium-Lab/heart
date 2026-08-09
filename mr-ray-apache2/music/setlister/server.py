@@ -61,10 +61,18 @@ def artist_name(value: object) -> str:
 def normalize_song(item: dict) -> dict:
     artist = item.get("artist", {})
     genres = artist.get("genres", []) if isinstance(artist, dict) else []
+    album = item.get("album", {})
+    if isinstance(album, list):
+        album = album[0] if album else {}
+    if not isinstance(album, dict):
+        album = {}
     return {
         "sourceId": str(item.get("id", "")),
         "title": str(item.get("title", item.get("song_title", ""))),
         "artist": artist_name(artist),
+        "album": str(album.get("title", "")),
+        "year": album.get("year"),
+        "timeSignature": item.get("time_sig"),
         "key": normalize_key(item.get("key_of")),
         "bpm": float(item["tempo"]) if str(item.get("tempo", "")).replace(".", "", 1).isdigit() else None,
         "danceability": item.get("danceability"),
