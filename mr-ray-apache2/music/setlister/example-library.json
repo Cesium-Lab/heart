@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "songs": [
+    {"id":"demo-1","title":"Neon Departure","artist":"The Local Oscillators","key":"A minor","bpm":118,"energy":6,"durationSeconds":228,"tags":["opener","synth"],"notes":"Eight-count intro"},
+    {"id":"demo-2","title":"Midnight Receiver","artist":"The Local Oscillators","key":"C major","bpm":120,"energy":7,"durationSeconds":252,"tags":["synth","dance"],"notes":"Segue from previous song"},
+    {"id":"demo-3","title":"Last Train Home","artist":"The Local Oscillators","key":"G major","bpm":124,"energy":9,"durationSeconds":276,"tags":["closer","dance"],"notes":"Extended ending"}
+  ],
+  "setlists": [{"id":"demo-set","name":"Example Friday Set","songIds":["demo-1","demo-2","demo-3"]}],
+  "activeSetlistId":"demo-set"
+}

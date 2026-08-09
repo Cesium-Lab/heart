@@ -1,0 +1,17 @@
+[Unit]
+Description=SETLISTER.EXE song lookup proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/html/music/setlister
+EnvironmentFile=/var/www/html/music/setlister/.env
+ExecStart=/var/www/html/music/setlister/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
