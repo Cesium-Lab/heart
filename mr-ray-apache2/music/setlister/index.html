@@ -8,7 +8,7 @@
 
 
     <title>SETLISTER.EXE</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260809-stage-1" />
 </head>
 
 <body>
@@ -110,7 +110,7 @@
                 </label>
             </div>
             <footer class="dialog-actions">
-                <button type="button" id="cancelDialog">Cancel</button><button class="primary" value="save">Save
+                <button type="button" id="cancelDialog">Cancel</button><button type="button" class="primary" id="saveSongButton">Save
                     song</button>
             </footer>
         </form>
@@ -123,10 +123,9 @@
             <td class="key-cell"></td>
             <td class="bpm-cell"></td>
             <td class="energy-cell"></td>
-            <td>
-                <button class="add-track small primary" title="Add to setlist">
-                    +
-                </button>
+            <td class="song-actions">
+                <button class="add-track small primary" title="Add to setlist" aria-label="Add to setlist">+</button>
+                <button class="delete-song small danger" title="Delete song" aria-label="Delete song">×</button>
             </td>
         </tr>
     </template>
@@ -141,7 +140,7 @@
             </div>
         </li>
     </template>
-    <script src="app.js?v=20260809-3"></script>
+    <script src="app.js?v=20260809-5"></script>
 </body>
 
 </html>

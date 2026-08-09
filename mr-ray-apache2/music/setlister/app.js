@@ -196,6 +196,9 @@
       meter.append(bar);
       e.append(meter);
       row.querySelector(".add-track").onclick = () => addTrack(s.id);
+      const deleteButton = row.querySelector(".delete-song");
+      deleteButton.setAttribute("aria-label", `Delete ${s.title}`);
+      deleteButton.onclick = () => deleteSong(s.id);
       body.append(row);
     }
   }
@@ -468,6 +471,30 @@
     save();
     render();
     notice(i >= 0 ? "Song updated." : "Song added.", "success");
+    return true;
+  }
+  function deleteSong(id) {
+    const target = song(id);
+    if (!target) return;
+    const uses = state.setlists.reduce(
+      (total, item) => total + item.songIds.filter((songId) => songId === id).length,
+      0,
+    );
+    const usageWarning = uses
+      ? ` It will also be removed from ${uses} position${uses === 1 ? "" : "s"} across your setlists.`
+      : "";
+    const confirmed = confirm(
+      `Delete “${target.title}” from the song library?${usageWarning} ` +
+        "Download your library first if you want a backup. Are you sure?",
+    );
+    if (!confirmed) return;
+    state.songs = state.songs.filter((item) => item.id !== id);
+    state.setlists.forEach((item) => {
+      item.songIds = item.songIds.filter((songId) => songId !== id);
+    });
+    save();
+    render();
+    notice(`“${target.title}” was deleted from the library and all setlists.`, "success");
   }
   function addTrack(id) {
     set().songIds.push(id);
@@ -499,9 +526,21 @@
     $("setlistName").select();
   }
   function deleteSet() {
-    if (state.setlists.length === 1)
-      return notice("Keep at least one setlist.");
-    if (!confirm(`Delete “${set().name}”?`)) return;
+    const current = set();
+    if (state.setlists.length === 1) {
+      const confirmed = confirm(
+        `Reset “${current.name}”? This removes every song from the setlist. ` +
+          "Download your library first if you want a backup. Are you sure?",
+      );
+      if (!confirmed) return;
+      current.name = "Untitled Set";
+      current.songIds = [];
+      save();
+      render();
+      notice("Setlist reset. Your song library was not changed.", "success");
+      return;
+    }
+    if (!confirm(`Delete “${current.name}”? Download your library first if you want a backup. Are you sure?`)) return;
     state.setlists = state.setlists.filter(
       (s) => s.id !== state.activeSetlistId,
     );
@@ -574,9 +613,25 @@
   $("lookupSong").onclick = lookupSong;
   $("closeDialog").onclick = $("cancelDialog").onclick = () =>
     $("songDialog").close();
-  $("songForm").onsubmit = (e) => {
-    if (e.submitter?.value === "save") saveSong();
+  $("songForm").onsubmit = (event) => event.preventDefault();
+  $("saveSongButton").onclick = () => {
+    if (!$("songForm").reportValidity()) return;
+    if (saveSong()) $("songDialog").close();
   };
+  const songFields = ["title", "artist", "key", "bpm", "energy", "duration", "tags", "notes"].map($);
+  songFields.forEach((field, index) => {
+    field.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.shiftKey) return;
+      event.preventDefault();
+      const next = songFields[index + 1];
+      if (next) {
+        next.focus();
+        if (typeof next.select === "function" && next.tagName !== "SELECT") next.select();
+      } else {
+        field.blur();
+      }
+    });
+  });
   $("searchInput").oninput = library;
   $("keyFilter").onchange = library;
   $("tagFilter").onchange = library;
