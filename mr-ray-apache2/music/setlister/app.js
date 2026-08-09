@@ -350,10 +350,17 @@
     box.textContent = "";
     try {
       const params = new URLSearchParams({ title, artist }),
-        response = await fetch(`/api/setlister/search?${params}`, {
+        endpoint = `/api/setlister/search?${params}`,
+        response = await fetch(endpoint, {
           headers: { Accept: "application/json" },
         }),
-        payload = await response.json();
+        raw = await response.text();
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        throw Error(`Song API returned ${response.status} ${response.statusText || "with HTML"} at ${endpoint}. Check /api/setlister/health on this hostname.`);
+      }
       if (!response.ok)
         throw Error(payload.error || `Search failed (${response.status})`);
       const results = Array.isArray(payload.results) ? payload.results : [];

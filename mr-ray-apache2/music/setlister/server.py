@@ -60,7 +60,9 @@ def artist_name(value: object) -> str:
 
 def normalize_song(item: dict) -> dict:
     artist = item.get("artist", {})
-    genres = artist.get("genres", []) if isinstance(artist, dict) else []
+    genres = artist.get("genres") if isinstance(artist, dict) else []
+    if not isinstance(genres, list):
+        genres = []
     album = item.get("album", {})
     if isinstance(album, list):
         album = album[0] if album else {}
@@ -121,12 +123,15 @@ def search():
     if not allowed_request():
         return jsonify({"error": "Too many searches. Please wait a minute."}), 429
 
-    cache_key = f"{title.casefold()}|{artist.casefold()}"
+    # One-character artist refinements are too broad for the upstream API.
+    # Search by title alone until at least two artist characters are present.
+    search_artist = artist if len(artist) >= 2 else ""
+    cache_key = f"{title.casefold()}|{search_artist.casefold()}"
     cached = _cache.get(cache_key)
     if cached and cached[0] > time.monotonic():
         return jsonify({"results": cached[1], "cached": True})
     try:
-        results = upstream_search(title, artist)
+        results = upstream_search(title, search_artist)
     except HTTPError as exc:
         status = 429 if exc.code == 429 else 502
         return jsonify({"error": "The song database rejected the request.", "upstreamStatus": exc.code}), status
