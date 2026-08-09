@@ -20,8 +20,7 @@
         <nav class="toolbar" aria-label="File controls">
             <button id="newLibrary">New library</button><label class="button" for="fileInput">Upload JSON</label><input
                 id="fileInput" type="file" accept="application/json,.json" hidden /><button
-                id="downloadLibrary">Download JSON</button><a class="button" href="example-library.json"
-                download>Example file</a><span id="saveStatus">Browser backup ready</span>
+                id="downloadLibrary">Download JSON</button><button id="loadExample" type="button">Load example</button><span id="saveStatus">Browser backup ready</span>
         </nav>
         <section class="summary">
             <span><b id="songCount">0</b> songs</span><span><b id="setCount">1</b> setlist</span><span><b
@@ -140,7 +139,7 @@
             </div>
         </li>
     </template>
-    <script src="app.js?v=20260809-5"></script>
+    <script src="app.js?v=20260809-6"></script>
 </body>
 
 </html>

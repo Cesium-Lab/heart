@@ -581,6 +581,16 @@
     status();
     notice("Library downloaded.", "success");
   }
+  async function loadExample() {
+    try {
+      const response = await fetch("example-library.json", { cache: "no-store" });
+      if (!response.ok) throw Error(`Could not load example (${response.status}).`);
+      const text = await response.text();
+      await upload(new File([text], "example-library.json", { type: "application/json" }));
+    } catch (error) {
+      notice(error.message);
+    }
+  }
   async function upload(file) {
     if (!file) return;
     try {
@@ -650,6 +660,7 @@
     if (o) o.textContent = set().name;
   };
   $("newLibrary").onclick = newLibrary;
+  $("loadExample").onclick = loadExample;
   $("downloadLibrary").onclick = download;
   $("fileInput").onchange = (e) => upload(e.target.files[0]);
   $("printSetlist").onclick = () => print();
