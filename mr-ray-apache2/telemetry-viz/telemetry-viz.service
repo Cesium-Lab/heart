@@ -1,0 +1,14 @@
+[Unit]
+Description=Telemetry Viz FastAPI Backend
+After=network.target
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/mr-ray-apache2/telemetry-viz
+ExecStart=/usr/bin/python3 -m uvicorn app:app --host 0.0.0.0 --port 5701
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

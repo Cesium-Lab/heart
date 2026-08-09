@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>★ Site Map — Colin's Internet Home ★</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
+  * { box-sizing: border-box; }
+  body { min-height: 100vh; margin: 0; padding: 20px; overflow-x: hidden; background-color: #008080; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,.04) 0 2px, transparent 2px 12px); color: #000080; font-family: 'VT323', 'Courier New', monospace; font-size: 22px; line-height: 1.3; }
+  body::after { content: ""; position: fixed; inset: 0; z-index: 999; pointer-events: none; background: repeating-linear-gradient(transparent 0, transparent 2px, rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 3px); }
+  .frame { max-width: 720px; margin: 0 auto; border: 2px solid #fff; background: #c0c0c0; box-shadow: 4px 4px 0 #000, inset 1px 1px 0 #fff, inset -2px -2px 0 #808080; }
+  .titlebar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; background: linear-gradient(90deg, #000080, #1084d0); color: #fff; font-family: 'Press Start 2P', monospace; font-size: 10px; }
+  .btns { display: flex; gap: 2px; }
+  .btn { width: 16px; height: 14px; border: 1px solid; border-color: #fff #000 #000 #fff; background: #c0c0c0; color: #000; font-size: 10px; line-height: 12px; text-align: center; }
+  .inner { padding: 20px; }
+  h1 { margin: 8px 0 10px; color: #ff0080; font-family: 'Press Start 2P', monospace; font-size: 20px; line-height: 1.4; text-align: center; text-shadow: 2px 2px 0 #ffff00, 4px 4px 0 #00ffff; }
+  .intro { margin: 0 0 18px; text-align: center; }
+  .map-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .map-group { border: 2px inset #fff; padding: 10px 12px; background: #fff; }
+  h2 { margin: -10px -12px 8px; padding: 5px 8px; background: #000080; color: #ffff00; font-family: 'Press Start 2P', monospace; font-size: 10px; line-height: 1.5; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  li { margin: 7px 0; }
+  li::before { content: "└─ "; color: #ff00ff; }
+  a { color: #0000ff; font-weight: bold; }
+  a:visited { color: #800080; }
+  a:hover { background: #ffff00; color: #ff00ff; }
+  .note { color: #555; font-size: 16px; }
+  hr { margin: 18px 0 14px; border: 0; border-top: 2px ridge #fff; }
+  .footer { margin: 0; text-align: center; font-size: 16px; }
+  @media (max-width: 560px) { body { padding: 10px; } .inner { padding: 15px; } .map-grid { grid-template-columns: 1fr; } .titlebar { font-size: 8px; } }
+</style>
+</head>
+<body>
+  <main class="frame">
+    <div class="titlebar"><span>★ SITE_MAP.EXE</span><span class="btns" aria-hidden="true"><span class="btn">_</span><span class="btn">□</span><span class="btn">×</span></span></div>
+    <div class="inner">
+      <h1>SITE MAP</h1>
+      <p class="intro">Every known corner of this computer, neatly indexed.</p>
+      <div class="map-grid">
+        <section class="map-group"><h2>★ MAIN PAGES</h2><ul>
+          <li><a href="/">Internet Home</a></li><li><a href="/about_me.html">About Me</a></li><li><a href="/everything-hub.html">Everything Hub</a></li><li><a href="/now/">Clock</a></li>
+        </ul></section>
+        <section class="map-group"><h2>★ DASHBOARDS</h2><ul>
+          <li><a href="/dash/system.html">System Stats</a></li><li><a href="/dash/visitors.html">Visitor Log</a></li><li><a href="/dash/vibes.html">Vibes Only</a></li>
+        </ul></section>
+        <section class="map-group"><h2>★ VISUALIZERS</h2><ul>
+          <li><a href="/rotation-viz/rotation-visualizer.html">Rotation Visualizer</a></li><li><a href="/telemetry-viz/dashboard.html">Telemetry Visualizer</a></li>
+        </ul></section>
+        <section class="map-group"><h2>★ OTHER DIMENSIONS</h2><ul>
+          <li><a href="/Others/cyberspace.html">Cyberspace</a></li><li><a href="/Others/terminal.html">Terminal</a></li><li><a href="/Others/minimal.html">Minimal Mode</a></li><li><a href="/Others/old_index.html">Old Homepage</a> <span class="note">(archive)</span></li>
+        </ul></section>
+      </div>
+      <hr><p class="footer">[ <a href="/">return home</a> ] &nbsp; ★ &nbsp; end of map</p>
+    </div>
+  </main>
+</body>
+</html>

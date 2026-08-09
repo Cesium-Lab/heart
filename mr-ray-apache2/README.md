@@ -1,7 +1,3 @@
-Things to finish
-- [ ] QUAT VISUALIZER
-
-
 Adding an API
 - [ ] Edit api-check
 - [ ] Make sure it runs on startup
@@ -13,3 +9,10 @@ ports/endpoints
 
 mini preview:
 - og:
+
+## Git lfs
+Bee movie script is big so
+```
+sudo apt install git-lfs
+git lfs install
+```

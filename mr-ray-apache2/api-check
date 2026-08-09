@@ -145,6 +145,11 @@ const APIS = [
     url: "/api/rotation/health",
     description: "rotation-viz/app.py · port 5001"
   },
+  {
+    name: "Telemetry Viz",
+    url: "http://localhost:5701/health",
+    description: "telemetry-viz/app.py · port 5701"
+  },
   // {
   //   name: "Data Viz API",
   //   url: "/dataviz/api/health",
