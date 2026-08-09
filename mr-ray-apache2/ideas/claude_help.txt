@@ -1,0 +1,39 @@
+oh there's a ton of fun stuff. ranking by how cool-to-effort they are for your setup:
+self-hosted dev tools (high value, low effort)
+
+gitea or forgejo — your own github. host your cesium-lab repos locally, way faster than github for big stuff
+dozzle — live docker log viewer in browser, looks sick
+uptime kuma — status page for all your services. great dashboards
+homepage or homarr — actually nice landing pages that show service status, weather, system stats. could replace the html files i just made
+n8n or node-red — visual automation, useful if you're doing IoT/sensor stuff
+
+stuff for your actual workflow
+
+jupyterhub behind apache reverse proxy. ssh into the box, hit box.local/jupyter, full python env for your sims
+code-server — vscode in the browser. solves the whole sudo problem differently
+a static site for sim outputs — drop trajectory plots, FFT analysis, sensor fusion logs into a folder, apache serves it. way better than scping pngs to your laptop
+grafana + influxdb or prometheus — for when your STM32 starts sending telemetry over wifi/ethernet. real flight-software-grade dashboards
+mqtt broker (mosquitto) + a web dashboard — if you ever do anything with multiple embedded boards talking to each other
+a build server — apt repo or pypi mirror for your own packages. or a tftp/pxe server for netbooting embedded linux targets
+
+networky / infrastructure
+
+pihole or adguard home — network-wide adblocking. genuinely useful (oops can't say that word). very useful
+wireguard server — vpn into your home network from stanford / blue origin. apache reverse proxies the admin UI
+nextcloud — your own google drive. overkill but works
+vaultwarden — self-hosted bitwarden. password manager
+searxng — privacy-respecting meta search engine
+
+purely for fun / portfolio energy
+
+a public-facing blog with apache + a static site generator (hugo, zola). writeups of your gnc projects, kalman filter explainers, etc. would be sick for blue origin / future job stuff
+a live 6dof sim viewer — your sim emits state over websockets, three.js renders the rocket/cubesat in browser. literally just open your laptop and watch it run
+a public dashboard of your fitness/journaling streaks (anonymized). nerdy life-tracking site
+wikijs or bookstack — wiki for your atlas/notes. way better than markdown files for cross-linking
+a guestbook for fun on the retro page lol
+
+spicier / more involved
+
+firmware OTA server — host stm32 .bin files, your bootloader hits box.local/firmware/latest.bin, pulls down updates. genuinely useful for csos / brain
+a CI runner for your embedded projects. github actions self-hosted runner that builds your firmware on every push
+a PCB / KiCad asset server — host your custom footprints and symbols, pull them as a library from anywhere

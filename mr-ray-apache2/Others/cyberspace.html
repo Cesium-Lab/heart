@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cesium-lab // ground station</title>
+<style>
+  :root {
+    --bg: #05060d;
+    --bg2: #0a0d1a;
+    --fg: #e8eaf6;
+    --dim: #6b7299;
+    --cyan: #4dd9ff;
+    --magenta: #ff5edb;
+    --amber: #ffcb6b;
+    --green: #6bff9e;
+    --line: rgba(77, 217, 255, 0.2);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  #stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .vignette {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(5, 6, 13, 0.6) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+    position: relative;
+    z-index: 2;
+  }
+  .mono { font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace; }
+  header { margin-bottom: 48px; }
+  .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    padding: 4px 10px;
+    border-radius: 2px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-size: 42px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    background: linear-gradient(120deg, var(--fg) 0%, var(--cyan) 60%, var(--magenta) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .lede {
+    font-size: 17px;
+    color: var(--dim);
+    max-width: 580px;
+  }
+  .panel {
+    border: 1px solid var(--line);
+    background: rgba(10, 13, 26, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 4px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .panel::before, .panel::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--cyan);
+  }
+  .panel::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .panel::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+  }
+  .panel-head .label { color: var(--cyan); }
+  .panel-body { padding: 16px 20px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+  .metric { padding: 12px 0; }
+  .metric .k { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .metric .v { font-size: 18px; font-weight: 500; }
+  .metric .v.mono { font-family: 'JetBrains Mono', monospace; }
+  .service { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .service:last-child { border-bottom: none; }
+  .service .name { font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+  .service .meta { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; vertical-align: middle; }
+  .dot.up { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s ease-in-out infinite; }
+  .dot.idle { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .dot.down { background: var(--magenta); opacity: 0.5; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .link-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .link {
+    display: block;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--fg);
+    text-decoration: none;
+    transition: all 0.2s;
+    background: rgba(77, 217, 255, 0.03);
+  }
+  .link:hover {
+    border-color: var(--cyan);
+    background: rgba(77, 217, 255, 0.1);
+    transform: translateY(-2px);
+  }
+  .link .arrow { float: right; color: var(--cyan); }
+  .link .title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .link .desc { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); }
+  .telemetry {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    padding: 4px 0;
+  }
+  .telemetry .v { color: var(--cyan); text-align: right; }
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .footer-dot { color: var(--cyan); }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div class="vignette"></div>
+
+<div class="wrap">
+
+<header>
+  <div class="badge">◆ ground station // cesium-lab</div>
+  <h1>you have reached a node<br>on the network.</h1>
+  <p class="lede">this box is part of a small cluster doing flight software, simulation, and various engineering experiments. if you have business here, the relevant endpoints are listed below.</p>
+</header>
+
+<div class="panel">
+  <div class="panel-head">
+    <span><span class="label">▸ host</span> // identity</span>
+    <span class="mono" id="ts">--</span>
+  </div>
+  <div class="panel-body">
+    <div class="grid3">
+      <div class="metric"><div class="k">hostname</div><div class="v mono" id="host">--</div></div>
+      <div class="metric"><div class="k">role</div><div class="v">homelab node</div></div>
+      <div class="metric"><div class="k">status</div><div class="v"><span class="dot up"></span>nominal</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+
+  <div class="panel">
+    <div class="panel-head">
+      <span><span class="label">▸ services</span> // listening</span>
+    </div>
+    <div class="panel-body">
+      <div class="service"><span class="name"><span class="dot up"></span>ssh</span><span class="meta">:22</span></div>
+      <div class="service"><span class="name"><span class="dot up"></span>http</span><span class="meta">:80</span></div>
+      <div class="service"><span class="name"><span class="dot idle"></span>jupyter</span><span class="meta">:8888</span></div>
+      <div class="service"><span class="name"><span class="dot up"></span>syncthing</span><span class="meta">:8384</span></div>
+      <div class="service"><span class="name"><span class="dot down"></span>postgres</span><span class="meta">:5432</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span><span class="label">▸ telemetry</span> // live</span>
+    </div>
+    <div class="panel-body">
+      <div class="telemetry"><span>session_uptime</span><span></span><span class="v" id="up">0s</span></div>
+      <div class="telemetry"><span>client_addr</span><span></span><span class="v" id="ua">--</span></div>
+      <div class="telemetry"><span>screen_res</span><span></span><span class="v" id="res">--</span></div>
+      <div class="telemetry"><span>tz_offset</span><span></span><span class="v" id="tz">--</span></div>
+      <div class="telemetry"><span>signal</span><span></span><span class="v" id="sig">--</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <span><span class="label">▸ endpoints</span> // external</span>
+  </div>
+  <div class="panel-body">
+    <div class="link-grid">
+      <a class="link" href="https://github.com/Cesium-Lab" target="_blank">
+        <span class="arrow">↗</span>
+        <div class="title">github</div>
+        <div class="desc">cesium-lab</div>
+      </a>
+      <a class="link" href="#">
+        <span class="arrow">↗</span>
+        <div class="title">portfolio</div>
+        <div class="desc">writing &amp; projects</div>
+      </a>
+      <a class="link" href="#">
+        <span class="arrow">↗</span>
+        <div class="title">atlas</div>
+        <div class="desc">notes / reference</div>
+      </a>
+      <a class="link" href="mailto:#">
+        <span class="arrow">↗</span>
+        <div class="title">contact</div>
+        <div class="desc">email</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span><span class="footer-dot">◆</span> cesium-lab // colin</span>
+  <span>aero/astro ms // stanford</span>
+  <span><span class="footer-dot">◆</span> ground link established</span>
+</footer>
+
+</div>
+
+<script>
+  // starfield
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  let stars = [];
+  function resize() {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    stars = [];
+    const n = Math.floor((c.width * c.height) / 4000);
+    for (let i = 0; i < n; i++) {
+      stars.push({
+        x: Math.random() * c.width,
+        y: Math.random() * c.height,
+        r: Math.random() * 1.2 + 0.2,
+        a: Math.random() * 0.6 + 0.2,
+        s: Math.random() * 0.02 + 0.005,
+        p: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  function draw(t) {
+    ctx.clearRect(0, 0, c.width, c.height);
+    for (const s of stars) {
+      const tw = 0.5 + 0.5 * Math.sin(t * s.s + s.p);
+      ctx.fillStyle = `rgba(232, 234, 246, ${s.a * tw})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+
+  // host + telemetry
+  const host = window.location.hostname || 'localhost';
+  document.getElementById('host').textContent = host;
+  document.getElementById('ua').textContent = (navigator.platform || 'unknown').toLowerCase();
+  document.getElementById('res').textContent = `${screen.width}x${screen.height}`;
+  document.getElementById('tz').textContent = `utc${(-new Date().getTimezoneOffset() / 60).toFixed(1)}`;
+  const start = Date.now();
+  const tick = () => {
+    document.getElementById('ts').textContent = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const s = Math.floor((Date.now() - start) / 1000);
+    document.getElementById('up').textContent = `${s}s`;
+    const bars = '▁▂▃▄▅▆▇█';
+    let sig = '';
+    for (let i = 0; i < 8; i++) sig += bars[Math.floor(Math.random() * 6) + 2];
+    document.getElementById('sig').textContent = sig;
+  };
+  tick();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>

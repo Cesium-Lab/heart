@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telemetry Viz</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --error: #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { font-size: 1.25rem; font-weight: 600; }
+    #status { font-size: 0.8rem; color: var(--muted); }
+    #status.error { color: var(--error); }
+    #charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 1rem;
+    }
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .chart-card h2 {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .chart-wrap { position: relative; height: 220px; }
+    #empty {
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 2rem;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>// telemetry viz</h1>
+    <div id="status">connecting…</div>
+  </header>
+  <div id="empty">waiting for sensor data…</div>
+  <div id="charts"></div>
+
+  <script>
+    const POLL_MS = 2000;
+    const charts = {};
+    const container = document.getElementById("charts");
+    const emptyEl = document.getElementById("empty");
+    const statusEl = document.getElementById("status");
+
+    const chartDefaults = {
+      type: "line",
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            type: "linear",
+            title: { display: true, text: "timestamp", color: "#8b949e" },
+            ticks: { color: "#8b949e" },
+            grid: { color: "#21262d" },
+          },
+          y: {
+            title: { display: true, text: "value", color: "#8b949e" },
+            ticks: { color: "#8b949e" },
+            grid: { color: "#21262d" },
+          },
+        },
+      },
+    };
+
+    function makeCard(sensor) {
+      const card = document.createElement("div");
+      card.className = "chart-card";
+      card.id = `card-${sensor}`;
+      card.innerHTML = `<h2>${sensor}</h2><div class="chart-wrap"><canvas id="canvas-${sensor}"></canvas></div>`;
+      container.appendChild(card);
+      const ctx = card.querySelector("canvas").getContext("2d");
+      charts[sensor] = new Chart(ctx, {
+        ...chartDefaults,
+        data: {
+          datasets: [{
+            label: sensor,
+            data: [],
+            borderColor: "#58a6ff",
+            backgroundColor: "rgba(88,166,255,0.1)",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.1,
+          }],
+        },
+      });
+    }
+
+    function removeChart(sensor) {
+      if (charts[sensor]) {
+        charts[sensor].destroy();
+        delete charts[sensor];
+      }
+      const card = document.getElementById(`card-${sensor}`);
+      if (card) card.remove();
+    }
+
+    function updateCharts(data) {
+      const sensors = Object.keys(data);
+      if (sensors.length === 0) {
+        emptyEl.style.display = "block";
+        return;
+      }
+      emptyEl.style.display = "none";
+
+      for (const sensor of Object.keys(charts)) {
+        if (!data[sensor]) removeChart(sensor);
+      }
+
+      for (const sensor of sensors) {
+        const points = data[sensor].map(p => ({ x: p.timestamp, y: p.value }));
+        if (!charts[sensor]) makeCard(sensor);
+        charts[sensor].data.datasets[0].data = points;
+        charts[sensor].update("none");
+      }
+    }
+
+    async function fetchData() {
+      try {
+        const res = await fetch("/data");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        updateCharts(data);
+
+        const total = Object.values(data).reduce((n, pts) => n + pts.length, 0);
+        const sensors = Object.keys(data).length;
+        statusEl.className = "";
+        statusEl.textContent = `last poll: ${new Date().toLocaleTimeString()} · ${sensors} sensor(s) · ${total} point(s)`;
+      } catch (err) {
+        statusEl.className = "error";
+        statusEl.textContent = `error: ${err.message}`;
+      }
+    }
+
+    fetchData();
+    setInterval(fetchData, POLL_MS);
+  </script>
+</body>
+</html>

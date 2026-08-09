@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>about colin</title>
+<style>
+  :root {
+    --bg: #0f1116;
+    --panel: #181b24;
+    --line: #2a2f3d;
+    --fg: #e8eaf6;
+    --dim: #6b7299;
+    --c1: #4dd9ff;
+    --c2: #ff5edb;
+    --c3: #ffcb6b;
+    --c4: #6bff9e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: -apple-system, 'Inter', sans-serif; padding: 32px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  h1 { font-size: 28px; font-weight: 500; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .sub { color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+  .stat .k { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .stat .v { font-size: 24px; font-weight: 500; }
+  .stat .v.c1 { color: var(--c1); }
+  .stat .v.c2 { color: var(--c2); }
+  .stat .v.c3 { color: var(--c3); }
+  .stat .v.c4 { color: var(--c4); }
+  .stat .sm { font-size: 11px; color: var(--dim); margin-top: 4px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 20px; }
+  .panel h3 { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; }
+  /* skills as bars */
+  .skill { margin-bottom: 10px; }
+  .skill-head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .skill-head .name { color: var(--fg); }
+  .skill-head .yrs { color: var(--dim); font-family: 'JetBrains Mono', monospace; }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--c1); }
+  /* class progress */
+  .class { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+  .class .code { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); min-width: 70px; }
+  .class .nm { flex: 1; color: var(--fg); }
+  .class .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .class .dot.done { background: var(--c4); }
+  .class .dot.now { background: var(--c3); box-shadow: 0 0 6px var(--c3); }
+  .class .dot.next { background: var(--line); }
+  /* timeline */
+  .tl { position: relative; padding-left: 16px; }
+  .tl::before { content: ""; position: absolute; left: 4px; top: 4px; bottom: 4px; width: 1px; background: var(--line); }
+  .tl-item { position: relative; padding: 6px 0; font-size: 13px; }
+  .tl-item::before { content: ""; position: absolute; left: -16px; top: 12px; width: 9px; height: 9px; border-radius: 50%; background: var(--c1); border: 2px solid var(--bg); }
+  .tl-item .yr { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); }
+  .tl-item .org { font-weight: 500; }
+  /* radar */
+  .radar-wrap { display: flex; justify-content: center; align-items: center; min-height: 240px; }
+  /* tag cloud */
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 12px; color: var(--dim); }
+  .tag.hot { color: var(--c3); border-color: var(--c3); }
+  .tag.warm { color: var(--c1); border-color: rgba(77,217,255,0.4); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>colin // engineer card</h1>
+<div class="sub">▸ stanford aero/astro ms // 2027</div>
+
+<!-- top metrics row -->
+<div class="grid">
+  <div class="stat"><div class="k">gpa (ucla bs)</div><div class="v c1">3.99</div><div class="sm">aerospace eng</div></div>
+  <div class="stat"><div class="k">internships</div><div class="v c2">4</div><div class="sm">spacex, varda, vast, blue origin</div></div>
+  <div class="stat"><div class="k">active projects</div><div class="v c3">5</div><div class="sm">cesium-lab org</div></div>
+  <div class="stat"><div class="k">classes done</div><div class="v c4">6 / 18</div><div class="sm">on track</div></div>
+</div>
+
+<!-- skills + classes -->
+<div class="row">
+  <div class="panel">
+    <h3>▸ skills.txt</h3>
+    <div class="skill">
+      <div class="skill-head"><span class="name">embedded C / STM32</span><span class="yrs">5y</span></div>
+      <div class="bar"><div class="bar-fill" style="width: 92%; background: var(--c1);"></div></div>
+    </div>
+    <div class="skill">
+      <div class="skill-head"><span class="name">python (sims, gnc)</span><span class="yrs">6y</span></div>
+      <div class="bar"><div class="bar-fill" style="width: 95%; background: var(--c4);"></div></div>
+    </div>
+    <div class="skill">
+      <div class="skill-head"><span class="name">state estimation (kf/ekf)</span><span class="yrs">3y</span></div>
+      <div class="bar"><div class="bar-fill" style="width: 75%; background: var(--c2);"></div></div>
+    </div>
+    <div class="skill">
+      <div class="skill-head"><span class="name">pcb design</span><span class="yrs">3y</span></div>
+      <div class="bar"><div class="bar-fill" style="width: 70%; background: var(--c3);"></div></div>
+    </div>
+    <div class="skill">
+      <div class="skill-head"><span class="name">linux internals</span><span class="yrs">2y</span></div>
+      <div class="bar"><div class="bar-fill" style="width: 60%; background: var(--c1);"></div></div>
+    </div>
+    <div class="skill">
+      <div class="skill-head"><span class="name">control theory (lqr/mpc)</span><span class="yrs">1y</span></div>
+      <div class="bar"><div class="bar-fill" style="width: 45%; background: var(--c2);"></div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>▸ coursework.queue</h3>
+    <div class="class"><span class="dot done"></span><span class="code">AA 272</span><span class="nm">GPS</span></div>
+    <div class="class"><span class="dot done"></span><span class="code">AA 228</span><span class="nm">decision making under uncertainty</span></div>
+    <div class="class"><span class="dot done"></span><span class="code">AA 273</span><span class="nm">state estimation</span></div>
+    <div class="class"><span class="dot done"></span><span class="code">CS 140E</span><span class="nm">os design &amp; implementation</span></div>
+    <div class="class"><span class="dot now"></span><span class="code">AA 203</span><span class="nm">optimal &amp; learning-based control</span></div>
+    <div class="class"><span class="dot now"></span><span class="code">AA 212</span><span class="nm">advanced feedback control</span></div>
+    <div class="class"><span class="dot next"></span><span class="code">AA 274A</span><span class="nm">principles of robot autonomy</span></div>
+    <div class="class"><span class="dot next"></span><span class="code">EE 364A</span><span class="nm">convex optimization</span></div>
+  </div>
+</div>
+
+<!-- career timeline + skills radar -->
+<div class="row">
+  <div class="panel">
+    <h3>▸ trajectory</h3>
+    <div class="tl">
+      <div class="tl-item"><div class="yr">2022</div><div><span class="org">SpaceX</span> // avionics intern</div></div>
+      <div class="tl-item"><div class="yr">2023</div><div><span class="org">Varda Space</span> // integration &amp; test</div></div>
+      <div class="tl-item"><div class="yr">2024</div><div><span class="org">Vast Space</span> // flight software (haven-1)</div></div>
+      <div class="tl-item"><div class="yr">2025</div><div><span class="org">UCLA Rocket</span> // gnc/avionics lead</div></div>
+      <div class="tl-item"><div class="yr">2025+</div><div><span class="org">Stanford SSI</span> // cubesat gnc</div></div>
+      <div class="tl-item"><div class="yr">2026</div><div><span class="org">Blue Origin</span> // BE-4 engine control</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>▸ radar.svg</h3>
+    <div class="radar-wrap">
+      <svg viewBox="0 0 240 240" width="240" height="240">
+        <!-- grid -->
+        <g fill="none" stroke="#2a2f3d" stroke-width="1">
+          <polygon points="120,30 198,75 198,165 120,210 42,165 42,75"/>
+          <polygon points="120,52.5 178.5,86.25 178.5,153.75 120,187.5 61.5,153.75 61.5,86.25"/>
+          <polygon points="120,75 159,97.5 159,142.5 120,165 81,142.5 81,97.5"/>
+          <polygon points="120,97.5 139.5,108.75 139.5,131.25 120,142.5 100.5,131.25 100.5,108.75"/>
+          <line x1="120" y1="120" x2="120" y2="30"/>
+          <line x1="120" y1="120" x2="198" y2="75"/>
+          <line x1="120" y1="120" x2="198" y2="165"/>
+          <line x1="120" y1="120" x2="120" y2="210"/>
+          <line x1="120" y1="120" x2="42" y2="165"/>
+          <line x1="120" y1="120" x2="42" y2="75"/>
+        </g>
+        <!-- data: embedded, gnc, controls, hw, linux, math -->
+        <polygon points="120,38 192,80 188,158 120,200 50,158 48,82"
+                 fill="rgba(77,217,255,0.18)" stroke="#4dd9ff" stroke-width="1.5"/>
+        <!-- vertices -->
+        <g fill="#4dd9ff">
+          <circle cx="120" cy="38" r="3"/>
+          <circle cx="192" cy="80" r="3"/>
+          <circle cx="188" cy="158" r="3"/>
+          <circle cx="120" cy="200" r="3"/>
+          <circle cx="50" cy="158" r="3"/>
+          <circle cx="48" cy="82" r="3"/>
+        </g>
+        <!-- labels -->
+        <g font-family="JetBrains Mono, monospace" font-size="10" fill="#6b7299">
+          <text x="120" y="22" text-anchor="middle">embedded</text>
+          <text x="208" y="72" text-anchor="start">gnc</text>
+          <text x="208" y="172" text-anchor="start">hardware</text>
+          <text x="120" y="226" text-anchor="middle">controls</text>
+          <text x="32" y="172" text-anchor="end">linux</text>
+          <text x="32" y="72" text-anchor="end">math</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- tags -->
+<div class="panel">
+  <h3>▸ currently.into</h3>
+  <div class="tags">
+    <span class="tag hot">sensor fusion</span>
+    <span class="tag hot">freertos</span>
+    <span class="tag hot">stm32h743</span>
+    <span class="tag warm">mpc</span>
+    <span class="tag warm">cvxpy</span>
+    <span class="tag warm">nanopb</span>
+    <span class="tag">rust embedded</span>
+    <span class="tag">linux iio</span>
+    <span class="tag">git internals</span>
+    <span class="tag">opencv pose</span>
+    <span class="tag">compilers</span>
+    <span class="tag">rf protocols</span>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

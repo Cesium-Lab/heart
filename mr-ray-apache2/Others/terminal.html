@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cesium-lab // host</title>
+<style>
+  :root {
+    --bg: #0a0e0a;
+    --fg: #7dff7d;
+    --dim: #3a6a3a;
+    --accent: #c4ff5e;
+    --warn: #ffb86c;
+    --err: #ff5e5e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Consolas', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(rgba(125, 255, 125, 0.03) 50%, transparent 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; position: relative; z-index: 2; }
+  header { border-bottom: 1px solid var(--dim); padding-bottom: 12px; margin-bottom: 24px; }
+  .prompt { color: var(--accent); }
+  .dim { color: var(--dim); }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  h1 { font-size: 14px; font-weight: 400; display: inline; }
+  .blink { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  pre { white-space: pre-wrap; word-break: break-word; }
+  .block { margin: 18px 0; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; min-width: 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 2px 8px 2px 0; vertical-align: top; }
+  td.k { color: var(--dim); width: 140px; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--dim); }
+  a:hover { background: var(--dim); color: var(--bg); border-bottom-color: transparent; }
+  .ascii { color: var(--accent); font-size: 11px; line-height: 1.1; }
+  .status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: middle; box-shadow: 0 0 8px var(--accent); }
+  .status.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .status.err { background: var(--err); box-shadow: 0 0 8px var(--err); }
+  .glow { text-shadow: 0 0 4px currentColor; }
+  hr { border: 0; border-top: 1px dashed var(--dim); margin: 16px 0; }
+  .out { color: var(--fg); opacity: 0.85; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<pre class="ascii glow">
+  ┌─────────────────────────────────────────────────┐
+  │   ░█▀▀░█▀▀░█▀▀░▀█▀░█░█░█▄█░░░█░░░█▀█░█▀▄        │
+  │   ░█░░░█▀▀░▀▀█░░█░░█░█░█░█░░░█░░░█▀█░█▀▄        │
+  │   ░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░░░▀▀▀░▀░▀░▀▀░        │
+  └─────────────────────────────────────────────────┘
+</pre>
+
+<header>
+  <span class="prompt">colin@<span id="host">localhost</span></span><span class="dim">:</span><span class="accent">~</span><span class="dim">$ </span><h1>welcome.sh</h1><span class="blink">█</span>
+</header>
+
+<div class="block">
+  <pre class="out">> connection established
+> serving you a homepage instead of a 404
+> if you got here you probably know what you're doing</pre>
+</div>
+
+<hr>
+
+<div class="block">
+  <span class="prompt">$</span> <span class="accent">uname -a</span>
+  <pre class="out" id="uname">linux <span id="host2">unknown</span> ready and waiting</pre>
+</div>
+
+<div class="block">
+  <span class="prompt">$</span> <span class="accent">date</span>
+  <pre class="out" id="datetime">loading...</pre>
+</div>
+
+<div class="block">
+  <span class="prompt">$</span> <span class="accent">cat /etc/motd</span>
+<pre class="out">this box is part of the cesium-lab homelab.
+poke around if you have business here. otherwise,
+have a nice day and please don't break anything.</pre>
+</div>
+
+<hr>
+
+<div class="block">
+  <span class="prompt">$</span> <span class="accent">systemctl --user list-units --type=service</span>
+  <table style="margin-top: 8px;">
+    <tr><td><span class="status"></span></td><td class="k">ssh.service</td><td class="dim">port 22, key auth only</td></tr>
+    <tr><td><span class="status"></span></td><td class="k">http.service</td><td class="dim">you're looking at it</td></tr>
+    <tr><td><span class="status warn"></span></td><td class="k">jupyter.service</td><td class="dim">on demand, ask first</td></tr>
+    <tr><td><span class="status"></span></td><td class="k">syncthing.service</td><td class="dim">internal only</td></tr>
+    <tr><td><span class="status err"></span></td><td class="k">minecraft.service</td><td class="dim">stopped (rip)</td></tr>
+  </table>
+</div>
+
+<hr>
+
+<div class="row">
+  <div>
+    <span class="prompt">$</span> <span class="accent">whoami</span>
+    <table style="margin-top: 8px;">
+      <tr><td class="k">name</td><td>colin</td></tr>
+      <tr><td class="k">role</td><td>aero/astro ms @ stanford</td></tr>
+      <tr><td class="k">building</td><td>flight computers + gnc</td></tr>
+      <tr><td class="k">org</td><td>cesium-lab</td></tr>
+    </table>
+  </div>
+  <div>
+    <span class="prompt">$</span> <span class="accent">ls ~/links/</span>
+    <table style="margin-top: 8px;">
+      <tr><td class="k">→</td><td><a href="https://github.com/Cesium-Lab" target="_blank">github.com/cesium-lab</a></td></tr>
+      <tr><td class="k">→</td><td><a href="#">portfolio</a></td></tr>
+      <tr><td class="k">→</td><td><a href="#">notes / atlas</a></td></tr>
+      <tr><td class="k">→</td><td><a href="mailto:#">email</a></td></tr>
+    </table>
+  </div>
+</div>
+
+<hr>
+
+<div class="block">
+  <span class="prompt">$</span> <span class="accent">echo $CURRENT_PROJECTS</span>
+<pre class="out">brain (stm32 firmware) // gnc (6dof sim, estimation)
+nerves (linux/networking) // body (pcbs) // playground</pre>
+</div>
+
+<div class="block" style="margin-top: 32px;">
+  <span class="prompt">colin@<span class="host-inline">localhost</span></span><span class="dim">:</span><span class="accent">~</span><span class="dim">$</span> <span class="blink">█</span>
+</div>
+
+</div>
+
+<script>
+  const host = window.location.hostname || 'localhost';
+  document.querySelectorAll('#host, #host2').forEach(el => el.textContent = host);
+  document.querySelectorAll('.host-inline').forEach(el => el.textContent = host);
+  const fmt = () => {
+    const d = new Date();
+    document.getElementById('datetime').textContent = d.toString();
+  };
+  fmt();
+  setInterval(fmt, 1000);
+</script>
+</body>
+</html>

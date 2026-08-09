@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta property="og:title" content="I rotate things. You rotate things. We all spin spieen">
+<meta property="og:description" content="R. Or more formally: convert between quats, R, Euler, and axis-angle">
+<meta property="og:image" content="https://cesiumlab.net/rotation-viz/quaternions.png">
+<meta property="og:url" content="https://cesiumlab.net/rotation-viz/rotation-visualizer.html">
+<meta property="og:type" content="website">
+
+
+
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotation Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+:root {
+  --bg: #0a0c0f;
+  --surface: #111418;
+  --surface2: #181c22;
+  --border: #232830;
+  --border2: #2e3540;
+  --text: #c8d0da;
+  --text-dim: #5a6472;
+  --text-bright: #e8edf3;
+  --accent-x: #ff4d4d;
+  --accent-y: #4dff91;
+  --accent-z: #4d9fff;
+  --accent-w: #ffd24d;
+  --accent-main: #7eb8ff;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --radius: 4px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 340px 1fr 320px;
+  grid-template-areas:
+    "header header header"
+    "left   center right";
+  gap: 0;
+}
+
+/* ── Header ── */
+header {
+  grid-area: header;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface);
+}
+header h1 {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.header-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 2px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-y);
+  margin-left: auto;
+  box-shadow: 0 0 6px var(--accent-y);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+/* ── Panels ── */
+.panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  height: calc(100vh - 46px);
+}
+.panel:last-child { border-right: none; border-left: 1px solid var(--border); }
+
+.section {
+  border-bottom: 1px solid var(--border);
+}
+.section-header {
+  padding: 10px 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.section-header:hover { color: var(--text); }
+.section-content { padding: 14px 16px; }
+
+/* ── Source selector ── */
+.source-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.tab-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius);
+  transition: all 0.15s;
+}
+.tab-btn:hover { border-color: var(--border2); color: var(--text); }
+.tab-btn.active {
+  background: rgba(126,184,255,0.12);
+  border-color: var(--accent-main);
+  color: var(--accent-main);
+}
+
+/* ── Input groups ── */
+.input-group { margin-bottom: 12px; }
+.input-group label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.input-row {
+  display: flex;
+  gap: 5px;
+}
+.input-row input, .input-group input, .input-group select {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  width: 100%;
+  transition: border-color 0.15s;
+  outline: none;
+}
+.input-row input:focus, .input-group input:focus, .input-group select:focus {
+  border-color: var(--accent-main);
+}
+.input-row .comp-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.label-w { color: var(--accent-w); }
+.label-x { color: var(--accent-x); }
+.label-y { color: var(--accent-y); }
+.label-z { color: var(--accent-z); }
+
+/* Matrix grid */
+.matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.matrix-grid input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 4px;
+  text-align: center;
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.matrix-grid input:focus { border-color: var(--accent-main); }
+.matrix-row-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Convert button */
+.convert-btn {
+  width: 100%;
+  background: rgba(126,184,255,0.1);
+  border: 1px solid var(--accent-main);
+  color: var(--accent-main);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 9px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: var(--radius);
+  transition: all 0.15s;
+  margin-top: 4px;
+}
+.convert-btn:hover {
+  background: rgba(126,184,255,0.2);
+  box-shadow: 0 0 12px rgba(126,184,255,0.15);
+}
+.convert-btn:active { transform: scale(0.99); }
+
+/* ── Identity presets ── */
+.preset-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.preset-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: all 0.12s;
+}
+.preset-btn:hover { border-color: var(--border2); color: var(--text); }
+
+/* ── Output section ── */
+.output-block {
+  margin-bottom: 14px;
+}
+.output-block-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.output-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.output-comp {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  width: 18px;
+}
+.output-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-bright);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  flex: 1;
+  letter-spacing: 0.03em;
+}
+.mat-output {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+.mat-cell {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-bright);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 4px 5px;
+  text-align: center;
+  border-radius: var(--radius);
+}
+.warning-badge {
+  background: rgba(255,200,50,0.12);
+  border: 1px solid rgba(255,200,50,0.3);
+  color: #ffc832;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: var(--radius);
+  display: none;
+}
+.warning-badge.visible { display: inline-block; }
+.validity-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: var(--radius);
+}
+.valid { background: rgba(77,255,145,0.1); color: var(--accent-y); border: 1px solid rgba(77,255,145,0.2); }
+.invalid { background: rgba(255,77,77,0.1); color: var(--accent-x); border: 1px solid rgba(255,77,77,0.2); }
+
+/* ── 3D viewport ── */
+#viewport {
+  grid-area: center;
+  position: relative;
+  background: var(--bg);
+}
+#three-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.viewport-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.8;
+  pointer-events: none;
+}
+.viewport-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+}
+.view-btn {
+  background: rgba(17,20,24,0.85);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  backdrop-filter: blur(4px);
+  transition: all 0.12s;
+}
+.view-btn:hover { color: var(--text); border-color: var(--border2); }
+.animate-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(17,20,24,0.85);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  backdrop-filter: blur(4px);
+  transition: all 0.12s;
+}
+.animate-toggle.active { color: var(--accent-y); border-color: rgba(77,255,145,0.3); }
+
+/* ── Error display ── */
+.error-bar {
+  background: rgba(255,77,77,0.08);
+  border: 1px solid rgba(255,77,77,0.25);
+  color: var(--accent-x);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  margin: 10px 0;
+  display: none;
+}
+.error-bar.visible { display: block; }
+
+/* ── Right panel: Education ── */
+.math-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.9;
+  color: var(--text);
+}
+.math-block .eq-title {
+  color: var(--accent-main);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.math-block code {
+  color: var(--text-bright);
+  display: block;
+  font-size: 11px;
+}
+.math-block .dim { color: var(--text-dim); }
+.note {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+.caveat {
+  background: rgba(255,200,50,0.05);
+  border-left: 2px solid rgba(255,200,50,0.4);
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas: "header" "left" "center" "right";
+  }
+  .panel { height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+  #viewport { height: 340px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Rotation Visualizer</h1>
+  <span class="header-tag">SO(3)</span>
+  <span class="header-tag">Cesium-Lab</span>
+  <div class="status-dot" id="status-dot" title="Backend connected"></div>
+</header>
+
+<!-- ═══ LEFT: Input ═══════════════════════════════════════════════════════════ -->
+<div class="panel" id="left-panel">
+
+  <div class="section">
+    <div class="section-header">Input Source</div>
+    <div class="section-content">
+      <div class="source-tabs">
+        <button class="tab-btn active" onclick="setSource('quaternion')">Quaternion</button>
+        <button class="tab-btn" onclick="setSource('rotmat')">Rot Matrix</button>
+        <button class="tab-btn" onclick="setSource('euler')">Euler</button>
+        <button class="tab-btn" onclick="setSource('axis_angle')">Axis-Angle</button>
+      </div>
+
+      <div id="error-bar" class="error-bar"></div>
+
+      <!-- Quaternion -->
+      <div id="input-quaternion">
+        <div class="input-group">
+          <label>Convention</label>
+          <select id="q-convention">
+            <option value="scalar_first">Scalar-first [w, x, y, z]</option>
+            <option value="scalar_last">Scalar-last [x, y, z, w]</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Components</label>
+          <div class="input-row" style="margin-bottom:4px">
+            <span class="comp-label label-w">w</span>
+            <input type="number" id="q-w" value="1" step="0.001">
+          </div>
+          <div class="input-row" style="margin-bottom:4px">
+            <span class="comp-label label-x">x</span>
+            <input type="number" id="q-x" value="0" step="0.001">
+          </div>
+          <div class="input-row" style="margin-bottom:4px">
+            <span class="comp-label label-y">y</span>
+            <input type="number" id="q-y" value="0" step="0.001">
+          </div>
+          <div class="input-row">
+            <span class="comp-label label-z">z</span>
+            <input type="number" id="q-z" value="0" step="0.001">
+          </div>
+        </div>
+        <div class="input-group">
+          <label>Note: will auto-normalize</label>
+        </div>
+      </div>
+
+      <!-- Rotation Matrix -->
+      <div id="input-rotmat" style="display:none">
+        <div class="input-group">
+          <label>3×3 Matrix (row-major)</label>
+          <div class="matrix-grid" id="rotmat-inputs">
+            <input type="number" class="m" data-r="0" data-c="0" value="1" step="0.001">
+            <input type="number" class="m" data-r="0" data-c="1" value="0" step="0.001">
+            <input type="number" class="m" data-r="0" data-c="2" value="0" step="0.001">
+            <input type="number" class="m" data-r="1" data-c="0" value="0" step="0.001">
+            <input type="number" class="m" data-r="1" data-c="1" value="1" step="0.001">
+            <input type="number" class="m" data-r="1" data-c="2" value="0" step="0.001">
+            <input type="number" class="m" data-r="2" data-c="0" value="0" step="0.001">
+            <input type="number" class="m" data-r="2" data-c="1" value="0" step="0.001">
+            <input type="number" class="m" data-r="2" data-c="2" value="1" step="0.001">
+          </div>
+        </div>
+        <div class="input-group" style="color:var(--text-dim);font-size:11px;font-family:var(--mono)">
+          Rows = where body axes map to in world frame
+        </div>
+      </div>
+
+      <!-- Euler -->
+      <div id="input-euler" style="display:none">
+        <div class="input-group">
+          <label>Sequence (extrinsic)</label>
+          <select id="euler-seq">
+            <option value="ZYX">ZYX (aerospace, yaw-pitch-roll)</option>
+            <option value="XYZ">XYZ</option>
+            <option value="ZXZ">ZXZ (classical mechanics)</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Angles (degrees)</label>
+          <div class="input-row" style="margin-bottom:4px">
+            <span class="comp-label" id="e-label-1" style="color:var(--accent-z)">Z</span>
+            <input type="number" id="e-a1" value="0" step="1">
+          </div>
+          <div class="input-row" style="margin-bottom:4px">
+            <span class="comp-label" id="e-label-2" style="color:var(--accent-y)">Y</span>
+            <input type="number" id="e-a2" value="0" step="1">
+          </div>
+          <div class="input-row">
+            <span class="comp-label" id="e-label-3" style="color:var(--accent-x)">X</span>
+            <input type="number" id="e-a3" value="0" step="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Axis-Angle -->
+      <div id="input-axis_angle" style="display:none">
+        <div class="input-group">
+          <label>Rotation Axis (will normalize)</label>
+          <div class="input-row" style="margin-bottom:4px">
+            <span class="comp-label label-x">x</span>
+            <input type="number" id="aa-x" value="0" step="0.01">
+          </div>
+          <div class="input-row" style="margin-bottom:4px">
+            <span class="comp-label label-y">y</span>
+            <input type="number" id="aa-y" value="0" step="0.01">
+          </div>
+          <div class="input-row">
+            <span class="comp-label label-z">z</span>
+            <input type="number" id="aa-z" value="1" step="0.01">
+          </div>
+        </div>
+        <div class="input-group">
+          <label>Angle (degrees)</label>
+          <input type="number" id="aa-angle" value="0" step="1">
+        </div>
+      </div>
+
+      <button class="convert-btn" onclick="doConvert()">Convert →</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Presets</div>
+    <div class="section-content">
+      <div class="preset-row">
+        <button class="preset-btn" onclick="loadPreset('identity')">Identity</button>
+        <button class="preset-btn" onclick="loadPreset('rx90')">Rx 90°</button>
+        <button class="preset-btn" onclick="loadPreset('ry90')">Ry 90°</button>
+        <button class="preset-btn" onclick="loadPreset('rz90')">Rz 90°</button>
+        <button class="preset-btn" onclick="loadPreset('rx45')">Rx 45°</button>
+        <button class="preset-btn" onclick="loadPreset('gimbal')">Gimbal Lock</button>
+        <button class="preset-btn" onclick="loadPreset('euler321')">ZYX 30-45-60</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ CENTER: 3D Viewport ════════════════════════════════════════════════════ -->
+<div id="viewport">
+  <canvas id="three-canvas"></canvas>
+  <div class="viewport-overlay">
+    <div><span style="color:var(--accent-x)">■</span> X body axis</div>
+    <div><span style="color:var(--accent-y)">■</span> Y body axis</div>
+    <div><span style="color:var(--accent-z)">■</span> Z body axis</div>
+    <div style="margin-top:6px; color: #3a4550">─────────</div>
+    <div style="color:#3a4550">drag to orbit</div>
+    <div style="color:#3a4550">scroll to zoom</div>
+  </div>
+  <button class="animate-toggle" id="anim-btn" onclick="toggleAnimate()">⟳ animate</button>
+  <div class="viewport-controls">
+    <button class="view-btn" onclick="resetCamera()">reset view</button>
+    <button class="view-btn" onclick="setCameraTop()">top</button>
+    <button class="view-btn" onclick="setCameraFront()">front</button>
+  </div>
+</div>
+
+<!-- ═══ RIGHT: Output + Education ════════════════════════════════════════════= -->
+<div class="panel" id="right-panel">
+
+  <div class="section">
+    <div class="section-header">Output</div>
+    <div class="section-content">
+
+      <div class="output-block">
+        <div class="output-block-title">Quaternion [w, x, y, z]</div>
+        <div class="output-row">
+          <span class="output-comp label-w">w</span>
+          <span class="output-val" id="out-qw">1.0000</span>
+        </div>
+        <div class="output-row">
+          <span class="output-comp label-x">x</span>
+          <span class="output-val" id="out-qx">0.0000</span>
+        </div>
+        <div class="output-row">
+          <span class="output-comp label-y">y</span>
+          <span class="output-val" id="out-qy">0.0000</span>
+        </div>
+        <div class="output-row">
+          <span class="output-comp label-z">z</span>
+          <span class="output-val" id="out-qz">0.0000</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:5px">
+          [x,y,z,w] = <span id="out-q-last" style="color:var(--text)">0, 0, 0, 1</span>
+        </div>
+      </div>
+
+      <div class="output-block">
+        <div class="output-block-title">Rotation Matrix</div>
+        <div class="mat-output" id="out-mat">
+          <span class="mat-cell">1</span><span class="mat-cell">0</span><span class="mat-cell">0</span>
+          <span class="mat-cell">0</span><span class="mat-cell">1</span><span class="mat-cell">0</span>
+          <span class="mat-cell">0</span><span class="mat-cell">0</span><span class="mat-cell">1</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+          <span id="out-valid" class="validity-badge valid">✓ SO(3)</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">det = <span id="out-det">1.000</span></span>
+        </div>
+      </div>
+
+      <div class="output-block">
+        <div class="output-block-title">Euler ZYX (yaw-pitch-roll)</div>
+        <div class="output-row">
+          <span class="output-comp label-z">Z</span>
+          <span class="output-val" id="out-ez">0.0°</span>
+        </div>
+        <div class="output-row">
+          <span class="output-comp label-y">Y</span>
+          <span class="output-val" id="out-ey">0.0°</span>
+        </div>
+        <div class="output-row">
+          <span class="output-comp label-x">X</span>
+          <span class="output-val" id="out-ex">0.0°</span>
+        </div>
+        <span class="warning-badge" id="out-gimbal">⚠ gimbal lock</span>
+      </div>
+
+      <div class="output-block">
+        <div class="output-block-title">Axis-Angle</div>
+        <div class="output-row">
+          <span class="output-comp label-x">x</span>
+          <span class="output-val" id="out-ax">0.0000</span>
+        </div>
+        <div class="output-row">
+          <span class="output-comp label-y">y</span>
+          <span class="output-val" id="out-ay">0.0000</span>
+        </div>
+        <div class="output-row">
+          <span class="output-comp label-z">z</span>
+          <span class="output-val" id="out-az">1.0000</span>
+        </div>
+        <div class="output-row">
+          <span class="output-comp" style="color:var(--text-dim);font-size:10px">θ</span>
+          <span class="output-val" id="out-aa">0.00°</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header" onclick="toggleEdu()">Reference <span id="edu-arrow">▼</span></div>
+    <div id="edu-content" class="section-content">
+
+      <p class="note">A rotation is a linear map R: ℝ³ → ℝ³ preserving length and orientation. The set of all valid rotations forms the group SO(3) — Special Orthogonal group in 3D.</p>
+
+      <div class="math-block">
+        <div class="eq-title">SO(3) Constraints</div>
+        <code>R·Rᵀ = I   (orthonormal columns)</code>
+        <code>det(R) = +1   (orientation-preserving)</code>
+        <span class="dim">9 parameters, 3 DOF (6 constraints)</span>
+      </div>
+
+      <div class="math-block">
+        <div class="eq-title">Quaternion → Rotation Matrix</div>
+        <code>q = [w, x, y, z], ‖q‖ = 1</code>
+        <code>R₀₀ = 1 - 2(y²+z²)</code>
+        <code>R₀₁ = 2(xy - wz)</code>
+        <code>R₀₂ = 2(xz + wy)  ...</code>
+        <span class="dim">4 params, 3 DOF (unit constraint)</span>
+        <div class="caveat">Antipodal: q and -q represent the same rotation. Canonical form: w ≥ 0.</div>
+      </div>
+
+      <div class="math-block">
+        <div class="eq-title">Rodrigues' Formula (axis-angle)</div>
+        <code>R = I + sin θ·[k]× + (1-cos θ)·[k]×²</code>
+        <code>[k]× = skew-symmetric matrix of axis k</code>
+        <span class="dim">Minimal 3-param rep: θ·k̂</span>
+        <div class="caveat">Singularity at θ = 0 (axis undefined) and θ = π (two antipodal axes).</div>
+      </div>
+
+      <div class="math-block">
+        <div class="eq-title">Euler ZYX (aerospace)</div>
+        <code>R = Rz(ψ) · Ry(θ) · Rx(φ)</code>
+        <code>ψ = yaw, θ = pitch, φ = roll</code>
+        <span class="dim">3 params, but NOT injective</span>
+        <div class="caveat">Gimbal lock at θ = ±90°: rank of Jacobian drops, one DOF lost. This is why spacecraft use quaternions.</div>
+      </div>
+
+      <div class="math-block">
+        <div class="eq-title">Quaternion Composition</div>
+        <code>q₁₂ = q₁ ⊗ q₂  (Hamilton product)</code>
+        <code>  = [w₁w₂ - v₁·v₂,</code>
+        <code>     w₁v₂ + w₂v₁ + v₁×v₂]</code>
+        <span class="dim">Equivalent to R₁ · R₂</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// Config
+// ═══════════════════════════════════════════════════════════════════
+const API_BASE = "";
+
+let currentSource = "quaternion";
+let lastResult = null;
+let animating = false;
+let animAngle = 0;
+
+// ═══════════════════════════════════════════════════════════════════
+// Three.js setup
+// ═══════════════════════════════════════════════════════════════════
+const canvas = document.getElementById("three-canvas");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x0a0c0f, 1);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+camera.position.set(2.5, 1.8, 2.5);
+camera.lookAt(0, 0, 0);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dLight.position.set(3, 4, 3);
+scene.add(dLight);
+
+// World frame (thin, dimmed)
+const worldArrows = new THREE.Group();
+const mkWorldArrow = (dir, color) => {
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.18 });
+  const geo = new THREE.CylinderGeometry(0.012, 0.012, 1.3, 8);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+  mesh.position.copy(dir.clone().normalize().multiplyScalar(0.65));
+  worldArrows.add(mesh);
+};
+mkWorldArrow(new THREE.Vector3(1,0,0), 0xff4d4d);
+mkWorldArrow(new THREE.Vector3(0,1,0), 0x4dff91);
+mkWorldArrow(new THREE.Vector3(0,0,1), 0x4d9fff);
+scene.add(worldArrows);
+
+// Grid
+const grid = new THREE.GridHelper(4, 20, 0x1e2530, 0x151a20);
+scene.add(grid);
+
+// Body frame (the rotating thing)
+const bodyGroup = new THREE.Group();
+
+function makeArrow(dir, color) {
+  const g = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.03, 1.2, 12),
+    new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.3 })
+  );
+  shaft.position.y = 0.6;
+  const head = new THREE.Mesh(
+    new THREE.ConeGeometry(0.07, 0.22, 12),
+    new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.3 })
+  );
+  head.position.y = 1.31;
+  g.add(shaft); g.add(head);
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+  return g;
+}
+const xArrow = makeArrow(new THREE.Vector3(1,0,0), 0xff4d4d);
+const yArrow = makeArrow(new THREE.Vector3(0,1,0), 0x4dff91);
+const zArrow = makeArrow(new THREE.Vector3(0,0,1), 0x4d9fff);
+bodyGroup.add(xArrow, yArrow, zArrow);
+
+// Small cube at origin as body reference
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(0.18, 0.18, 0.18),
+  new THREE.MeshPhongMaterial({ color: 0x7eb8ff, emissive: 0x2a4870, wireframe: false })
+);
+bodyGroup.add(cube);
+scene.add(bodyGroup);
+
+// ── Orbit controls (manual implementation, no import) ──
+let isPointerDown = false;
+let lastPointer = { x: 0, y: 0 };
+let spherical = { theta: Math.PI/4, phi: Math.PI/4, radius: 4.5 };
+
+function updateCamera() {
+  const { theta, phi, radius } = spherical;
+  camera.position.set(
+    radius * Math.sin(phi) * Math.sin(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.cos(theta)
+  );
+  camera.lookAt(0, 0, 0);
+}
+updateCamera();
+
+canvas.addEventListener("pointerdown", e => { isPointerDown = true; lastPointer = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener("pointerup", () => isPointerDown = false);
+canvas.addEventListener("pointermove", e => {
+  if (!isPointerDown) return;
+  const dx = e.clientX - lastPointer.x;
+  const dy = e.clientY - lastPointer.y;
+  spherical.theta -= dx * 0.006;
+  spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, spherical.phi + dy * 0.006));
+  lastPointer = { x: e.clientX, y: e.clientY };
+  updateCamera();
+});
+canvas.addEventListener("wheel", e => {
+  spherical.radius = Math.max(1.5, Math.min(10, spherical.radius + e.deltaY * 0.005));
+  updateCamera();
+});
+
+function resetCamera() { spherical = { theta: Math.PI/4, phi: Math.PI/4, radius: 4.5 }; updateCamera(); }
+function setCameraTop() { spherical.phi = 0.08; updateCamera(); }
+function setCameraFront() { spherical = { theta: 0, phi: Math.PI/2, radius: 4.5 }; updateCamera(); }
+
+// ── Resize ──
+function resize() {
+  const vp = document.getElementById("viewport");
+  const w = vp.clientWidth, h = vp.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+resize();
+
+// ── Apply rotation matrix to body group ──
+function applyRotation(mat3) {
+  const m = new THREE.Matrix4();
+  m.set(
+    mat3[0][0], mat3[0][1], mat3[0][2], 0,
+    mat3[1][0], mat3[1][1], mat3[1][2], 0,
+    mat3[2][0], mat3[2][1], mat3[2][2], 0,
+    0, 0, 0, 1
+  );
+  bodyGroup.setRotationFromMatrix(m);
+}
+
+// ── Render loop ──
+function animate() {
+  requestAnimationFrame(animate);
+  if (animating) {
+    animAngle += 0.008;
+    const q = new THREE.Quaternion();
+    q.setFromAxisAngle(new THREE.Vector3(0.408, 0.816, 0.408).normalize(), animAngle);
+    bodyGroup.setRotationFromQuaternion(q);
+  }
+  renderer.render(scene, camera);
+}
+animate();
+
+function toggleAnimate() {
+  animating = !animating;
+  const btn = document.getElementById("anim-btn");
+  btn.classList.toggle("active", animating);
+  if (!animating && lastResult) applyRotation(lastResult.rotation_matrix);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UI Logic
+// ═══════════════════════════════════════════════════════════════════
+
+function setSource(s) {
+  currentSource = s;
+  ["quaternion","rotmat","euler","axis_angle"].forEach(id => {
+    document.getElementById(`input-${id}`).style.display = id === s ? "" : "none";
+  });
+  document.querySelectorAll(".tab-btn").forEach((btn, i) => {
+    btn.classList.toggle("active", btn.getAttribute("onclick").includes(s));
+  });
+  // Update euler labels
+  if (s === "euler") updateEulerLabels();
+}
+
+document.getElementById("euler-seq").addEventListener("change", updateEulerLabels);
+
+function updateEulerLabels() {
+  const seq = document.getElementById("euler-seq").value;
+  const colors = { X: "var(--accent-x)", Y: "var(--accent-y)", Z: "var(--accent-z)" };
+  [0,1,2].forEach(i => {
+    const lbl = document.getElementById(`e-label-${i+1}`);
+    lbl.textContent = seq[i];
+    lbl.style.color = colors[seq[i]];
+  });
+}
+
+function showError(msg) {
+  const bar = document.getElementById("error-bar");
+  bar.textContent = msg;
+  bar.classList.add("visible");
+}
+function clearError() {
+  document.getElementById("error-bar").classList.remove("visible");
+}
+
+async function doConvert() {
+  clearError();
+  let payload = { source: currentSource };
+
+  if (currentSource === "quaternion") {
+    const sf = document.getElementById("q-convention").value === "scalar_first";
+    const w = parseFloat(document.getElementById("q-w").value);
+    const x = parseFloat(document.getElementById("q-x").value);
+    const y = parseFloat(document.getElementById("q-y").value);
+    const z = parseFloat(document.getElementById("q-z").value);
+    payload.quaternion = sf ? [w,x,y,z] : [x,y,z,w];
+    payload.scalar_first = sf;
+
+  } else if (currentSource === "rotmat") {
+    const inputs = document.querySelectorAll(".m");
+    const mat = [[0,0,0],[0,0,0],[0,0,0]];
+    inputs.forEach(inp => {
+      mat[parseInt(inp.dataset.r)][parseInt(inp.dataset.c)] = parseFloat(inp.value) || 0;
+    });
+    payload.matrix = mat;
+
+  } else if (currentSource === "euler") {
+    const seq = document.getElementById("euler-seq").value;
+    payload.angles_deg = [
+      parseFloat(document.getElementById("e-a1").value),
+      parseFloat(document.getElementById("e-a2").value),
+      parseFloat(document.getElementById("e-a3").value)
+    ];
+    payload.sequence = seq;
+
+  } else if (currentSource === "axis_angle") {
+    payload.axis = [
+      parseFloat(document.getElementById("aa-x").value),
+      parseFloat(document.getElementById("aa-y").value),
+      parseFloat(document.getElementById("aa-z").value)
+    ];
+    payload.angle_deg = parseFloat(document.getElementById("aa-angle").value);
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/rotation/convert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.error) { showError(data.error); return; }
+    lastResult = data;
+    updateOutputs(data);
+    if (!animating) applyRotation(data.rotation_matrix);
+  } catch (e) {
+    showError(`Backend unreachable: ${e.message}. Is app.py running on port 5001?`);
+    setStatusDot(false);
+  }
+}
+
+function fmt(v, digits=4) {
+  return parseFloat(v).toFixed(digits);
+}
+
+function updateOutputs(d) {
+  const q = d.quaternion_scalar_first;
+  document.getElementById("out-qw").textContent = fmt(q[0]);
+  document.getElementById("out-qx").textContent = fmt(q[1]);
+  document.getElementById("out-qy").textContent = fmt(q[2]);
+  document.getElementById("out-qz").textContent = fmt(q[3]);
+  const ql = d.quaternion_scalar_last;
+  document.getElementById("out-q-last").textContent = [ql[0],ql[1],ql[2],ql[3]].map(v=>fmt(v,4)).join(", ");
+
+  const mat = d.rotation_matrix;
+  const cells = document.querySelectorAll("#out-mat .mat-cell");
+  mat.flat().forEach((v,i) => cells[i].textContent = fmt(v,3));
+
+  const vb = document.getElementById("out-valid");
+  vb.textContent = d.is_valid_rotation ? "✓ SO(3)" : "✗ not SO(3)";
+  vb.className = "validity-badge " + (d.is_valid_rotation ? "valid" : "invalid");
+  document.getElementById("out-det").textContent = fmt(d.det, 4);
+
+  const ez = d.euler_ZYX_deg;
+  document.getElementById("out-ez").textContent = fmt(ez[0],2) + "°";
+  document.getElementById("out-ey").textContent = fmt(ez[1],2) + "°";
+  document.getElementById("out-ex").textContent = fmt(ez[2],2) + "°";
+  document.getElementById("out-gimbal").classList.toggle("visible", d.euler_ZYX_gimbal_lock);
+
+  const aa = d.axis_angle;
+  document.getElementById("out-ax").textContent = fmt(aa.axis[0]);
+  document.getElementById("out-ay").textContent = fmt(aa.axis[1]);
+  document.getElementById("out-az").textContent = fmt(aa.axis[2]);
+  document.getElementById("out-aa").textContent = fmt(aa.angle_deg,2) + "°";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Presets
+// ═══════════════════════════════════════════════════════════════════
+const PRESETS = {
+  identity:  { source:"quaternion", data:{ w:1,x:0,y:0,z:0 }},
+  rx90:      { source:"axis_angle", data:{ axis:[1,0,0], angle:90 }},
+  ry90:      { source:"axis_angle", data:{ axis:[0,1,0], angle:90 }},
+  rz90:      { source:"axis_angle", data:{ axis:[0,0,1], angle:90 }},
+  rx45:      { source:"axis_angle", data:{ axis:[1,0,0], angle:45 }},
+  gimbal:    { source:"euler", data:{ angles:[0,90,0], seq:"ZYX" }},
+  euler321:  { source:"euler", data:{ angles:[30,45,60], seq:"ZYX" }},
+};
+
+function loadPreset(name) {
+  const p = PRESETS[name];
+  if (p.source === "quaternion") {
+    setSource("quaternion");
+    document.getElementById("q-w").value = p.data.w;
+    document.getElementById("q-x").value = p.data.x;
+    document.getElementById("q-y").value = p.data.y;
+    document.getElementById("q-z").value = p.data.z;
+    document.getElementById("q-convention").value = "scalar_first";
+  } else if (p.source === "axis_angle") {
+    setSource("axis_angle");
+    document.getElementById("aa-x").value = p.data.axis[0];
+    document.getElementById("aa-y").value = p.data.axis[1];
+    document.getElementById("aa-z").value = p.data.axis[2];
+    document.getElementById("aa-angle").value = p.data.angle;
+  } else if (p.source === "euler") {
+    setSource("euler");
+    document.getElementById("euler-seq").value = p.data.seq;
+    document.getElementById("e-a1").value = p.data.angles[0];
+    document.getElementById("e-a2").value = p.data.angles[1];
+    document.getElementById("e-a3").value = p.data.angles[2];
+    updateEulerLabels();
+  }
+  doConvert();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Status check
+// ═══════════════════════════════════════════════════════════════════
+async function checkBackend() {
+  try {
+    const res = await fetch(`${API_BASE}/api/rotation/health`);
+    const ok = res.ok;
+    setStatusDot(ok);
+    return ok;
+  } catch { setStatusDot(false); return false; }
+}
+function setStatusDot(ok) {
+  const dot = document.getElementById("status-dot");
+  dot.style.background = ok ? "var(--accent-y)" : "var(--accent-x)";
+  dot.style.boxShadow = ok ? "0 0 6px var(--accent-y)" : "0 0 6px var(--accent-x)";
+  dot.title = ok ? "Backend connected" : "Backend offline";
+}
+
+function toggleEdu() {
+  const c = document.getElementById("edu-content");
+  const a = document.getElementById("edu-arrow");
+  const visible = c.style.display !== "none";
+  c.style.display = visible ? "none" : "";
+  a.textContent = visible ? "▶" : "▼";
+}
+
+// ── Init ──
+checkBackend().then(ok => {
+  if (ok) doConvert();
+});
+
+// Allow Enter to trigger convert
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) doConvert();
+});
+</script>
+</body>
+</html>

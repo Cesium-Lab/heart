@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>system // dashboard</title>
+<style>
+  :root {
+    --bg: #0a0e0a;
+    --panel: #0f1410;
+    --line: #1f2a1f;
+    --fg: #d4f5d4;
+    --dim: #4a6b4a;
+    --acc: #7dff7d;
+    --warn: #ffcb6b;
+    --err: #ff6b6b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; padding: 24px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 18px; font-weight: 500; color: var(--acc); margin-bottom: 4px; }
+  .sub { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 14px; }
+  .panel h3 { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 400; margin-bottom: 10px; }
+  /* gauge style */
+  .gauge { text-align: center; }
+  .gauge .label { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .gauge .val { font-size: 22px; font-weight: 500; color: var(--acc); }
+  .gauge .val.warn { color: var(--warn); }
+  .gauge .val.err { color: var(--err); }
+  .gauge .unit { font-size: 11px; color: var(--dim); }
+  .gauge .bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .gauge .bar > div { height: 100%; background: var(--acc); }
+  /* ascii bar */
+  .ascii-row { display: flex; align-items: center; gap: 10px; font-size: 12px; padding: 3px 0; }
+  .ascii-row .lbl { color: var(--dim); width: 70px; }
+  .ascii-row .bar-ascii { color: var(--acc); flex: 1; }
+  .ascii-row .pct { color: var(--fg); width: 40px; text-align: right; }
+  /* sparkline area */
+  .spark { display: flex; align-items: end; gap: 2px; height: 40px; margin-top: 8px; }
+  .spark div { flex: 1; background: var(--acc); opacity: 0.7; min-height: 2px; border-radius: 1px; }
+  /* network log */
+  .log { font-size: 11px; line-height: 1.6; max-height: 180px; overflow: hidden; }
+  .log .l { color: var(--dim); }
+  .log .l .t { color: var(--dim); margin-right: 8px; }
+  .log .l .ok { color: var(--acc); }
+  .log .l .warn { color: var(--warn); }
+  /* disk wheel */
+  .wheel { display: flex; align-items: center; gap: 14px; }
+  .wheel-svg { flex-shrink: 0; }
+  .wheel-legend { font-size: 11px; }
+  .wheel-legend .item { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+  .wheel-legend .sw { width: 10px; height: 10px; border-radius: 2px; }
+  /* services */
+  .svc { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .svc:last-child { border-bottom: none; }
+  .svc .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 8px; }
+  .svc .dot.up { background: var(--acc); box-shadow: 0 0 6px var(--acc); }
+  .svc .dot.warn { background: var(--warn); }
+  .svc .dot.down { background: var(--err); opacity: 0.5; }
+  .svc .meta { color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>// system telemetry (this is just like, not actual data but is kinda cool to see)</h1>
+<div class="sub">▸ host: hyperion.lan // last update: live</div>
+
+<!-- top gauges -->
+<div class="grid">
+  <div class="panel gauge">
+    <div class="label">cpu</div>
+    <div class="val">23<span class="unit">%</span></div>
+    <div class="bar"><div style="width: 23%;"></div></div>
+  </div>
+  <div class="panel gauge">
+    <div class="label">memory</div>
+    <div class="val warn">67<span class="unit">%</span></div>
+    <div class="bar"><div style="width: 67%; background: var(--warn);"></div></div>
+  </div>
+  <div class="panel gauge">
+    <div class="label">disk</div>
+    <div class="val">41<span class="unit">%</span></div>
+    <div class="bar"><div style="width: 41%;"></div></div>
+  </div>
+  <div class="panel gauge">
+    <div class="label">load avg</div>
+    <div class="val">0.42</div>
+    <div class="bar"><div style="width: 14%;"></div></div>
+  </div>
+</div>
+
+<!-- middle row -->
+<div class="row2">
+  <div class="panel">
+    <h3>▸ cpu cores // per-core usage</h3>
+    <div class="ascii-row"><span class="lbl">core 0</span><span class="bar-ascii">████████░░░░░░░░░░░░</span><span class="pct">40%</span></div>
+    <div class="ascii-row"><span class="lbl">core 1</span><span class="bar-ascii">███░░░░░░░░░░░░░░░░░</span><span class="pct">15%</span></div>
+    <div class="ascii-row"><span class="lbl">core 2</span><span class="bar-ascii">██████░░░░░░░░░░░░░░</span><span class="pct">30%</span></div>
+    <div class="ascii-row"><span class="lbl">core 3</span><span class="bar-ascii">█░░░░░░░░░░░░░░░░░░░</span><span class="pct">5%</span></div>
+    <div class="ascii-row"><span class="lbl">core 4</span><span class="bar-ascii">██████████░░░░░░░░░░</span><span class="pct">50%</span></div>
+    <div class="ascii-row"><span class="lbl">core 5</span><span class="bar-ascii">████░░░░░░░░░░░░░░░░</span><span class="pct">20%</span></div>
+    <div class="ascii-row"><span class="lbl">core 6</span><span class="bar-ascii">██░░░░░░░░░░░░░░░░░░</span><span class="pct">10%</span></div>
+    <div class="ascii-row"><span class="lbl">core 7</span><span class="bar-ascii">███████░░░░░░░░░░░░░</span><span class="pct">35%</span></div>
+  </div>
+
+  <div class="panel">
+    <h3>▸ network throughput // 60s</h3>
+    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+      <span style="color: var(--acc);">↓ rx: 1.2 MB/s</span>
+      <span style="color: var(--warn);">↑ tx: 340 KB/s</span>
+    </div>
+    <div class="spark">
+      <div style="height: 30%;"></div><div style="height: 45%;"></div><div style="height: 38%;"></div>
+      <div style="height: 52%;"></div><div style="height: 48%;"></div><div style="height: 65%;"></div>
+      <div style="height: 70%;"></div><div style="height: 62%;"></div><div style="height: 55%;"></div>
+      <div style="height: 78%;"></div><div style="height: 85%;"></div><div style="height: 72%;"></div>
+      <div style="height: 60%;"></div><div style="height: 68%;"></div><div style="height: 55%;"></div>
+      <div style="height: 42%;"></div><div style="height: 38%;"></div><div style="height: 48%;"></div>
+      <div style="height: 55%;"></div><div style="height: 62%;"></div><div style="height: 70%;"></div>
+      <div style="height: 58%;"></div><div style="height: 50%;"></div><div style="height: 45%;"></div>
+      <div style="height: 38%;"></div><div style="height: 42%;"></div><div style="height: 48%;"></div>
+      <div style="height: 55%;"></div><div style="height: 62%;"></div><div style="height: 68%;"></div>
+    </div>
+    <h3 style="margin-top: 14px;">▸ active connections</h3>
+    <div style="font-size: 12px; color: var(--fg);">
+      established <span style="color: var(--acc); float: right;">12</span><br>
+      listen <span style="color: var(--acc); float: right;">8</span><br>
+      time_wait <span style="color: var(--dim); float: right;">3</span>
+    </div>
+  </div>
+</div>
+
+<!-- bottom row -->
+<div class="row2">
+  <div class="panel">
+    <h3>▸ disk usage // /home breakdown</h3>
+    <div class="wheel">
+      <svg class="wheel-svg" width="120" height="120" viewBox="0 0 120 120">
+        <!-- donut chart, hand-computed arcs -->
+        <circle cx="60" cy="60" r="48" fill="none" stroke="#1f2a1f" stroke-width="18"/>
+        <!-- code: 38% -->
+        <circle cx="60" cy="60" r="48" fill="none" stroke="#7dff7d" stroke-width="18"
+                stroke-dasharray="114.6 301.6" transform="rotate(-90 60 60)"/>
+        <!-- data: 27% -->
+        <circle cx="60" cy="60" r="48" fill="none" stroke="#4dd9ff" stroke-width="18"
+                stroke-dasharray="81.4 301.6" stroke-dashoffset="-114.6" transform="rotate(-90 60 60)"/>
+        <!-- docs: 18% -->
+        <circle cx="60" cy="60" r="48" fill="none" stroke="#ffcb6b" stroke-width="18"
+                stroke-dasharray="54.3 301.6" stroke-dashoffset="-196" transform="rotate(-90 60 60)"/>
+        <!-- other: 17% -->
+        <circle cx="60" cy="60" r="48" fill="none" stroke="#6b7299" stroke-width="18"
+                stroke-dasharray="51.3 301.6" stroke-dashoffset="-250.3" transform="rotate(-90 60 60)"/>
+        <text x="60" y="58" text-anchor="middle" font-family="JetBrains Mono" font-size="16" fill="#d4f5d4" font-weight="500">142</text>
+        <text x="60" y="72" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#4a6b4a">GB used</text>
+      </svg>
+      <div class="wheel-legend">
+        <div class="item"><span class="sw" style="background: #7dff7d;"></span><span>code (54 GB)</span></div>
+        <div class="item"><span class="sw" style="background: #4dd9ff;"></span><span>data (38 GB)</span></div>
+        <div class="item"><span class="sw" style="background: #ffcb6b;"></span><span>docs (26 GB)</span></div>
+        <div class="item"><span class="sw" style="background: #6b7299;"></span><span>other (24 GB)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>▸ services</h3>
+    <div class="svc"><span><span class="dot up"></span>sshd</span><span class="meta">:22 // up 14d</span></div>
+    <div class="svc"><span><span class="dot up"></span>nginx</span><span class="meta">:80 :443 // up 14d</span></div>
+    <div class="svc"><span><span class="dot up"></span>jupyterhub</span><span class="meta">:8888 // up 2h</span></div>
+    <div class="svc"><span><span class="dot warn"></span>gitea</span><span class="meta">:3000 // restarting</span></div>
+    <div class="svc"><span><span class="dot up"></span>syncthing</span><span class="meta">:8384 // up 14d</span></div>
+    <div class="svc"><span><span class="dot down"></span>postgres</span><span class="meta">:5432 // stopped</span></div>
+  </div>
+</div>
+
+<!-- log feed -->
+<div class="panel">
+  <h3>▸ recent.log</h3>
+  <div class="log">
+    <div class="l"><span class="t">12:42:18</span><span class="ok">[OK]</span> sshd: accepted publickey for colin from 192.168.1.42</div>
+    <div class="l"><span class="t">12:41:55</span><span class="ok">[OK]</span> nginx: GET / 200 (3.2 ms)</div>
+    <div class="l"><span class="t">12:41:30</span><span class="ok">[OK]</span> systemd: gitea.service: restarted after timeout</div>
+    <div class="l"><span class="t">12:40:12</span><span class="warn">[WARN]</span> kernel: high memory pressure event, 67% used</div>
+    <div class="l"><span class="t">12:38:04</span><span class="ok">[OK]</span> syncthing: folder default sync complete</div>
+    <div class="l"><span class="t">12:35:21</span><span class="ok">[OK]</span> nginx: GET /api/health 200 (1.1 ms)</div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

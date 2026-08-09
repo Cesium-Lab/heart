@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Status</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c0f;
+  --surface: #111418;
+  --border: #232830;
+  --text: #c8d0da;
+  --text-dim: #5a6472;
+  --text-bright: #e8edf3;
+  --green: #4dff91;
+  --red: #ff4d4d;
+  --yellow: #ffd24d;
+  --mono: 'IBM Plex Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 32px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+  transition: all 0.12s;
+}
+.refresh-btn:hover { color: var(--text); border-color: #3a4550; }
+
+.api-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  transition: border-color 0.2s;
+}
+.api-card.up   { border-left: 2px solid var(--green); }
+.api-card.down { border-left: 2px solid var(--red); }
+.api-card.pending { border-left: 2px solid var(--border); }
+
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot.up      { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot.down    { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+.dot.pending { background: var(--text-dim); animation: blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.api-info { min-width: 0; }
+.api-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 3px;
+}
+.api-url {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.api-meta { text-align: right; }
+.api-status {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.up .api-status   { color: var(--green); }
+.down .api-status { color: var(--red); }
+.pending .api-status { color: var(--text-dim); }
+.api-latency {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.api-response {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  grid-column: 2 / -1;
+  background: #0a0c0f;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  white-space: pre;
+  overflow-x: auto;
+  display: none;
+}
+.api-card.up .api-response { display: block; }
+
+.last-checked {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 20px;
+  text-align: right;
+}
+</style>
+</head>
+<body>
+
+<h1>
+  API Status — mr-ray
+  <button class="refresh-btn" onclick="checkAll()">↻ refresh</button>
+</h1>
+
+<div id="api-list"></div>
+<div class="last-checked" id="last-checked"></div>
+
+<script>
+// ─── ADD / EDIT APIS HERE ──────────────────────────────────────────
+const APIS = [
+  {
+    name: "Rotation Visualizer",
+    url: "/api/rotation/health",
+    description: "rotation-viz/app.py · port 5001"
+  },
+  {
+    name: "Telemetry Viz",
+    url: "http://localhost:5701/health",
+    description: "telemetry-viz/app.py · port 5701"
+  },
+  // {
+  //   name: "Data Viz API",
+  //   url: "/dataviz/api/health",
+  //   description: "dataviz/app.py · port 5002"
+  // },
+  // {
+  //   name: "Sensor Stream",
+  //   url: "/sensors/api/health",
+  //   description: "sensors/app.py · port 5003"
+  // },
+];
+// ──────────────────────────────────────────────────────────────────
+
+function buildCards() {
+  const list = document.getElementById("api-list");
+  list.innerHTML = "";
+  APIS.forEach((api, i) => {
+    const card = document.createElement("div");
+    card.className = "api-card pending";
+    card.id = `card-${i}`;
+    card.innerHTML = `
+      <div class="dot pending" id="dot-${i}"></div>
+      <div class="api-info">
+        <div class="api-name">${api.name}</div>
+        <div class="api-url">${api.description}</div>
+      </div>
+      <div class="api-meta">
+        <div class="api-status" id="status-${i}">checking…</div>
+        <div class="api-latency" id="latency-${i}"></div>
+      </div>
+      <div class="api-response" id="response-${i}"></div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+async function checkOne(api, i) {
+  const card     = document.getElementById(`card-${i}`);
+  const dot      = document.getElementById(`dot-${i}`);
+  const status   = document.getElementById(`status-${i}`);
+  const latency  = document.getElementById(`latency-${i}`);
+  const response = document.getElementById(`response-${i}`);
+
+  card.className = "api-card pending";
+  dot.className = "dot pending";
+  status.textContent = "checking…";
+  latency.textContent = "";
+
+  const t0 = performance.now();
+  try {
+    const res = await fetch(api.url, { cache: "no-store" });
+    const ms = Math.round(performance.now() - t0);
+    const text = await res.text();
+
+    let pretty = text;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+
+    card.className = `api-card ${res.ok ? "up" : "down"}`;
+    dot.className  = `dot ${res.ok ? "up" : "down"}`;
+    status.textContent  = res.ok ? `${res.status} OK` : `${res.status} ERROR`;
+    latency.textContent = `${ms}ms`;
+    response.textContent = pretty;
+  } catch (e) {
+    const ms = Math.round(performance.now() - t0);
+    card.className = "api-card down";
+    dot.className  = "dot down";
+    status.textContent  = "unreachable";
+    latency.textContent = `${ms}ms`;
+    response.style.display = "block";
+    response.textContent = e.message;
+  }
+}
+
+function checkAll() {
+  buildCards();
+  APIS.forEach((api, i) => checkOne(api, i));
+  document.getElementById("last-checked").textContent =
+    "last checked: " + new Date().toLocaleTimeString();
+}
+
+checkAll();
+</script>
+</body>
+</html>

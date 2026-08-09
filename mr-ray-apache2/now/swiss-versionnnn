@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>now — cesiumlab</title>
+<meta property="og:title" content="now">
+<meta property="og:description" content="The time. Nothing else.">
+<meta property="og:url" content="https://cesiumlab.net/now/swiss.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@200;300;400;500&family=Barlow+Condensed:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black: #0f0f0f;
+  --white: #f8f8f6;
+  --gray1: #e8e8e4;
+  --gray2: #b8b8b2;
+  --gray3: #888882;
+  --gray4: #444440;
+  --red: #d01f1f;
+  --rule: #ddddd8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  background: var(--white);
+  color: var(--black);
+  font-family: 'Barlow', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── masthead ── */
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 28px 48px 0;
+  border-bottom: 1.5px solid var(--black);
+  padding-bottom: 10px;
+}
+.masthead-left {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gray3);
+}
+.masthead-right {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--gray3);
+  letter-spacing: 0.08em;
+}
+.masthead-right a {
+  color: var(--gray3);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1px;
+  transition: color 0.15s;
+}
+.masthead-right a:hover { color: var(--black); }
+
+/* ── hero time ── */
+.hero {
+  padding: 52px 48px 40px;
+  border-bottom: 1px solid var(--rule);
+}
+.hero-time {
+  font-size: clamp(64px, 13vw, 148px);
+  font-weight: 200;
+  letter-spacing: -0.03em;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  color: var(--black);
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+.hero-colon {
+  color: var(--red);
+  animation: colon-blink 1s step-end infinite;
+  margin: 0 2px;
+}
+@keyframes colon-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.hero-seconds {
+  font-size: clamp(32px, 6vw, 68px);
+  font-weight: 200;
+  color: var(--gray3);
+  letter-spacing: -0.02em;
+  align-self: flex-end;
+  margin-left: 8px;
+  margin-bottom: 6px;
+}
+.hero-meta {
+  margin-top: 18px;
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+.hero-meta-item {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray3);
+}
+.hero-meta-item span {
+  color: var(--black);
+  font-weight: 400;
+}
+
+/* ── progress ── */
+.progress-section {
+  padding: 24px 48px;
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 52px 1fr 64px;
+  gap: 10px 20px;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray3);
+}
+.prog-track {
+  height: 1px;
+  background: var(--rule);
+  position: relative;
+}
+.prog-fill {
+  height: 1px;
+  background: var(--black);
+  transition: width 1s linear;
+  position: relative;
+}
+.prog-fill::after {
+  content: '';
+  position: absolute;
+  right: -1px; top: -3px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+}
+.prog-val {
+  text-align: right;
+  font-weight: 400;
+  color: var(--black);
+}
+
+/* ── data grid ── */
+.data-section {
+  flex: 1;
+  padding: 0 48px;
+}
+.data-row {
+  display: grid;
+  grid-template-columns: 180px 1fr 1fr;
+  border-bottom: 1px solid var(--rule);
+  align-items: baseline;
+  min-height: 44px;
+  padding: 10px 0;
+  gap: 24px;
+}
+.data-row:first-child { border-top: none; }
+.data-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gray3);
+  font-weight: 400;
+  padding-top: 2px;
+}
+.data-val {
+  font-size: 16px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--black);
+  font-family: 'Barlow Condensed', sans-serif;
+}
+.data-val.mono {
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+.data-note {
+  font-size: 11px;
+  color: var(--gray3);
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  align-self: center;
+}
+.data-note em {
+  font-style: normal;
+  color: var(--gray2);
+}
+
+/* section headers */
+.data-section-head {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gray2);
+  padding: 20px 0 6px;
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 180px 1fr 1fr;
+  gap: 24px;
+}
+
+/* ── footer ── */
+footer {
+  padding: 16px 48px;
+  border-top: 1.5px solid var(--black);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray3);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+footer a {
+  color: var(--gray3);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+}
+footer a:hover { color: var(--black); }
+
+/* ── retro link ── */
+.retro-link {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gray3);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1px;
+  transition: color 0.15s;
+}
+.retro-link:hover { color: var(--black); }
+
+@media (max-width: 640px) {
+  .masthead, .hero, .progress-section, .data-section, footer { padding-left: 20px; padding-right: 20px; }
+  .data-row, .data-section-head { grid-template-columns: 120px 1fr; }
+  .data-note { display: none; }
+  .hero-meta { gap: 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-left">cesiumlab &nbsp;/&nbsp; now</div>
+  <div class="masthead-right">
+    <a href="/now" class="retro-link">← retro edition</a>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-time">
+    <span id="h-hh">00</span><span class="hero-colon">:</span><span id="h-mm">00</span><span class="hero-seconds" id="h-ss">.00</span>
+  </div>
+  <div class="hero-meta">
+    <div class="hero-meta-item" id="h-date">loading</div>
+    <div class="hero-meta-item">UTC <span id="h-utc">—</span></div>
+    <div class="hero-meta-item">TZ <span id="h-tz">—</span></div>
+    <div class="hero-meta-item">day <span id="h-doy">—</span> of <span id="h-tot">365</span></div>
+  </div>
+</div>
+
+<div class="progress-section">
+  <div>Day</div>
+  <div class="prog-track"><div class="prog-fill" id="p-day" style="width:0%"></div></div>
+  <div class="prog-val" id="pv-day">0%</div>
+
+  <div>Year</div>
+  <div class="prog-track"><div class="prog-fill" id="p-year" style="width:0%"></div></div>
+  <div class="prog-val" id="pv-year">0%</div>
+
+  <div>Week</div>
+  <div class="prog-track"><div class="prog-fill" id="p-week" style="width:0%"></div></div>
+  <div class="prog-val" id="pv-week">0%</div>
+</div>
+
+<div class="data-section">
+
+  <div class="data-section-head">
+    <div>Format</div><div>Value</div><div>Note</div>
+  </div>
+
+  <div class="data-row">
+    <div class="data-label">UTC</div>
+    <div class="data-val" id="d-utc">—</div>
+    <div class="data-note">Coordinated Universal Time</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">Local</div>
+    <div class="data-val" id="d-local">—</div>
+    <div class="data-note" id="d-local-tz">—</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">ISO 8601</div>
+    <div class="data-val mono" id="d-iso">—</div>
+    <div class="data-note">Machine-readable standard</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">ISO Week</div>
+    <div class="data-val" id="d-week">—</div>
+    <div class="data-note" id="d-week-note">—</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">Swatch .beat</div>
+    <div class="data-val" id="d-beat">—</div>
+    <div class="data-note">@000–999 · no timezones · BMT UTC+1</div>
+  </div>
+
+  <div class="data-section-head">
+    <div></div><div></div><div></div>
+  </div>
+
+  <div class="data-row">
+    <div class="data-label">Unix</div>
+    <div class="data-val" id="d-unix">—</div>
+    <div class="data-note">Seconds since 1970-01-01Z</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">Unix ms</div>
+    <div class="data-val mono" id="d-unixms">—</div>
+    <div class="data-note">Date.now() · JavaScript standard</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">Unix hex</div>
+    <div class="data-val mono" id="d-hex">—</div>
+    <div class="data-note">32-bit overflow → Y2K38 · 2038-01-19</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">GPS Time</div>
+    <div class="data-val" id="d-gps">—</div>
+    <div class="data-note">Week + TOW · +18s from UTC · no leap sec</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">TAI</div>
+    <div class="data-val" id="d-tai">—</div>
+    <div class="data-note">Atomic · UTC +37s · continuous</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">TT</div>
+    <div class="data-val" id="d-tt">—</div>
+    <div class="data-note">Terrestrial Time · TAI +32.184s · ephemeris</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">Julian Date</div>
+    <div class="data-val mono" id="d-jd">—</div>
+    <div class="data-note">Days since 4713 BC Jan 1, noon</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">MJD</div>
+    <div class="data-val mono" id="d-mjd">—</div>
+    <div class="data-note">JD − 2400000.5 · epoch 1858-11-17</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">Seconds today</div>
+    <div class="data-val" id="d-sectod">—</div>
+    <div class="data-note">of 86,400</div>
+  </div>
+  <div class="data-row">
+    <div class="data-label">Loran-C era</div>
+    <div class="data-val" id="d-loran">—</div>
+    <div class="data-note">Days since 1958-01-01</div>
+  </div>
+
+</div>
+
+<footer>
+  <span><a href="/">cesiumlab.net</a></span>
+  <span>All times client-side · no requests</span>
+  <span>Leap seconds: 37 · TAI − UTC</span>
+</footer>
+
+<script>
+const GPS_EPOCH = Date.UTC(1980,0,6);
+const LEAP=37, GPS_LEAP=18;
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function pad2(n){return String(Math.floor(n)).padStart(2,'0');}
+function pad3(n){return String(Math.floor(n)).padStart(3,'0');}
+function isLeap(y){return(y%4===0&&y%100!==0)||y%400===0;}
+function doy(d){return Math.floor((d-Date.UTC(d.getUTCFullYear(),0,1))/86400000)+1;}
+function jd(ms){return ms/86400000+2440587.5;}
+function isoWeek(d){
+  const j4=new Date(Date.UTC(d.getUTCFullYear(),0,4));
+  const s=j4-((j4.getUTCDay()+6)%7)*86400000;
+  const w=Math.floor((d-s)/(7*86400000))+1;
+  if(w<1)return isoWeek(new Date(+d-7*86400000));
+  return w;
+}
+function beat(d){
+  return((d.getUTCHours()+1)*3600+d.getUTCMinutes()*60+d.getUTCSeconds()+d.getUTCMilliseconds()/1000)%86400/86.4;
+}
+function tick(){
+  const now=new Date(), ms=now.getTime(), unix=Math.floor(ms/1000);
+  const H=now.getUTCHours(),M=now.getUTCMinutes(),S=now.getUTCSeconds(),ms3=now.getUTCMilliseconds();
+  const lH=now.getHours(),lM=now.getMinutes(),lS=now.getSeconds();
+
+  document.getElementById('h-hh').textContent=pad2(lH);
+  document.getElementById('h-mm').textContent=pad2(lM);
+  document.getElementById('h-ss').textContent='.'+pad2(lS);
+  document.getElementById('h-date').textContent=`${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+  document.getElementById('h-utc').textContent=`${pad2(H)}:${pad2(M)}:${pad2(S)}`;
+  const tzOff=-now.getTimezoneOffset();
+  const tzSign=tzOff>=0?'+':'-';
+  document.getElementById('h-tz').textContent=`UTC${tzSign}${pad2(Math.floor(Math.abs(tzOff)/60))}`;
+  const dy=doy(now),tot=isLeap(now.getUTCFullYear())?366:365;
+  document.getElementById('h-doy').textContent=dy;
+  document.getElementById('h-tot').textContent=tot;
+
+  const sod=H*3600+M*60+S+ms3/1000;
+  const dp=(sod/86400*100).toFixed(2);
+  document.getElementById('p-day').style.width=dp+'%';
+  document.getElementById('pv-day').textContent=dp+'%';
+  const yp=((dy-1+sod/86400)/tot*100).toFixed(3);
+  document.getElementById('p-year').style.width=yp+'%';
+  document.getElementById('pv-year').textContent=yp+'%';
+  const dow0=now.getUTCDay(),ws=((dow0===0?6:dow0-1)*86400)+sod;
+  const wp=(ws/(7*86400)*100).toFixed(2);
+  document.getElementById('p-week').style.width=wp+'%';
+  document.getElementById('pv-week').textContent=wp+'%';
+
+  document.getElementById('d-utc').textContent=`${pad2(H)}:${pad2(M)}:${pad2(S)}.${pad3(ms3)}`;
+  document.getElementById('d-local').textContent=`${pad2(lH)}:${pad2(lM)}:${pad2(lS)}`;
+  document.getElementById('d-local-tz').textContent=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById('d-iso').textContent=now.toISOString();
+  const wk=isoWeek(now);
+  document.getElementById('d-week').textContent=`${now.getUTCFullYear()}-W${pad2(wk)}-${now.getUTCDay()||7}`;
+  document.getElementById('d-week-note').textContent=`Week ${wk} · Day ${now.getUTCDay()||7} of week`;
+  document.getElementById('d-beat').textContent=`@${beat(now).toFixed(2).padStart(6,'0')}`;
+  document.getElementById('d-unix').textContent=unix.toLocaleString();
+  document.getElementById('d-unixms').textContent=ms.toLocaleString();
+  document.getElementById('d-hex').textContent='0x'+unix.toString(16).toUpperCase();
+  const gpsSec=(ms-GPS_EPOCH)/1000+GPS_LEAP;
+  document.getElementById('d-gps').textContent=`week ${Math.floor(gpsSec/604800)}  ·  ${(gpsSec%604800).toFixed(0)}s`;
+  const taiD=new Date(ms+LEAP*1000);
+  document.getElementById('d-tai').textContent=`${pad2(taiD.getUTCHours())}:${pad2(taiD.getUTCMinutes())}:${pad2(taiD.getUTCSeconds())}`;
+  const ttD=new Date(ms+(LEAP+32.184)*1000);
+  document.getElementById('d-tt').textContent=`${pad2(ttD.getUTCHours())}:${pad2(ttD.getUTCMinutes())}:${pad2(ttD.getUTCSeconds())}.${pad3(ttD.getUTCMilliseconds())}`;
+  const j=jd(ms);
+  document.getElementById('d-jd').textContent=j.toFixed(7);
+  document.getElementById('d-mjd').textContent=(j-2400000.5).toFixed(7);
+  document.getElementById('d-sectod').textContent=`${(H*3600+M*60+S).toLocaleString()} / 86,400`;
+  document.getElementById('d-loran').textContent=`day ${Math.floor((ms-Date.UTC(1958,0,1))/86400000).toLocaleString()}`;
+}
+tick();
+setInterval(tick,100);
+</script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>★ Colin's Internet Home ★</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
+  body {
+    margin: 0;
+    background: #008080;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 12px),
+      repeating-linear-gradient(-45deg, rgba(0,0,0,0.04) 0 2px, transparent 2px 12px);
+    color: #ffff00;
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: 22px;
+    line-height: 1.3;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(transparent 0, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 3px);
+    pointer-events: none;
+    z-index: 999;
+  }
+  .frame {
+    max-width: 720px;
+    margin: 0 auto;
+    background: #c0c0c0;
+    color: #000080;
+    border: 2px solid #fff;
+    box-shadow: 4px 4px 0 #000, inset 1px 1px 0 #fff, inset -2px -2px 0 #808080;
+    padding: 0;
+  }
+  .titlebar {
+    background: linear-gradient(90deg, #000080, #1084d0);
+    color: #fff;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .titlebar .btns { display: flex; gap: 2px; }
+  .titlebar .btn {
+    background: #c0c0c0; color: #000; width: 16px; height: 14px;
+    border: 1px solid; border-color: #fff #000 #000 #fff;
+    text-align: center; font-size: 10px; line-height: 12px;
+  }
+  .inner { padding: 16px 20px; }
+  .banner {
+    text-align: center;
+    margin: 8px 0 20px;
+    padding: 12px;
+    background: #fff;
+    border: 1px dashed #ff00ff;
+    color: #ff00ff;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    animation: rainbow 6s linear infinite;
+  }
+  @keyframes rainbow {
+    0% { color: #ff00ff; }
+    25% { color: #00ffff; }
+    50% { color: #ff0000; }
+    75% { color: #0000ff; }
+    100% { color: #ff00ff; }
+  }
+  h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 20px;
+    color: #ff0080;
+    text-shadow: 2px 2px 0 #ffff00, 4px 4px 0 #00ffff;
+    text-align: center;
+    margin: 16px 0;
+    line-height: 1.4;
+  }
+  h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    background: #000080;
+    color: #ffff00;
+    padding: 4px 8px;
+    margin: 20px 0 8px;
+    display: inline-block;
+  }
+  p { margin: 8px 0; }
+  .marquee {
+    background: #000;
+    color: #00ff00;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    padding: 6px;
+    overflow: hidden;
+    border: 1px solid #fff;
+    margin: 16px 0;
+  }
+  li.cant { margin: 2px 0; font-size: 15px; }
+  .marquee span {
+    display: inline-block;
+    padding-left: 100%;
+    animation: scroll 18s linear infinite;
+    white-space: nowrap;
+  }
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
+  ul { list-style: none; padding: 0; margin: 8px 0; }
+  li { margin: 6px 0; }
+  li::before { content: "★ "; color: #ff00ff; }
+  a { color: #0000ff; font-weight: bold; }
+  a:visited { color: #800080; }
+  a:hover { background: #ffff00; color: #ff00ff; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 200px; }
+  .badge {
+    display: inline-block;
+    background: #fff;
+    border: 2px outset #c0c0c0;
+    padding: 4px 8px;
+    margin: 2px;
+    font-size: 14px;
+    color: #000;
+  }
+  .blink { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .counter {
+    background: #000;
+    color: #ff00ff;
+    font-family: 'VT323', monospace;
+    font-size: 24px;
+    padding: 2px 8px;
+    display: inline-block;
+    border: 1px solid #fff;
+    letter-spacing: 2px;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+  td { padding: 4px 8px; border: 1px solid #808080; background: #fff; font-size: 18px; }
+  td.k { background: #c0c0c0; font-weight: bold; }
+  hr { border: 0; border-top: 2px ridge #fff; margin: 16px 0; }
+  .center { text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <div class="titlebar">
+    <span>★ Colin's Internet Home — Microsoft Internet Explorer</span>
+    <span class="btns"><span class="btn">_</span><span class="btn">□</span><span class="btn">×</span></span>
+  </div>
+  <div class="inner">
+
+    <div class="banner">▓▒░ UNDER CONSTRUCTION (<a href="/api-check" style="color: inherit; text-decoration: none;">see status</a>)░▒▓</div>
+
+    <h1>WELCOME TO<br><span id="host">A COMPUTER</span>!!</h1>
+
+    <p class="center">you have <span class="blink">stumbled</span> upon a <a href="https://windows93.net/">computer</a> on colin's network.<br>pull up a chair and stay a while <a href="junk/barry-b-benson" style="color: inherit; text-decoration: none;">☺</a></p>
+
+    <div class="marquee"><span>★ ★ ★  this site best viewed in 800x600 ░ no animals were harmed in the making of this homepage ░ flight computers go brrrr ░ thanks for visiting!!  ★ ★ ★</span></div>
+
+    <h2>★ ABOUT THIS BOX ★</h2>
+    <table>
+      <tr><td class="k">hostname</td><td id="host2">--</td></tr>
+      <tr><td class="k">owner</td><td>Colin (he is on the internet)</td></tr>
+      <tr><td class="k">purpose</td><td>compiling things, running sims, mostly vibes</td></tr>
+      <tr><td class="k">vibes</td><td>★★★★☆ (could be better)</td></tr>
+      <tr><td class="k">last updated</td><td id="dt">--</td></tr>
+    </table>
+
+    <h2>★ MY COOL PAGES ★</h2>
+    <ul>
+      <li><a href="https://github.com/Cesium-Lab" target="_blank">my github (cesium-lab)</a></li>
+      <!-- <li><a href="mailto:colinaskinner@gmail.com">sign my guestbook (email)</a></li> -->
+
+    </tr>
+    </ul>
+
+    <h2>★ NERD stuff ★</h2>
+    <ul>
+      <li><a href="/nerd/tools/numbers">What even are numbers</a></li>
+      <li><a href="/rotation-viz/rotation-visualizer.html">Rotation Visualizer</a></li>
+      <li><a href="/telemetry-viz/dashboard.html">Telemetry Dashboard</a></li>
+    </tr>
+    </ul>
+
+    <h2>★ MY DASHBOARDS ★</h2>
+    <table style="width: 100%;">
+    <tr>
+        <td class="k">→ Clock</td>
+        <td><a href="/now">time? what is it. not money i think</a></td>
+    </tr>
+    <tr>
+        <td class="k">→ LOTS OF THINGS</td>
+        <td><a href="/everything-hub.html">trashcan, even</a></td>
+    </tr>
+    <tr>
+        <td class="k" style="width: 30%;">→ about me</td>
+        <td><a href="/about_me.html">stats, skills, classes, projects</a></td>
+    </tr>
+    <tr>
+        <td class="k">→ system stats</td>
+        <td><a href="/dash/system.html">live box telemetry</a></td>
+    </tr>
+    <tr>
+        <td class="k">→ visitor log</td>
+        <td><a href="/dash/visitors.html">who's been here</a></td>
+    </tr>
+    <tr>
+        <td class="k">→ vibes only</td>
+        <td><a href="/dash/vibes.html">decorative nonsense</a></td>
+    </tr>
+    
+    </table>
+
+
+    <h2>✨ Can't believe this exists ✨</h2>
+    <ul>
+        <li class="cant"><a href="https://ditto.ai/bodycount" target="_blank">67</a></li>
+        <li class="cant"><a href="https://neal.fun/internet-artifacts" target="_blank">internet artifacts museum</a></li>
+        <li class="cant"><a href="https://photopea.com" target="_blank">full photoshop. in a browser. free</a></li>
+        <li class="cant"><a href="https://shademap.app" target="_blank">shadow cast by every building on earth, any time of day</a></li>
+        <li class="cant"><a href="https://overpass-turbo.eu" target="_blank">sql query every object on openstreetmap</a></li>
+        <li class="cant"><a href="https://supercook.com" target="_blank">enter ingredients you have → recipes</a></li>
+        <li class="cant"><a href="https://theuselessweb.com" target="_blank">button. random useless website</a></li>
+        <li class="cant"><a href="https://windows93.net" target="_blank">windows 93</a></li>
+
+    </tr>
+    </ul>
+
+    <h2>✨ Space and nerd ✨</h2>
+    <ul>
+        <li class="cant"><a href="https://ajmas.github.io/StuffInSpace/" target="_blank">real-time 3d map of every object in earth orbit</a></li>
+        <li class="cant"><a href="https://eyes.nasa.gov/apps/solar-system/#/home" target="_blank">nasa solar system simulator</a></li>
+        <li class="cant"><a href="https://isstracker.live" target="_blank">iss tracker</a></li>
+    </tr>
+    </ul>
+
+    <h2>✨ Radio ✨</h2>
+    <ul>
+        <li class="cant"><a href="https://radio.garden" target="_blank">globe. every dot is a live radio station</a></li>
+    </tr>
+    </ul>
+
+    <h2>✨ Random ✨</h2>
+    <ul>
+        <li class="cant"><a href="/music/piano" target="_blank">PIANO IN BROWSER</a></li>
+        <li class="cant"><a href="https://neal.fun/spend" target="_blank">spend bill gates' money</a></li>
+        <li class="cant"><a href="https://pointerpointer.com" target="_blank">wherever your mouse is, a photo of someone pointing at it</a></li>
+        <li class="cant"><a href="https://cat-bounce.com" target="_blank">cat bounce</a></li>
+        <li class="cant"><a href="https://heeeeeeeey.com" target="_blank">heeeeeeeey</a></li>
+    </tr>
+    </ul>
+<!-- 
+    <h2>★ WHAT I'M INTO ★</h2>
+    <div>
+      <span class="badge">flight computers</span>
+      <span class="badge">stm32</span>
+      <span class="badge">rockets 🚀</span>
+      <span class="badge">kalman filters</span>
+      <span class="badge">linux</span>
+      <span class="badge">soldering</span>
+      <span class="badge">cubesats</span>
+      <span class="badge">music</span>
+    </div> -->
+
+    <hr>
+
+    <div class="row">
+      <div class="center">
+        <p style="font-size: 14px; margin: 0;">visitor count</p>
+        <span class="counter" id="cnt">00000001</span>
+      </div>
+      <div class="center">
+        <p style="font-size: 14px; margin: 0;">page status</p>
+        <span class="counter" style="color: #00ff00;"><span class="blink">●</span> ONLINE</span>
+      </div>
+    </div>
+
+    <p class="center" style="margin-top: 20px; font-size: 14px;">© 2026 Colin // best viewed with Netscape Navigator 4.0+ ;)</p>
+    <p class="center" style="margin-top: 4px; font-size: 16px;">[ <a href="/sitemap.html">site map</a> ]</p>
+
+  </div>
+</div>
+
+<script>
+  const host = window.location.hostname || 'localhost';
+  document.getElementById('host').textContent = host.toUpperCase();
+  document.getElementById('host2').textContent = host;
+  const tick = () => {
+    document.getElementById('dt').textContent = new Date().toLocaleString();
+  };
+  tick();
+  setInterval(tick, 1000);
+  // fake visitor counter, sticky per browser
+  let n = parseInt(localStorage.getItem('vcount') || '1337', 10);
+  n += 1;
+  localStorage.setItem('vcount', n);
+  document.getElementById('cnt').textContent = String(n).padStart(8, '0');
+</script>
+</body>
+</html>
