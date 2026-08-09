@@ -3,8 +3,10 @@ services:
     image: prom/prometheus:latest
     ports:
       - "42004:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
     volumes:
-      - ./telemetry_server/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml  # this is where it is moved to in the CONTAINER
+      - ./telemetry_server/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
 
   grafana:
     image: grafana/grafana:latest

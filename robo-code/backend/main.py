@@ -43,8 +43,8 @@ is_frozen = True
 temp_gauge = Gauge("satellite_temperature_celsius", "Satellite temperature", ["device"])
 battery_gauge = Gauge("satellite_battery_percent", "Satellite battery level", ["device"])
 pressure_gauge = Gauge("satellite_pressure_hpa", "Satellite internal pressure", ["device"])
-azimuth_gauge = Gauge("satellite_azimuth_radians", "Satellite azimuth angle", ["device"])
-elevation_gauge = Gauge("satellite_elevation_radians", "Satellite elevation angle", ["device"])
+latitude_gauge = Gauge("satellite_latitude_deg", "Satellite latitude", ["device"])
+longitude_gauge = Gauge("satellite_longitude_deg", "Satellite longitude", ["device"])
 
 async def simulate_telemetry_loop():
     """Continuously jitter telemetry in place so Prometheus has real history to scrape"""
@@ -55,8 +55,8 @@ async def simulate_telemetry_loop():
             temp_gauge.labels(device=device_id).set(sensors["temp"])
             battery_gauge.labels(device=device_id).set(sensors["battery"])
             pressure_gauge.labels(device=device_id).set(sensors["pressure"])
-            azimuth_gauge.labels(device=device_id).set(telemetry_store[device_id]["azimuth"])
-            elevation_gauge.labels(device=device_id).set(telemetry_store[device_id]["elevation"])
+            latitude_gauge.labels(device=device_id).set(telemetry_store[device_id]["latitude"])
+            longitude_gauge.labels(device=device_id).set(telemetry_store[device_id]["longitude"])
         await asyncio.sleep(SIM_INTERVAL)
 
 @asynccontextmanager
@@ -156,11 +156,13 @@ def add_telemetry_jitter(telemetry_dict):
     if "pressure" in sensors:
         sensors["pressure"] += random.uniform(-0.5, 0.5)
 
-    # Add jitter to position
-    if "azimuth" in telem:
-        telem["azimuth"] += random.uniform(-0.01, 0.01)
-    if "elevation" in telem:
-        telem["elevation"] += random.uniform(-0.01, 0.01)
+    # Add jitter to position (in degrees)
+    if "latitude" in telem:
+        telem["latitude"] += random.uniform(-0.5, 0.5)
+        telem["latitude"] = max(-90, min(90, telem["latitude"]))  # Clamp -90 to 90
+    if "longitude" in telem:
+        telem["longitude"] += random.uniform(-0.5, 0.5)
+        telem["longitude"] = max(-180, min(180, telem["longitude"]))  # Clamp -180 to 180
 
     telem["sensors"] = sensors
     telem["timestamp"] = time.time()
