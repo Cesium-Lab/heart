@@ -1,17 +1,147 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Local-first song library and setlist builder"><title>SETLISTER.EXE</title><link rel="stylesheet" href="styles.css"></head>
-<body><main class="app">
-<header class="titlebar"><span>♫ SETLISTER.EXE — MUSIC SEQUENCING WORKSTATION</span><span class="window-buttons" aria-hidden="true"><i>_</i><i>□</i><i>×</i></span></header>
-<nav class="toolbar" aria-label="File controls"><button id="newLibrary">New library</button><label class="button" for="fileInput">Upload JSON</label><input id="fileInput" type="file" accept="application/json,.json" hidden><button id="downloadLibrary">Download JSON</button><a class="button" href="example-library.json" download>Example file</a><span id="saveStatus">Browser backup ready</span></nav>
-<section class="summary"><span><b id="songCount">0</b> songs</span><span><b id="setCount">1</b> setlist</span><span><b id="totalRuntime">0:00</b> runtime</span></section>
-<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-<section class="workspace">
-<article class="panel"><header class="panel-title"><span>SONG LIBRARY</span><button id="addSong" class="small primary">+ Add song</button></header>
-<div class="tools"><input id="searchInput" type="search" placeholder="Search title, artist, tag…" aria-label="Search songs"><select id="keyFilter" aria-label="Filter by key"><option value="">All keys</option></select><select id="tagFilter" aria-label="Filter by tag"><option value="">All tags</option></select></div>
-<div class="table-wrap"><table><thead><tr><th>Song</th><th>Key</th><th>BPM</th><th>Energy</th><th aria-label="Actions"></th></tr></thead><tbody id="songRows"></tbody></table><div id="libraryEmpty" class="empty"><b>Your library is empty.</b><span>Add a song or upload a JSON library.</span></div></div></article>
-<article class="panel"><header class="panel-title"><span>SETLIST BUILDER</span><span><button id="newSetlist" class="small">New</button><button id="deleteSetlist" class="small danger">Delete</button></span></header>
-<div class="set-controls"><select id="setlistSelect" aria-label="Choose setlist"></select><input id="setlistName" maxlength="80" aria-label="Setlist name"></div><ol id="setlistTracks" class="tracks"></ol><div id="setlistEmpty" class="empty compact"><b>No songs in this set.</b><span>Use + in the library to add one.</span></div><footer class="set-footer"><span>Total: <b id="setlistDuration">0:00</b></span><button id="printSetlist">Print setlist</button></footer></article>
-</section><footer class="footer">[ <a href="/">home</a> ] &nbsp; [ <a href="/sitemap.html">site map</a> ] &nbsp; Data stays here until you download it. &nbsp; Data by <a href="https://getsongbpm.com/" target="_blank" rel="noopener">GetSongBPM</a>.</footer></main>
-<dialog id="songDialog"><form id="songForm" method="dialog"><header class="dialog-title"><span id="dialogHeading">ADD SONG</span><button type="button" id="closeDialog" aria-label="Close">×</button></header><div class="form-body"><input id="songId" type="hidden"><label>Title<input id="title" required maxlength="120"></label><label>Artist<input id="artist" maxlength="120"></label><div class="lookup-bar"><button type="button" id="lookupSong">Find song data</button><span id="lookupStatus">Search by title and artist to fill key and BPM.</span></div><div id="lookupResults" class="lookup-results" hidden></div><div class="form-grid"><label>Key<select id="key"></select></label><label>BPM<input id="bpm" type="number" min="20" max="300" step="0.1" required></label><label>Energy (1–10)<input id="energy" type="number" min="1" max="10" value="5" required></label><label>Duration<input id="duration" placeholder="3:45" pattern="(?:\d+:)?\d{1,2}:\d{2}" title="Use M:SS or H:MM:SS"></label></div><label>Tags<input id="tags" placeholder="dance, opener, synth"></label><label>Performance notes<textarea id="notes" rows="3" placeholder="Capo 2, long intro, Sam starts…"></textarea></label></div><footer class="dialog-actions"><button type="button" id="cancelDialog">Cancel</button><button class="primary" value="save">Save song</button></footer></form></dialog>
-<template id="songRowTemplate"><tr><td><button class="song-link"></button><small class="artist"></small><small class="tags"></small></td><td class="key-cell"></td><td class="bpm-cell"></td><td class="energy-cell"></td><td><button class="add-track small primary" title="Add to setlist">+</button></td></tr></template>
-<template id="trackTemplate"><li class="track" draggable="true"><div class="track-number"></div><div class="track-info"><strong></strong><span></span></div><div class="track-meta"></div><div class="track-actions"><button class="move-up" title="Move up">↑</button><button class="move-down" title="Move down">↓</button><button class="remove-track danger" title="Remove">×</button></div></li></template><script src="app.js"></script></body></html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Local-first song library and setlist builder" />
+
+
+    <title>SETLISTER.EXE</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <main class="app">
+        <header class="titlebar">
+            <span>♫ SETLISTER.EXE — MUSIC SEQUENCING WORKSTATION</span><span class="window-buttons"
+                aria-hidden="true"><i>_</i><i>□</i><i>×</i></span>
+        </header>
+        <nav class="toolbar" aria-label="File controls">
+            <button id="newLibrary">New library</button><label class="button" for="fileInput">Upload JSON</label><input
+                id="fileInput" type="file" accept="application/json,.json" hidden /><button
+                id="downloadLibrary">Download JSON</button><a class="button" href="example-library.json"
+                download>Example file</a><span id="saveStatus">Browser backup ready</span>
+        </nav>
+        <section class="summary">
+            <span><b id="songCount">0</b> songs</span><span><b id="setCount">1</b> setlist</span><span><b
+                    id="totalRuntime">0:00</b> runtime</span>
+        </section>
+        <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+        <section class="workspace">
+            <article class="panel">
+                <header class="panel-title">
+                    <span>SONG LIBRARY</span><button id="addSong" class="small primary">+ Add song</button>
+                </header>
+                <div class="tools">
+                    <input id="searchInput" type="search" placeholder="Search title, artist, tag…"
+                        aria-label="Search songs" /><select id="keyFilter" aria-label="Filter by key">
+                        <option value="">All keys</option>
+                    </select><select id="tagFilter" aria-label="Filter by tag">
+                        <option value="">All tags</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Song</th>
+                                <th>Key</th>
+                                <th>BPM</th>
+                                <th>Energy</th>
+                                <th aria-label="Actions"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="songRows"></tbody>
+                    </table>
+                    <div id="libraryEmpty" class="empty">
+                        <b>Your library is empty.</b><span>Add a song or upload a JSON library.</span>
+                    </div>
+                </div>
+            </article>
+            <article class="panel">
+                <header class="panel-title">
+                    <span>SETLIST BUILDER</span><span><button id="newSetlist" class="small">New</button><button
+                            id="deleteSetlist" class="small danger">
+                            Delete
+                        </button></span>
+                </header>
+                <div class="set-controls">
+                    <select id="setlistSelect" aria-label="Choose setlist"></select><input id="setlistName"
+                        maxlength="80" aria-label="Setlist name" />
+                </div>
+                <ol id="setlistTracks" class="tracks"></ol>
+                <div id="setlistEmpty" class="empty compact">
+                    <b>No songs in this set.</b><span>Use + in the library to add one.</span>
+                </div>
+                <footer class="set-footer">
+                    <span>Total: <b id="setlistDuration">0:00</b></span><button id="printSetlist">Print setlist</button>
+                </footer>
+            </article>
+        </section>
+        <footer class="footer">
+            [ <a href="/">home</a> ] &nbsp; [ <a href="/sitemap.html">site map</a> ]
+            &nbsp; Data stays here until you download it. &nbsp; Data by
+            <a href="https://getsongbpm.com/" target="_blank" rel="noopener">GetSongBPM</a>.
+        </footer>
+    </main>
+    <dialog id="songDialog">
+        <form id="songForm" method="dialog">
+            <header class="dialog-title">
+                <span id="dialogHeading">ADD SONG</span><button type="button" id="closeDialog"
+                    aria-label="Close">×</button>
+            </header>
+            <div class="form-body">
+                <input id="songId" type="hidden" /><label>Title<input id="title" required
+                        maxlength="120" /></label><label>Artist<input id="artist" maxlength="120" /></label>
+                <div class="lookup-bar">
+                    <button type="button" id="lookupSong">Find song data</button><span id="lookupStatus">Search by title
+                        and artist to fill key and BPM.</span>
+                </div>
+                <div id="lookupResults" class="lookup-results" hidden></div>
+                <div class="form-grid">
+                    <label>Key<select id="key"></select></label><label>BPM<input id="bpm" type="number" min="20"
+                            max="300" step="0.1" required /></label><label>Energy (1–10)<input id="energy" type="number"
+                            min="1" max="10" value="5" required /></label><label>Duration<input id="duration"
+                            placeholder="3:45" pattern="(?:\d+:)?\d{1,2}:\d{2}" title="Use M:SS or H:MM:SS" /></label>
+                </div>
+                <label>Tags<input id="tags" placeholder="dance, opener, synth" /></label><label>Performance
+                    notes<textarea id="notes" rows="3" placeholder="Capo 2, long intro, Sam starts…"></textarea>
+                </label>
+            </div>
+            <footer class="dialog-actions">
+                <button type="button" id="cancelDialog">Cancel</button><button class="primary" value="save">Save
+                    song</button>
+            </footer>
+        </form>
+    </dialog>
+    <template id="songRowTemplate">
+        <tr>
+            <td>
+                <button class="song-link"></button><small class="artist"></small><small class="tags"></small>
+            </td>
+            <td class="key-cell"></td>
+            <td class="bpm-cell"></td>
+            <td class="energy-cell"></td>
+            <td>
+                <button class="add-track small primary" title="Add to setlist">
+                    +
+                </button>
+            </td>
+        </tr>
+    </template>
+    <template id="trackTemplate">
+        <li class="track" draggable="true">
+            <div class="track-number"></div>
+            <div class="track-info"><strong></strong><span></span></div>
+            <div class="track-meta"></div>
+            <div class="track-actions">
+                <button class="move-up" title="Move up">↑</button><button class="move-down"
+                    title="Move down">↓</button><button class="remove-track danger" title="Remove">×</button>
+            </div>
+        </li>
+    </template>
+    <script src="app.js"></script>
+</body>
+
+</html>

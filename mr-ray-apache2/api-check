@@ -150,6 +150,11 @@ const APIS = [
     url: "http://localhost:5701/health",
     description: "telemetry-viz/app.py · port 5701"
   },
+  {
+    name: "Setlister Song Search",
+    url: "/api/setlister/health",
+    description: "music/setlister/server.py · port 5702"
+  },
   // {
   //   name: "Data Viz API",
   //   url: "/dataviz/api/health",

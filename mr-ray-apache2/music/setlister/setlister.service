@@ -5,11 +5,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/html/music/setlister
-EnvironmentFile=/var/www/html/music/setlister/.env
-ExecStart=/var/www/html/music/setlister/.venv/bin/python server.py
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/mr-ray-apache2/music/setlister
+EnvironmentFile=/home/cskin/Cesium/heart/mr-ray-apache2/music/setlister/.env
+ExecStart=/home/cskin/Cesium/heart/.venv/bin/python server.py
 Restart=on-failure
 RestartSec=5
 

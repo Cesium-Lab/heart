@@ -16,3 +16,12 @@ Bee movie script is big so
 sudo apt install git-lfs
 git lfs install
 ```
+
+
+## Services
+
+```
+sudo systemctl is-enabled setlister
+sudo systemctl is-active setlister
+sudo systemctl status setlister
+```

@@ -10,26 +10,22 @@ Register at <https://getsongbpm.com/api>. GetSongBPM requires a backlink; the Se
 
 From this directory:
 
-```bash
-cp .env.example .env
-chmod 600 .env
-```
-
-Edit `.env` and replace the placeholder:
+Make `.env` file with this:
 
 ```dotenv
 GETSONGBPM_API_KEY=your_real_key_here
 SETLISTER_PORT=5702
 ```
 
-Never commit `.env`. The repository `.gitignore` excludes it.
+Do not commit `.env` that would be bad probably
 
 ## 3. Install and test locally
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python server.py
+source .venv/bin/activate
+pip install -r requirements.txt
+python server.py
 ```
 
 In another terminal:
@@ -42,12 +38,6 @@ curl 'http://127.0.0.1:5702/api/setlister/search?title=Master%20of%20Puppets&art
 The health response should contain `"configured": true`. The server listens only on loopback because Apache should be the public entry point.
 
 ## 4. Configure Apache
-
-Enable the proxy module once:
-
-```bash
-sudo a2enmod proxy proxy_http
-```
 
 Add these lines inside the applicable Apache `VirtualHost`:
 
