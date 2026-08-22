@@ -1,35 +1,34 @@
-Cesium Lab Web Platform Architecture Plan
+# Cesium Lab Web Platform Architecture Plan
 
-Goal
+## Goal
 
 Evolve the current Cesium Lab setup from a static Apache-hosted directory into a small personal web platform that can support:
 
-* the existing Cesium Lab website
-* a private contacts/people database
-* music-network data
-* projects and other structured personal data
-* a reusable API for scripts and future AI agents
-* a richer web frontend
-* eventual removal of Apache if it becomes unnecessary
+- the existing Cesium Lab website
+- a private contacts/people database
+- music-network data
+- projects and other structured personal data
+- a reusable API for scripts and future AI agents
+- a richer web frontend
+- eventual removal of Apache if it becomes unnecessary
 
 The migration should happen incrementally so the current website keeps working throughout.
 
-⸻
+## 1. Current Architecture
 
-1. Current Architecture
-
-Right now:
-
+```text
 GitHub
 └── heart/
     └── apache2/
         └── static website files
+
 Home server
 ├── apache2.service
 │   └── listens on :80
 │
 └── cloudflared.service
     └── cesiumlab.net → http://localhost:80
+
 Internet
     ↓
 Cloudflare
@@ -39,18 +38,13 @@ Cloudflare Tunnel
 Apache :80
     ↓
 heart/apache2/
+```
 
-This is a perfectly reasonable starting point. Apache currently acts as both:
+Apache currently acts as both the web server and the entrypoint Cloudflare sends traffic to.
 
-1. the web server
-2. the entrypoint Cloudflare sends traffic to
+## 2. Target Intermediate Architecture
 
-The goal is initially to keep Apache doing this job while adding new services behind it.
-
-⸻
-
-2. Target Intermediate Architecture
-
+```text
                          INTERNET
                             │
                             ▼
@@ -61,8 +55,8 @@ The goal is initially to keep Apache doing this job while adding new services be
                             │
                             ▼
                       Apache :80
-                    /            \
-                   /              \
+                    /            \\
+                   /              \\
                   ▼                ▼
           Static website      Reverse proxy
           heart/apache2/          │
@@ -73,115 +67,56 @@ The goal is initially to keep Apache doing this job while adding new services be
                                           │
                                           ▼
                                    PostgreSQL :5432
+```
 
-The important rule is:
+Only Apache should initially be exposed to Cloudflare. Other services should listen locally.
 
-Only Apache should initially be exposed to Cloudflare.
+## 3. Port Allocation
 
-The other services should listen only locally.
+| Port | Service | Exposure | Purpose |
+|---|---|---|---|
+| `80` | Apache | Cloudflare Tunnel | Main HTTP entrypoint |
+| `3000` | Frontend | localhost | React/Vite development server |
+| `8000` | Backend API | localhost | API for people, music, projects, etc. |
+| `5432` | PostgreSQL | localhost | Main relational database |
+| `6379` | Redis | localhost | Optional future cache/job queue |
+| `22` | SSH | private/Tailscale | Server administration |
 
-⸻
+## 4. Repository Structure
 
-3. Port Allocation
-
-Port	Service	Exposure	Purpose
-80	Apache	Cloudflare Tunnel	Main HTTP entrypoint
-3000	Frontend	localhost	React/Next/Vite development or application server
-8000	Backend API	localhost	API for people, music, projects, etc.
-5432	PostgreSQL	localhost	Main relational database
-6379	Redis	localhost	Optional future cache/job queue
-22	SSH	private/Tailscale	Server administration
-
-The three main new services are therefore:
-
-:3000  frontend
-:8000  API
-:5432  database
-
-⸻
-
-4. Repository Structure
-
-Expand heart/ rather than making the database system an unrelated project.
-
+```text
 heart/
 ├── apache2/
 │   ├── html/
-│   │   ├── index.html
-│   │   ├── css/
-│   │   ├── js/
-│   │   └── assets/
-│   │
 │   └── config/
-│       └── cesiumlab.conf
-│
 ├── backend/
 │   ├── app/
 │   │   ├── main.py
-│   │   │
 │   │   ├── api/
-│   │   │   ├── people.py
-│   │   │   ├── organizations.py
-│   │   │   ├── interactions.py
-│   │   │   ├── events.py
-│   │   │   ├── opportunities.py
-│   │   │   ├── projects.py
-│   │   │   └── songs.py
-│   │   │
 │   │   ├── models/
 │   │   ├── database/
 │   │   ├── services/
 │   │   └── auth/
-│   │
 │   ├── migrations/
 │   └── requirements.txt
-│
 ├── frontend/
 │   ├── src/
 │   ├── public/
-│   ├── package.json
-│   └── ...
-│
+│   └── package.json
 ├── services/
-│   ├── cesium-api.service
-│   ├── cesium-web.service
-│   └── cloudflared.service
-│
 ├── scripts/
-│   ├── deploy.sh
-│   ├── backup-db.sh
-│   ├── import-contacts.py
-│   └── import-notion.py
-│
 └── README.md
+```
 
-Initially, only these need to exist:
+Initially, only `apache2/` and `backend/` need to exist.
 
-heart/
-├── apache2/
-└── backend/
+## 5. Database
 
-The frontend can come after the API works.
-
-⸻
-
-5. Database
-
-Use PostgreSQL for the primary database.
-
-PostgreSQL is a good fit because the data is highly relational.
-
-For example:
-
-Person
- ├── belongs to Organization
- ├── attended Event
- ├── had Interaction
- ├── involved in Opportunity
- └── participates in Project
+Use PostgreSQL as the primary relational database.
 
 Initial schema:
 
+```text
 people
 organizations
 people_organizations
@@ -198,11 +133,11 @@ project_organizations
 songs
 song_people
 song_projects
+```
 
-Example people
+Example `people` fields:
 
-people
-------------------------------------------------
+```text
 id                  UUID PRIMARY KEY
 first_name
 last_name
@@ -215,162 +150,91 @@ location
 notes
 created_at
 updated_at
+```
 
 Use UUIDs instead of names as identifiers.
 
-For example:
-
-person_id = 29be1fe9-2e9b-4cbc-8b82-...
-
-Names can change or collide. UUIDs do not.
-
-⸻
-
-6. PostgreSQL Security
+## 6. PostgreSQL Security
 
 PostgreSQL should not be Internet accessible.
 
-Desired connection:
-
+```text
 API
  ↓
 127.0.0.1:5432
  ↓
 PostgreSQL
+```
 
-Not:
+Credentials should live outside Git, for example:
 
-Internet → PostgreSQL
-
-Configure PostgreSQL to listen locally where possible.
-
-The database URL could look like:
-
-postgresql://cesium@127.0.0.1:5432/cesium
-
-Credentials should live outside Git.
-
-For example:
-
+```text
 /etc/cesium/api.env
+```
 
-containing:
+## 7. Backend API
 
-DATABASE_URL=...
-DATABASE_PASSWORD=...
-API_SECRET=...
+Use FastAPI on:
 
-Do not commit that file.
-
-⸻
-
-7. Backend API
-
-A good backend choice is FastAPI.
-
-Run it on:
-
+```text
 127.0.0.1:8000
-
-Conceptually:
-
-Browser
-   ↓
-GET /api/people
-   ↓
-FastAPI
-   ↓
-PostgreSQL
+```
 
 Potential endpoints:
 
+```text
 GET    /api/people
 GET    /api/people/{id}
 POST   /api/people
 PATCH  /api/people/{id}
 DELETE /api/people/{id}
+
 GET    /api/organizations
 GET    /api/interactions
 GET    /api/events
 GET    /api/opportunities
 GET    /api/projects
 GET    /api/songs
+```
 
-Later:
+The API becomes the common interface for the web frontend, CLI tools, AI tools, scripts, and future apps.
 
-GET /api/people?q=alex
-GET /api/people?location=los-angeles
-GET /api/people/{id}/interactions
-GET /api/people/{id}/network
-GET /api/opportunities?status=contacted
+## 8. Backend systemd Service
 
-The API becomes the common interface for everything.
+Create `cesium-api.service` to run FastAPI automatically:
 
-Web frontend ───────┐
-                    │
-CLI tools ──────────┤
-                    │
-AI tools ───────────┼── API ── PostgreSQL
-                    │
-scripts ────────────┤
-                    │
-future mobile app ──┘
-
-⸻
-
-8. Backend systemd Service
-
-Create:
-
-heart/services/cesium-api.service
-
-Conceptually:
-
+```ini
 [Unit]
 Description=Cesium Lab API
 After=network.target postgresql.service
+
 [Service]
 User=colin
 WorkingDirectory=/path/to/heart/backend
 EnvironmentFile=/etc/cesium/api.env
 ExecStart=/path/to/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
+
 [Install]
 WantedBy=multi-user.target
+```
 
-Then:
+## 9. Apache as Reverse Proxy
 
-sudo systemctl enable cesium-api
-sudo systemctl start cesium-api
+Keep Cloudflare pointing to `http://localhost:80`.
 
-Now:
+Apache can route `/api/` to FastAPI:
 
-curl http://127.0.0.1:8000/
-
-should reach the backend.
-
-⸻
-
-9. Apache as Reverse Proxy
-
-Keep Cloudflare pointing to:
-
-http://localhost:80
-
-Apache can route different paths to different services.
-
-Example conceptual configuration:
-
+```apache
 DocumentRoot /path/to/heart/apache2/html
+
 ProxyPass        /api/ http://127.0.0.1:8000/
 ProxyPassReverse /api/ http://127.0.0.1:8000/
+```
 
-Now:
+Request path:
 
-https://cesiumlab.net/api/people
-
-travels:
-
+```text
 Internet
  ↓
 Cloudflare
@@ -382,246 +246,76 @@ Apache :80
 FastAPI :8000
  ↓
 PostgreSQL :5432
+```
 
-Meanwhile:
+## 10. Frontend
 
-https://cesiumlab.net/
+Recommended stack:
 
-still goes to the existing Apache website.
-
-That means the backend can be built without breaking the existing site.
-
-⸻
-
-10. Frontend
-
-There are several reasonable approaches.
-
-Recommended Approach: React + Vite
-
-For Cesium Lab, I would probably start with:
-
+```text
 React
-+
 TypeScript
-+
 Vite
+```
 
-rather than immediately introducing a large full-stack framework.
+The frontend calls FastAPI rather than accessing PostgreSQL directly.
 
-Why:
+## 11. Possible Frontend Pages
 
-* fast
-* relatively simple
-* excellent ecosystem
-* easy API integration
-* good for dashboards
-* good for tables
-* good for network visualization
-* frontend remains separate from backend
-* FastAPI remains responsible for data
-
-The architecture becomes:
-
-React frontend
-     │
-     │ fetch("/api/people")
-     ▼
-FastAPI
-     │
-     ▼
-PostgreSQL
-
-⸻
-
-11. Possible Frontend Pages
-
-Cesium Lab could gradually become your personal control panel.
-
-cesiumlab.net/
-│
-├── /
-│   Cesium Lab homepage
-│
+```text
+/
 ├── /contacts
-│   People search
-│
 ├── /people/:id
-│   Person profile
-│
 ├── /organizations
-│
 ├── /network
-│   Relationship graph
-│
 ├── /interactions
-│
 ├── /events
-│
 ├── /opportunities
-│
 ├── /music
-│   Music HQ
-│
 ├── /songs
-│
 └── /projects
+```
 
-⸻
+## 12. Contacts UI
 
-12. Contacts UI
+Prioritize instant search across:
 
-The first useful frontend could simply be a very fast contacts interface.
+- names
+- organizations
+- notes
+- locations
+- roles
+- social handles
 
-Something like:
+Useful filters could include musician, engineering, LA, Seattle, Stanford, UCLA, organization, and relationship type.
 
-┌──────────────────────────────────────────────────────┐
-│ Cesium Lab                                     Colin │
-├──────────────────────────────────────────────────────┤
-│ Search people...                                     │
-├──────────────┬───────────────────────────────────────┤
-│ Filters      │                                       │
-│              │ Alex Smith                            │
-│ Musicians    │ Guitarist · Los Angeles               │
-│ Engineers    │ MONARCH / Handmade Records            │
-│ LA           │                                       │
-│ Seattle      │ Last interaction: Aug 12              │
-│ Stanford     │                                       │
-│ UCLA         │ [Open profile]                        │
-│              │                                       │
-│              │ Sarah Jones                           │
-│              │ Photographer · Seattle                │
-└──────────────┴───────────────────────────────────────┘
+## 13. Individual Person Page
 
-The most valuable feature initially is probably simply:
+A person page can combine roles, location, contact information, organizations, interactions, opportunities, events, projects, and connections.
 
-instant search
+## 14. Network Graph
 
-Type:
+Eventually `/network` can visualize relationships among people, organizations, bands, venues, events, and projects. Cytoscape.js or React Flow could be used.
 
-nat
-
-and immediately search:
-
-* names
-* organizations
-* notes
-* locations
-* roles
-* social handles
-
-That alone may make the SQL system substantially more useful than searching through Notion manually.
-
-⸻
-
-13. Individual Person Page
-
-A person page could combine everything that currently gets scattered around.
-
-Alex Smith
-Los Angeles
-Guitarist · Producer
-Organizations
-------------
-Some Band
-Handmade Records
-Contact
--------
-Instagram: @...
-Email: ...
-Interactions
-------------
-Aug 14, 2026
-Met at backyard release show
-Jul 22, 2026
-Instagram conversation
-Opportunities
--------------
-Possible co-bill
-Status: Explore
-Events
-------
-Backyard Release Party
-Connections
------------
-Sarah Jones
-John Smith
-Some Band
-
-That is where having relational SQL becomes particularly valuable.
-
-⸻
-
-14. Network Graph
-
-Eventually /network could visualize:
-
-                 Artist A
-                    │
-                    │
-                Person A
-                 /     \
-                /       \
-          MONARCH       Venue
-              │           │
-             Colin ─── Promoter
-              │
-              │
-            Person B
-
-Libraries such as Cytoscape.js or React Flow can make this practical.
-
-The graph shouldn’t replace normal tables. It should answer questions like:
-
-* Who connects me to this artist?
-* Which organizations contain the most people I know?
-* Where are clusters forming?
-* Who bridges two scenes?
-* Which people have I met repeatedly?
-
-⸻
-
-15. Frontend Port
+## 15. Frontend Port
 
 During development:
 
-React/Vite
-127.0.0.1:3000
+```text
+React/Vite → 127.0.0.1:3000
+```
 
-You could have Apache proxy:
+For production:
 
-/app/
-    ↓
-localhost:3000
-
-But this is mainly useful during development.
-
-For production, Vite builds ordinary static files:
-
+```bash
 npm run build
+```
 
-producing something like:
+produces `frontend/dist/`, which can be served as static files. A permanent Node process is not required.
 
-frontend/dist/
+## 16. Recommended Production Architecture
 
-Apache can serve that directly.
-
-Therefore production could actually be:
-
-Apache :80
-├── frontend/dist/
-└── /api → FastAPI :8000
-
-No frontend server needs to run continuously.
-
-That’s especially attractive for your setup.
-
-⸻
-
-16. Recommended Production Architecture
-
-This is probably the architecture I would target first:
-
+```text
                       Cloudflare
                            │
                            ▼
@@ -629,8 +323,8 @@ This is probably the architecture I would target first:
                            │
                            ▼
                        Apache :80
-                      /          \
-                     /            \
+                      /          \\
+                     /            \\
                     ▼              ▼
           React static build     /api/*
           frontend/dist/            │
@@ -639,479 +333,199 @@ This is probably the architecture I would target first:
                                     │
                                     ▼
                              PostgreSQL :5432
+```
 
-Services running:
+## 17. Authentication
 
-apache2.service
-cloudflared.service
-cesium-api.service
-postgresql.service
+Keep private contacts and API data protected. A useful split is:
 
-No permanent Node server required.
-
-⸻
-
-17. Authentication
-
-Contacts should not simply become publicly browseable because they’re hosted at cesiumlab.net.
-
-Separate:
-
-PUBLIC
-cesiumlab.net/
-
-from:
-
-PRIVATE
-cesiumlab.net/app/
-cesiumlab.net/contacts/
-cesiumlab.net/api/
-
-Cloudflare Access is a strong option for putting authentication in front of the private portion.
-
-For example:
-
-contacts.cesiumlab.net
-        ↓
-Cloudflare Access
-        ↓
-Google login / allowed identity
-        ↓
-Apache
-
-Another clean setup could be:
-
-cesiumlab.net           public
-app.cesiumlab.net       private
-api.cesiumlab.net       private
-
-I actually prefer that separation.
-
-⸻
-
-18. Suggested Domain Structure
-
+```text
 cesiumlab.net
-    Public site
+    public
+
 app.cesiumlab.net
-    Private Cesium Lab interface
-api.cesiumlab.net
-    API
-
-Cloudflare Tunnel could route:
-
-cesiumlab.net
-    → localhost:80
-app.cesiumlab.net
-    → localhost:80
-api.cesiumlab.net
-    → localhost:8000
-
-However, initially I would keep:
+    private
 
 api.cesiumlab.net
+    private
+```
 
-behind Cloudflare Access rather than publicly exposing unrestricted API access.
+Cloudflare Access can protect the private application and API. Programmatic API access can additionally use a bearer token stored outside the repository.
 
-⸻
+## 18. Suggested Domain Structure
 
-19. Notion Migration
+```text
+cesiumlab.net       → public site
+app.cesiumlab.net   → private Cesium Lab interface
+api.cesiumlab.net   → authenticated API
+```
+
+## 19. Notion Migration
 
 Do not immediately delete the Notion databases.
 
-Instead:
-
-Notion
- ↓
-migration/import script
- ↓
-PostgreSQL
-
-Start with:
+Start by migrating:
 
 1. People
 2. Organizations
 3. Interactions
 
-Then validate the data.
-
-Later:
+Then later:
 
 4. Events
 5. Opportunities
 6. Projects
 7. Songs
 
-Once PostgreSQL becomes reliable, decide which Notion components remain useful.
+Structured entities can move to PostgreSQL while long-form strategy and knowledge can remain in Notion if useful.
 
-Long-form information can still live in Notion even if structured entities move to SQL.
+## 20. File Locations
 
-For example:
+Code:
 
-PostgreSQL
-├── people
-├── relationships
-├── organizations
-├── events
-└── opportunities
-Notion
-├── Artistic Identity
-├── Music Strategy
-├── Songwriting Lessons
-├── City Notes
-└── long-form project notes
-
-⸻
-
-20. File Locations
-
-Keep code, data, and secrets separate.
-
-Git repository
-
+```text
 ~/heart/
+```
 
-Contains:
+Persistent application data:
 
-source code
-frontend
-API
-Apache config
-database migrations
-scripts
-systemd templates
-
-Persistent application data
-
+```text
 /var/lib/cesium/
+```
 
-Could contain:
+Secrets:
 
-uploads/
-backups/
-exports/
-
-PostgreSQL should normally manage its own database directory.
-
-Secrets
-
+```text
 /etc/cesium/
+```
 
-For example:
+Do not commit secrets or private database contents.
 
-/etc/cesium/api.env
+## 21. Backups
 
-⸻
+Automate PostgreSQL backups with `pg_dump`.
 
-21. Backups
+Target:
 
-Once the contact database becomes valuable, automate backups.
-
-Example:
-
-PostgreSQL
- ↓
-pg_dump
- ↓
-/var/lib/cesium/backups/
-
-Potential schedule:
-
+```text
 nightly local backup
 weekly second-machine/cloud backup
+```
 
-Do not allow the home server to become the only copy of years of contact/network information.
+Test restoration before treating PostgreSQL as the sole source of truth.
 
-⸻
+## 22. Implementation Sequence
 
-22. Implementation Sequence
-
-Phase 1 — Preserve Existing System
-
-Do not modify how the existing Cesium Lab site works yet.
+### Phase 1 — Preserve Existing System
 
 Verify:
 
+```text
 Cloudflare → Apache :80 → static files
+```
 
-is stable.
+### Phase 2 — Install PostgreSQL
 
-⸻
+- Install PostgreSQL
+- Create database `cesium`
+- Create user `cesium`
+- Configure local access
+- Create the first `people` table/migration
 
-Phase 2 — Install PostgreSQL
+### Phase 3 — Create Backend
 
-Install PostgreSQL.
+Create `heart/backend/` and set up:
 
-Create:
-
-database: cesium
-user: cesium
-
-Configure local access.
-
-Test:
-
-psql
-
-Create an initial people table manually or through migrations.
-
-⸻
-
-Phase 3 — Create Backend
-
-Create:
-
-heart/backend/
-
-Set up:
-
+```text
 Python
 FastAPI
 SQLAlchemy
 Alembic
 PostgreSQL driver
+```
 
-Implement:
+Implement the initial People CRUD endpoints and test on `localhost:8000`.
 
-GET /people
-GET /people/{id}
-POST /people
-PATCH /people/{id}
+### Phase 4 — Create systemd API Service
 
-Test locally:
+Create and enable `cesium-api.service`.
 
-localhost:8000
+### Phase 5 — Connect Apache to API
 
-⸻
+Enable Apache proxy modules and route:
 
-Phase 4 — Create systemd API Service
+```text
+/api/ → localhost:8000
+```
 
-Create:
+### Phase 6 — Add Authentication
 
-cesium-api.service
+Before adding real contact data, protect the private application/API using Cloudflare Access and API credentials where appropriate.
 
-Run FastAPI automatically at boot.
+### Phase 7 — Build Contacts Frontend
 
-Verify:
+Create `heart/frontend/` using React + TypeScript + Vite.
 
-systemctl status cesium-api
+Start with:
 
-⸻
-
-Phase 5 — Connect Apache to API
-
-Enable Apache proxy modules if necessary.
-
-Add:
-
-/api/
-    → localhost:8000
-
-Now test:
-
-https://cesiumlab.net/api/people
-
-At this point you have your first remotely accessible database-backed endpoint.
-
-⸻
-
-Phase 6 — Add Authentication
-
-Before adding real contact data:
-
-Protect either:
-
-/api/*
-
-or preferably:
-
-app.cesiumlab.net
-api.cesiumlab.net
-
-using Cloudflare Access or another authentication mechanism.
-
-⸻
-
-Phase 7 — Build Contacts Frontend
-
-Create:
-
-heart/frontend/
-
-Use:
-
-React
-TypeScript
-Vite
-
-Start with only:
-
+```text
 /contacts
 /people/:id
+```
 
-Implement:
+Implement search, filters, profile view, create/edit person, and interaction timeline.
 
-* search
-* filters
-* profile view
-* create person
-* edit person
-* interaction timeline
+### Phase 8 — Build Production Frontend
 
-Do not initially try to reproduce all of Notion.
+Run `npm run build` and deploy `frontend/dist/` as static files.
 
-⸻
+### Phase 9 — Import People
 
-Phase 8 — Build Production Frontend
+Create:
 
-Run:
-
-npm run build
-
-Serve:
-
-frontend/dist/
-
-from Apache.
-
-Production no longer requires port 3000.
-
-Port 3000 remains useful only during development.
-
-⸻
-
-Phase 9 — Import People
-
-Export or retrieve People data from Notion.
-
-Write:
-
+```text
 scripts/import-notion.py
+```
 
-Map:
+Normalize and deduplicate People data before inserting into PostgreSQL.
 
-Notion person
- ↓
-normalize
- ↓
-SQL person
+### Phase 10 — Add Relationships
 
-Avoid duplicates using:
+Add Organizations, Interactions, Events, Opportunities, Projects, and Songs as the core system proves useful.
 
-* email
-* phone
-* social handles
-* existing external IDs
-
-⸻
-
-Phase 10 — Add Relationships
-
-After People works well, add:
-
-organizations
-interactions
-events
-opportunities
-projects
-songs
-
-Build the UI only as these become useful.
-
-⸻
-
-23. Future Apache Removal
+## 23. Future Apache Removal
 
 Apache does not need to be permanent.
 
-Eventually you might have:
+Eventually:
 
+```text
 Cloudflare
    ↓
-FastAPI :8000
+FastAPI/application
    ├── /api
    └── static React build
+```
 
-At that point:
+Cloudflare Tunnel could point directly to the application server and Apache could be disabled. There is little reason to do this early.
 
-cloudflared
-    → localhost:8000
+## 24. Immediate Next Steps
 
-and Apache could be disabled.
-
-But there is little reason to do this early.
-
-Apache currently gives you:
-
-* static file serving
-* reverse proxying
-* routing
-* mature HTTP handling
-* separation between frontend and backend
-
-It remains useful until it becomes redundant.
-
-⸻
-
-24. Final Initial Architecture
-
-The first stable version should therefore be:
-
-                        Internet
-                           │
-                           ▼
-                       Cloudflare
-                           │
-                           ▼
-                     cloudflared
-                           │
-                           ▼
-                       Apache :80
-                      /          \
-                     /            \
-                    ▼              ▼
-           React static UI       /api/*
-                                      │
-                                      ▼
-                               FastAPI :8000
-                                      │
-                                      ▼
-                              PostgreSQL :5432
-
-With:
-
-heart/
-├── apache2/
-├── backend/
-├── frontend/
-├── services/
-└── scripts/
-
-and services:
-
-apache2.service
-cloudflared.service
-postgresql.service
-cesium-api.service
-
-This gives Cesium Lab a path from being a locally stored website into an actual personal software platform without requiring a large rewrite.
-
-Immediate Next Steps
-
-* Create heart/backend/
-* Install PostgreSQL
-* Create the cesium database
-* Create the first people table
-* Create a minimal FastAPI application
-* Run FastAPI on 127.0.0.1:8000
-* Add cesium-api.service
-* Configure Apache /api/ proxying
-* Verify cesiumlab.net/api/... works
-* Add authentication before importing real contacts
-* Create heart/frontend/
-* Build a React + TypeScript + Vite contacts interface
-* Add search and person profile pages
-* Import People from Notion
-* Add Organizations and Interactions
-* Expand into Events, Opportunities, Projects, and Songs
-* Reevaluate whether Apache is still useful
+- [ ] Create `heart/backend/`
+- [ ] Install PostgreSQL
+- [ ] Create the `cesium` database
+- [ ] Create the first `people` table
+- [ ] Create a minimal FastAPI application
+- [ ] Run FastAPI on `127.0.0.1:8000`
+- [ ] Add `cesium-api.service`
+- [ ] Configure Apache `/api/` proxying
+- [ ] Verify the API works through the intended domain
+- [ ] Add authentication before importing real contacts
+- [ ] Create `heart/frontend/`
+- [ ] Build a React + TypeScript + Vite contacts interface
+- [ ] Add search and person profile pages
+- [ ] Import People from Notion
+- [ ] Add Organizations and Interactions
+- [ ] Expand into Events, Opportunities, Projects, and Songs
+- [ ] Configure backups
+- [ ] Reevaluate whether Apache is still useful
