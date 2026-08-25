@@ -49,6 +49,9 @@ longitude_gauge = Gauge("satellite_longitude_deg", "Satellite longitude", ["devi
 async def simulate_telemetry_loop():
     """Continuously jitter telemetry in place so Prometheus has real history to scrape"""
     while True:
+        if is_frozen:
+            await asyncio.sleep(SIM_INTERVAL)
+            continue
         for device_id in telemetry_store:
             telemetry_store[device_id] = add_telemetry_jitter(telemetry_store[device_id])
             sensors = telemetry_store[device_id]["sensors"]
@@ -201,6 +204,7 @@ async def post_command(command: Command):
     # Send immediate ACK
     immediate_ack = {
         "command_id": command_id,
+        "command_count": commands_sent,
         "seq_num": sequence_number,
         "status": "received",
         "timestamp": int(time.time())

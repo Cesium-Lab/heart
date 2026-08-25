@@ -1,112 +1,42 @@
-# DataViz Architecture
+# DataViz architecture
 
-Three-server POC for spacecraft command and telemetry management.
+DataViz is a proof-of-concept spacecraft command and telemetry stack. It has two
+Python services and an optional containerized monitoring pair.
 
-## Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         DataViz Dashboard                  │
-│                    (User sends commands)                     │
-│                       Port 42002                             │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           │ Commands
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Backend Store                             │
-│            (Central hub - stores everything)                 │
-│                       Port 42000                             │
-│  • Telemetry data (10 examples loaded)                       │
-│  • Command queue                                             │
-│  • WebSocket for real-time updates                           │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           │ Telemetry Data
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Telemetry Dashboard                         │
-│               (Graphs, stats, monitoring)                    │
-│                       Port 42003                             │
-└─────────────────────────────────────────────────────────────┘
+```text
+Browser -> NiceGUI dashboard (42002) -> FastAPI backend (42000)
+                                             |
+                                             +-> /metrics
+                                                   |
+                                            Prometheus (42004)
+                                                   |
+                                              Grafana (42003)
 ```
 
-## Servers
+## Components
 
-### Backend (Port 42000)
-**Dumb central store** — just holds data, no active logic
+| Port | Component | Purpose |
+| --- | --- | --- |
+| 42000 | FastAPI backend | In-memory telemetry, command queue, simulation, API, and Prometheus metrics |
+| 42001 | Reserved | Available for a future telemetry stream |
+| 42002 | NiceGUI dashboard | Command entry, freeze control, and pending/executed command views |
+| 42003 | Grafana | Provisioned telemetry charts backed by Prometheus |
+| 42004 | Prometheus | Scrapes `host.docker.internal:42000/metrics` once per second |
 
-- Loads 10 example satellites from `backend/examples/telemetry10.json`
-- Stores telemetry data
-- Queues commands (when "freeze" command sent, nothing moves—just stored)
-- Provides GET/POST endpoints for telemetry and commands
-- WebSocket endpoint for real-time streaming
+The backend loads ten simulated satellites from
+`backend/examples/telemetry10.json`. When unfrozen, it jitters their telemetry at
+10 Hz and executes queued commands after a simulated one-second delay. Freeze
+pauses both behaviors. All backend state is process-local and is lost on restart.
 
-### DataViz Dashboard (Port 42002)
-**User-facing command interface**
+Apache exposes the backend under `/api/dataviz/` on the main site and proxies
+`dataviz.cesiumlab.net` to NiceGUI. The dashboard talks directly to the loopback
+backend, so neither internal Python port needs public exposure.
 
-- User sends commands via API
-- Views pending commands
-- Acknowledges command execution
-- Proxies all requests to backend
+## Known limitations
 
-### Telemetry Dashboard (Port 42003)
-**Visualization and monitoring**
+- No persistence, authentication, authorization, or command validation beyond the Pydantic request shape.
+- No real flight hardware or spacecraft simulator is connected.
+- The WebSocket endpoint is request/response (`ping`) rather than a pushed stream.
+- Grafana and Prometheus are optional and require Docker Compose.
 
-- Displays all telemetry data
-- Shows graphs and statistics
-- Calculates health metrics (avg temp, battery, etc.)
-- Polls backend for real-time updates
-- Health check endpoint
-
-## Ports
-
-| Port  | Service                          |
-|-------|----------------------------------|
-| 42000 | Backend Store                    |
-| 42001 | (Reserved for telemetry stream)  |
-| 42002 | DataViz Dashboard              |
-| 42003 | Telemetry Dashboard              |
-
-## Data Flow
-
-**User Commanding:**
-```
-User → DataViz Dashboard → Backend (stores) → Done (until spacecraft integrated)
-```
-
-**Telemetry Monitoring:**
-```
-Backend (10 examples) → Telemetry Dashboard (displays) → User
-```
-
-## Future Extensions
-
-1. **Spacecraft Simulator** — Simulates device behavior, receives commands, generates telemetry
-2. **Real Spacecraft** — Replace simulator with actual hardware
-3. **Frontend Web UI** — Build web interfaces for DataViz Dashboard and Telemetry Dashboard
-4. **Database** — Replace in-memory store with persistent storage
-5. **Authentication** — Add user auth and command validation
-
-## Quick Start
-
-```bash
-# Terminal 1: Backend
-cd backend
-pip install -r requirements.txt
-../.venv/bin/python main.py
-
-# Terminal 2: DataViz Dashboard
-cd dashboard
-pip install -r requirements.txt
-../.venv/bin/python app.py
-
-# Terminal 3: Telemetry Dashboard
-cd telemetry_server
-pip install -r requirements.txt
-../.venv/bin/python app.py
-```
-
-Then visit:
-- DataViz Dashboard: `http://127.0.0.1:42002/docs` — Send commands
-- Telemetry: `http://127.0.0.1:42003/docs` — View data
+See [QUICKSTART.md](QUICKSTART.md) for local and production startup instructions.

@@ -6,7 +6,9 @@ Server runs on `http://127.0.0.1:42003`
 
 ## How It Works
 
-**Polling:** Telemetry server polls backend every **second** for latest telemetry data.
+Prometheus scrapes the DataViz backend metrics endpoint every second. Grafana reads
+Prometheus and loads the provisioned satellite telemetry dashboard. Both services
+are started by `docker-compose.yaml`; there is no separate Python telemetry server.
 <!-- 
 ## Layout
 

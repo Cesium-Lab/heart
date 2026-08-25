@@ -1,6 +1,6 @@
 # DataViz Dashboard
 
-Web dashboard for monitoring command execution status and history from the backend.
+Web dashboard for sending simulated commands and monitoring their execution status.
 
 ## Setup
 
@@ -16,7 +16,9 @@ Server runs on `http://127.0.0.1:42002`
 Built with **NiceGUI** — a Python-based web GUI framework.
 
 ### Features
-- **Command Execution Log** — View all commands with their execution status
+- **Command Form** — Send thrust commands to one of the ten simulated satellites
+- **Freeze Control** — Pause telemetry simulation and queued command execution
+- **Command Execution Log** — View pending and completed commands
 - **Sequence Tracking** — Each command has a sequence number (0-255) for ordering
 - **Status Display** — See real-time status updates:
   - `received` — Backend acknowledged receipt (immediate)
@@ -45,7 +47,6 @@ External Command Source → Backend (receives, stores, executes)
 
 ## Notes
 
-- GUI is view-only (no sending commands)
-- All commands come from external sources (not shown)
+- State and command history are in memory and reset when the backend restarts
 - Sequence numbers preserve command order (0-255 cycle)
 - Status transitions: received → done

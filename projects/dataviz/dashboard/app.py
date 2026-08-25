@@ -1,7 +1,6 @@
 from nicegui import ui
 import requests
 import logging
-import asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
