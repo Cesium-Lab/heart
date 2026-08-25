@@ -67,7 +67,7 @@ curl http://127.0.0.1:5701/health
 
 ## Run automatically at startup
 
-The supplied unit files assume:
+The systemd unit files in `../../deploy/systemd/` assume:
 
 - the repository is at `/home/cskin/Cesium/heart`;
 - the Linux account is `cskin`;
@@ -78,13 +78,16 @@ If either the repository path or account differs, edit `WorkingDirectory`, `Exec
 Install and enable both units:
 
 ```bash
-sudo install -m 0644 backend/services/rotation-viz/rotation-viz.service /etc/systemd/system/rotation-viz.service
-sudo install -m 0644 backend/services/telemetry-viz/telemetry-viz.service /etc/systemd/system/telemetry-viz.service
+sudo install -m 0644 deploy/systemd/rotation-viz.service /etc/systemd/system/rotation-viz.service
+sudo install -m 0644 deploy/systemd/telemetry-viz.service /etc/systemd/system/telemetry-viz.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now rotation-viz.service telemetry-viz.service
 ```
 
 `enable` registers the units for future boots; `--now` also starts them immediately.
+### Cloudflare Tunnel
+
+Cloudflare is also managed by systemd, but its live unit contains a secret tunnel token and must not be committed. `deploy/systemd/cloudflared.service.example` is a safe template. Put `TUNNEL_TOKEN=...` in `/etc/cesium/cloudflared.env`, restrict that file to root, install the template as `cloudflared.service`, and then run `sudo systemctl daemon-reload` followed by `sudo systemctl enable --now cloudflared.service`. Alternatively, let `cloudflared service install` manage the installed unit directly.
 
 Verify them:
 
@@ -111,7 +114,7 @@ sudo systemctl restart telemetry-viz.service
 After changing a `.service` file, reinstall it and reload systemd before restarting:
 
 ```bash
-sudo install -m 0644 backend/services/rotation-viz/rotation-viz.service /etc/systemd/system/rotation-viz.service
+sudo install -m 0644 deploy/systemd/rotation-viz.service /etc/systemd/system/rotation-viz.service
 sudo systemctl daemon-reload
 sudo systemctl restart rotation-viz.service
 ```

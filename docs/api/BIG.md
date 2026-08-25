@@ -189,9 +189,11 @@ heart/
 │   ├── migrations/
 │   └── requirements.txt
 │
-├── services/
-│   ├── cesium-api.service
-│   └── cloudflared.service
+├── deploy/
+│   └── systemd/
+│       ├── rotation-viz.service
+│       ├── telemetry-viz.service
+│       └── cloudflared.service.example
 │
 ├── scripts/
 │   ├── backup-db.sh
