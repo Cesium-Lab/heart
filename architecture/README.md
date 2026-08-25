@@ -15,7 +15,7 @@
 | ---- | ------------------------- |
 | 42000 | T&C Backend       |
 | 42001 | (reserved)       |
-| 42002 | Mission Control GUI (NiceGUI)       |
+| 42002 | DataViz Dashboard (NiceGUI)       |
 | 42003 | Telemetry Server (Grafana)   |
 | 42004 | Telemetry Database (Prometheus)   |
 

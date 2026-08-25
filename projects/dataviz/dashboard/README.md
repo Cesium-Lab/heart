@@ -1,15 +1,15 @@
-# Mission Control GUI
+# DataViz Dashboard
 
 Web dashboard for monitoring command execution status and history from the backend.
 
 ## Setup
 
 ```bash
-pip install -r requirements.txt  # or top-level requirements
-python app.py
+../.venv/bin/pip install -r ../requirements.txt  # or top-level requirements
+../.venv/bin/python app.py
 ```
 
-Server runs on `http://localhost:42002`
+Server runs on `http://127.0.0.1:42002`
 
 ## How It Works
 
@@ -27,7 +27,7 @@ Built with **NiceGUI** — a Python-based web GUI framework.
 ```
 External Command Source → Backend (receives, stores, executes)
                               ↓ (ACKs: received → done)
-                    Mission Control GUI (monitors and displays)
+                    DataViz Dashboard (monitors and displays)
 ```
 
 ### Status Timeline

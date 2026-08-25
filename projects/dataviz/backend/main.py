@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 PORT = 42000
-ADDR = "0.0.0.0"
+ADDR = "127.0.0.1"
 SIM_INTERVAL = 0.1  # how often telemetry is jittered in the background
 
 ####################################################################################################
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
     yield
     task.cancel()
 
-app = FastAPI(title="Mission Control Backend", lifespan=lifespan)
+app = FastAPI(title="DataViz Backend", lifespan=lifespan)
 app.mount("/metrics", make_asgi_app())
 
 ####################################################################################################

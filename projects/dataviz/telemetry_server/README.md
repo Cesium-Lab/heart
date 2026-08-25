@@ -2,7 +2,7 @@
 
 Real-time visualization of satellite telemetry data with Grafana.
 
-Server runs on `http://localhost:42003`
+Server runs on `http://127.0.0.1:42003`
 
 ## How It Works
 

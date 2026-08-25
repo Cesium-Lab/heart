@@ -6,7 +6,7 @@ import asyncio
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BACKEND_URL = "http://localhost:42000/api/v1"
+BACKEND_URL = "http://127.0.0.1:42000/api/v1"
 PORT = 42002
 
 # Enable dark mode
@@ -200,7 +200,7 @@ def update_freeze_button():
 ####################################################################################################
 
 # Header
-ui.label("Mission Control GUI").style("font-size: 28px; font-weight: bold")
+ui.label("DataViz Dashboard").style("font-size: 28px; font-weight: bold")
 
 
 
@@ -298,4 +298,4 @@ def startup():
 
 startup()
 
-ui.run(host="0.0.0.0", port=PORT)
+ui.run(host="127.0.0.1", port=PORT)

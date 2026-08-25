@@ -6,6 +6,7 @@ Cesium Heart contains the Astro frontend and backend services used by the site.
 
 - `frontend/` — Astro source; builds to `frontend/dist/`.
 - `backend/services/` — Python APIs managed by systemd.
+- `projects/dataviz/` — DataViz backend, GUI, and monitoring stack.
 - `backend/music/setlister/` — Setlister backend and private configuration.
 - `deploy/systemd/` — version-controlled systemd units.
 - `scripts/deploy-startup.sh` — installs, builds, starts, and verifies the deployment.
@@ -19,19 +20,14 @@ Cesium Heart contains the Astro frontend and backend services used by the site.
 
 The script runs `npm ci` and `npm run build`, installs tracked units into `/etc/systemd/system/`, enables and starts installed services, validates and reloads Apache, and checks systemd state and HTTP health endpoints. It requests `sudo` for system changes and skips optional units that are not installed.
 
-Apache serves `/home/cskin/Cesium/heart/frontend/dist`. Configure `/etc/apache2/sites-available/000-default.conf` with:
+Apache serves `/home/cskin/Cesium/heart/frontend/dist`. Its configuration is split into:
 
-```apache
-DocumentRoot /home/cskin/Cesium/heart/frontend/dist
+- `deploy/apache/sites-available/cesiumlab.conf` — main static-site virtual host;
+- `deploy/apache/sites-available/dataviz.conf` — DataViz Dashboard subdomain; and
+- `deploy/apache/includes/api-proxies.conf` — backend API route mappings.
 
-<Directory /home/cskin/Cesium/heart/frontend/dist>
-    Options FollowSymLinks
-    AllowOverride None
-    Require all granted
-</Directory>
-```
+The deployment helper installs and enables these files. `npm ci` installs dependencies; it does not create `dist`. `npm run build` creates `dist`, and Apache serves it.
 
-`npm ci` installs dependencies; it does not create `dist`. `npm run build` creates `dist`, and Apache serves it.
 
 ## Troubleshooting
 

@@ -1,19 +1,19 @@
-# Mission Control Backend
+# DataViz Backend
 
-Bare-bones FastAPI backend for robo-code telemetry and command coordination.
+Bare-bones FastAPI backend for dataviz telemetry and command coordination.
 
 ## Setup
 
 ```bash
-pip install -r requirements.txt
-python main.py
+../.venv/bin/pip install -r ../requirements.txt
+../.venv/bin/python main.py
 ```
 
-Server runs on `http://localhost:42000`
+Server runs on `http://127.0.0.1:42000`
 
 ## API Documentation
 
-Visit `http://localhost:42000/docs` for interactive Swagger UI
+Visit `http://127.0.0.1:42000/docs` for interactive Swagger UI
 
 ## Key Endpoints
 
