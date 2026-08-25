@@ -1,0 +1,17 @@
+[Unit]
+Description=Build Cesium Astro frontend
+ConditionPathExists=/home/cskin/Cesium/heart/frontend/package.json
+After=local-fs.target
+Before=apache2.service
+
+[Service]
+Type=oneshot
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/frontend
+ExecStart=/usr/bin/npm run build
+RemainAfterExit=yes
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.astro/
+
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.locals
