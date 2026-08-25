@@ -1,90 +1,64 @@
 # Setlister environment configuration
 
-The Setlister music service uses an API key and runtime settings from environment variables. Secrets belong in the backend only; never place them in the Astro frontend under `mr-ray-apache2`.
+Setlister is a backend service and belongs in `backend/music/setlister/`. It is not copied into `frontend/dist`. Apache exposes `/api/setlister/` by proxying to `http://127.0.0.1:5702/api/setlister/`.
 
-## Required variables
+## Migration status
 
-Copy the committed template when setting up local development:
+The configuration files have moved here, but the application is not yet fully migrated:
+
+- `server.py` is missing from this directory and is not tracked by Git.
+- `deploy/systemd/setlister.service` does not exist yet.
+- the installed `/etc/systemd/system/setlister.service` still names the removed `mr-ray-apache2/music/setlister` path.
+- the currently running process remains healthy only because it started before that directory was moved.
+
+Do not restart the service or reboot expecting it to recover until `server.py` is restored and a corrected tracked unit is added. `scripts/deploy-startup.sh` can detect and check an installed Setlister unit, but it cannot install the missing application or unit.
+
+## Local configuration
 
 ```bash
 cp backend/music/setlister/.env.example backend/music/setlister/.env
 ```
 
-Then edit `.env` and provide the real key:
+Use port `5702` to match Apache:
 
 ```dotenv
 GETSONGBPM_API_KEY=replace-with-your-real-key
-SETLISTER_PORT=5000
+SETLISTER_PORT=5702
 SETLISTER_API_TIMEOUT=10
 SETLISTER_CACHE_TTL=3600
 SETLISTER_RATE_LIMIT=60
 ```
 
-- `GETSONGBPM_API_KEY` authenticates requests to GetSongBPM.
-- `SETLISTER_PORT` selects the local service port.
-- `SETLISTER_API_TIMEOUT` limits how long an upstream request may take, in seconds.
-- `SETLISTER_CACHE_TTL` controls cached-result lifetime, in seconds.
-- `SETLISTER_RATE_LIMIT` controls the service request limit.
-
-## Local development
-
-Store real local values in:
-
-```text
-backend/music/setlister/.env
-```
-
-This file is ignored by Git. Confirm that it remains untracked before committing:
+Confirm that the secret file remains untracked:
 
 ```bash
 git check-ignore backend/music/setlister/.env
 ```
 
-Commit `.env.example`, but never commit `.env` or paste its contents into logs, issues, or frontend code.
+Never commit `.env`, print it in logs, or copy its values into `frontend/` or an Astro variable beginning with `PUBLIC_`.
 
-## Production
+## Intended production configuration
 
-Keep production secrets outside the repository in `/etc/cesium/music.env`:
+Store production secrets outside the repository:
 
 ```bash
 sudo install -d -m 0750 -o root -g cskin /etc/cesium
 sudo install -m 0640 -o root -g cskin backend/music/setlister/.env /etc/cesium/music.env
 ```
 
-These ownership settings allow a systemd service running as `cskin` to read the file without making it world-readable. If the service runs as another account, replace the group with that account or its dedicated service group.
-
-Reference the file from the service unit:
+The future tracked unit should use:
 
 ```ini
 [Service]
 User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/backend/music/setlister
 EnvironmentFile=/etc/cesium/music.env
+ExecStart=/home/cskin/Cesium/heart/.venv/bin/python server.py
 ```
 
-After adding or changing `EnvironmentFile` in the unit:
+Once `server.py` and `deploy/systemd/setlister.service` are restored, add that unit to `scripts/deploy-startup.sh`, rerun the helper, and verify:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl restart setlister.service
-sudo systemctl status setlister.service
+systemctl status setlister.service --no-pager
+curl --fail http://127.0.0.1:5702/api/setlister/health
 ```
-
-Changing only a value inside `/etc/cesium/music.env` requires a restart, but not `daemon-reload`:
-
-```bash
-sudo systemctl restart setlister.service
-```
-
-## Rotating the API key
-
-1. Generate or obtain a replacement key from the provider.
-2. Update the local `.env` if local development uses the same key.
-3. Update `/etc/cesium/music.env` on the production server.
-4. Restart `setlister.service`.
-5. Verify the service, then revoke the old key.
-
-Do not print the key during verification. Check service health or make a normal application request instead.
-
-## Astro warning
-
-Never use `GETSONGBPM_API_KEY` in `mr-ray-apache2`, browser JavaScript, or an Astro variable whose name begins with `PUBLIC_`. Astro exposes `PUBLIC_*` values to browser code. The frontend should call the backend, and the backend should attach the private API key when contacting the music provider.

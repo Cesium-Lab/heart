@@ -1,59 +1,44 @@
-# Rotation Visualizer
+# Rotation Visualizer API
 
-## Files
-- `rotation-visualizer.html` → serve statically via Apache
-- `app.py` → Flask backend (port 5001)
-- `requirements.txt` → Python deps
+The Flask API converts and validates quaternion, rotation-matrix, Euler-angle, and axis-angle representations. The Astro frontend contains the browser visualization; Apache serves the compiled frontend from `frontend/dist`.
 
-## Deploy to mr-ray
+## Runtime
+
+- Application: `app.py`
+- Dependencies: `requirements.txt`
+- Port: `5001`
+- Health: `GET http://127.0.0.1:5001/api/rotation/health`
+- Unit: `deploy/systemd/rotation-viz.service`
+- Apache proxy prefix: `/api/rotation/`
+
+## One-time setup
 
 ```bash
-# 1. Copy files
-sudo mkdir -p /var/www/html/rotation-viz
-sudo cp rotation-visualizer.html /var/www/html/rotation-viz/
-sudo cp app.py requirements.txt /var/www/html/rotation-viz/
+python3 -m venv backend/services/rotation-viz/.venv
+backend/services/rotation-viz/.venv/bin/pip install -r backend/services/rotation-viz/requirements.txt
+```
 
-# 2. Install deps
-pip3 install -r requirements.txt --break-system-packages
+## Deploy and verify
 
-# 3. Test backend manually first
-cd /var/www/html/rotation-viz && python3 app.py
+```bash
+./scripts/deploy-startup.sh
+```
 
-# 4. Install as systemd service (optional, for persistence)
-sudo cp rotation-viz.service /etc/systemd/system/
+The helper installs the unit, enables and starts it, validates Apache, and checks health. Manual alternative:
+
+```bash
+sudo install -m 0644 deploy/systemd/rotation-viz.service /etc/systemd/system/rotation-viz.service
 sudo systemctl daemon-reload
-sudo systemctl enable rotation-viz
-sudo systemctl start rotation-viz
-
-# 5. Check it's running
-curl http://localhost:5001/api/health
+sudo systemctl enable --now rotation-viz.service
+systemctl status rotation-viz.service --no-pager
+curl --fail http://127.0.0.1:5001/api/rotation/health
 ```
 
-## Link from another HTML page
+Apache proxies the public API route:
 
-```html
-<a href="/rotation-viz/rotation-visualizer.html">Rotation Visualizer</a>
-```
-
-## Apache config note
-
-The HTML file calls the Flask API at `http://localhost:5001`.
-Since the HTML is loaded from mr-ray and the API runs on mr-ray, this works.
-
-If you want to expose the API through Apache instead (cleaner URLs, no CORS issues):
 ```apache
-# Add to your VirtualHost in /etc/apache2/sites-enabled/
-ProxyPass /api/ http://localhost:5001/api/
-ProxyPassReverse /api/ http://localhost:5001/api/
+ProxyPass /api/rotation/ http://127.0.0.1:5001/api/rotation/
+ProxyPassReverse /api/rotation/ http://127.0.0.1:5001/api/rotation/
 ```
-Then change `API_BASE` in the HTML from `http://localhost:5001` to `` (empty string).
-Requires: `sudo a2enmod proxy proxy_http && sudo systemctl restart apache2`
 
-## Features
-- Input: quaternion (scalar-first or scalar-last), rotation matrix, Euler angles (ZYX/XYZ), axis-angle
-- Output: all representations simultaneously
-- 3D visualization with draggable orbit camera
-- Gimbal lock detection
-- SO(3) validity check (orthonormality + det=1)
-- Presets: identity, Rx/Ry/Rz 90°, gimbal lock demo
-- Reference panel with Rodrigues formula, quaternion math, Euler caveats
+Keep port 5001 private rather than exposing it directly to the internet.

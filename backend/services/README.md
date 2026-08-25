@@ -1,36 +1,17 @@
 # Backend services
 
-These are active Python APIs used by the Astro frontend. They belong in `backend/services`, not `legacy-services`. Reserve a `legacy-services` directory for code that is retired, no longer deployed, or waiting to be removed.
+These active Python APIs support the Astro frontend. Retired services belong under `archive/` or `legacy-services/`.
 
-## Included services
+## Services
 
-### Rotation visualizer
+| Service | Framework | Port | Health check |
+| --- | --- | ---: | --- |
+| Rotation visualizer | Flask | 5001 | `http://127.0.0.1:5001/api/rotation/health` |
+| Telemetry visualizer | FastAPI | 5701 | `http://127.0.0.1:5701/health` |
 
-- Directory: `rotation-viz/`
-- Framework: Flask
-- Port: `5001`
-- Health check: `GET http://127.0.0.1:5001/api/rotation/health`
-- Conversion endpoint: `POST /api/rotation/convert`
-- Frontend: `/rotation-viz/rotation-visualizer`
-
-It converts quaternions, rotation matrices, Euler angles, and axis-angle representations. The browser page provides the interactive 3D visualization; this service performs conversion and validation calculations.
-
-### Telemetry visualizer
-
-- Directory: `telemetry-viz/`
-- Framework: FastAPI
-- Port: `5701`
-- Health check: `GET http://127.0.0.1:5701/health`
-- Data ingestion: `POST /telemetry`
-- Buffered data: `GET /data`
-- API documentation: `http://127.0.0.1:5701/docs`
-- Frontend: `/telemetry-viz/dashboard`
-
-It accepts single or batched sensor readings and keeps the latest 100 readings per sensor in memory. Its data is lost when the process restarts.
+Telemetry buffers the latest 100 readings per sensor in memory; its data is lost on restart.
 
 ## One-time Python setup
-
-Run these commands from the repository root:
 
 ```bash
 python3 -m venv backend/services/rotation-viz/.venv
@@ -40,42 +21,21 @@ python3 -m venv backend/services/telemetry-viz/.venv
 backend/services/telemetry-viz/.venv/bin/pip install -r backend/services/telemetry-viz/requirements.txt
 ```
 
-Test each service before installing its startup unit:
+Do not install these dependencies globally with `pip3 --break-system-packages`.
+
+## Deploy, start, and verify
 
 ```bash
-backend/services/rotation-viz/.venv/bin/python backend/services/rotation-viz/app.py
+./scripts/deploy-startup.sh
 ```
 
-In another terminal:
+The helper installs `rotation-viz.service`, `telemetry-viz.service`, and `frontend-build.service` from `deploy/systemd/`; reloads systemd; enables and starts installed components; validates Apache; and checks the site and API health endpoints.
 
-```bash
-curl http://127.0.0.1:5001/api/rotation/health
-```
+The units assume the repository is `/home/cskin/Cesium/heart`, run as `cskin`, and have the virtual environments above. Edit `User`, `WorkingDirectory`, and `ExecStart` if those assumptions change.
 
-Then test telemetry:
+Telemetry uses `.venv/bin/python -m uvicorn`, not `.venv/bin/uvicorn`. Virtualenv launchers have absolute shebangs that become stale after a directory move; invoking the module through the current Python avoids that failure.
 
-```bash
-cd backend/services/telemetry-viz
-.venv/bin/uvicorn app:app --host 127.0.0.1 --port 5701
-```
-
-In another terminal:
-
-```bash
-curl http://127.0.0.1:5701/health
-```
-
-## Run automatically at startup
-
-The systemd unit files in `../../deploy/systemd/` assume:
-
-- the repository is at `/home/cskin/Cesium/heart`;
-- the Linux account is `cskin`;
-- each service has the `.venv` created above.
-
-If either the repository path or account differs, edit `WorkingDirectory`, `ExecStart`, and `User` in the unit files first.
-
-Install and enable both units:
+Manual installation:
 
 ```bash
 sudo install -m 0644 deploy/systemd/rotation-viz.service /etc/systemd/system/rotation-viz.service
@@ -84,57 +44,17 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now rotation-viz.service telemetry-viz.service
 ```
 
-`enable` registers the units for future boots; `--now` also starts them immediately.
-### Cloudflare Tunnel
-
-Cloudflare is also managed by systemd, but its live unit contains a secret tunnel token and must not be committed. `deploy/systemd/cloudflared.service.example` is a safe template. Put `TUNNEL_TOKEN=...` in `/etc/cesium/cloudflared.env`, restrict that file to root, install the template as `cloudflared.service`, and then run `sudo systemctl daemon-reload` followed by `sudo systemctl enable --now cloudflared.service`. Alternatively, let `cloudflared service install` manage the installed unit directly.
-
-Verify them:
+## Operations
 
 ```bash
-systemctl status rotation-viz.service telemetry-viz.service
-curl http://127.0.0.1:5001/api/rotation/health
-curl http://127.0.0.1:5701/health
+systemctl status rotation-viz.service telemetry-viz.service --no-pager
+journalctl -u rotation-viz.service -u telemetry-viz.service -n 100 --no-pager
+curl --fail http://127.0.0.1:5001/api/rotation/health
+curl --fail http://127.0.0.1:5701/health
 ```
 
-View recent or live logs:
+After code changes, restart the relevant API. After unit changes, rerun the deployment helper so tracked definitions are copied into `/etc`.
 
-```bash
-journalctl -u rotation-viz.service -u telemetry-viz.service -n 100
-journalctl -u rotation-viz.service -u telemetry-viz.service -f
-```
+## Cloudflare Tunnel and exposure
 
-After changing Python code, restart the relevant service:
-
-```bash
-sudo systemctl restart rotation-viz.service
-sudo systemctl restart telemetry-viz.service
-```
-
-After changing a `.service` file, reinstall it and reload systemd before restarting:
-
-```bash
-sudo install -m 0644 deploy/systemd/rotation-viz.service /etc/systemd/system/rotation-viz.service
-sudo systemctl daemon-reload
-sudo systemctl restart rotation-viz.service
-```
-
-## Disable or uninstall
-
-Disable startup and stop the processes:
-
-```bash
-sudo systemctl disable --now rotation-viz.service telemetry-viz.service
-```
-
-To remove the installed units entirely:
-
-```bash
-sudo rm /etc/systemd/system/rotation-viz.service /etc/systemd/system/telemetry-viz.service
-sudo systemctl daemon-reload
-sudo systemctl reset-failed
-```
-
-## Network exposure
-
-Do not expose these ports directly to the public internet. Keep them behind FastAPI/API routing, a firewall, or Cloudflare Tunnel as described in `../../api/BIG.md`. API keys belong in backend environment files or `/etc/cesium/api.env`, never in the Astro frontend.
+`deploy/systemd/cloudflared.service.example` is a secret-free template. Keep its real token in protected `/etc/cesium/cloudflared.env`; never commit it. Keep API ports private and expose routes through Apache, a firewall, or the configured tunnel.
