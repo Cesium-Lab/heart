@@ -18,11 +18,13 @@ Visit `http://127.0.0.1:42000/docs` for interactive Swagger UI
 ## Key Endpoints
 
 **Status**
+
 ```
 GET /api/v1/status
 ```
 
 **Telemetry**
+
 ```
 POST /api/v1/telemetry
 GET /api/v1/telemetry/latest
@@ -30,6 +32,7 @@ GET /api/v1/telemetry/latest?id=sat_1
 ```
 
 **Commands**
+
 ```
 POST /api/v1/commands
 GET /api/v1/commands/pending
@@ -37,6 +40,7 @@ POST /api/v1/commands/pending/{command_id}/ack
 ```
 
 **WebSocket**
+
 ```
 WS /api/v1/ws/telemetry
 ```

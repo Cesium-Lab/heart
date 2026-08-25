@@ -4,9 +4,9 @@ These active Python APIs support the Astro frontend. Retired services belong und
 
 ## Services
 
-| Service | Framework | Port | Health check |
-| --- | --- | ---: | --- |
-| Rotation visualizer | Flask | 5001 | `http://127.0.0.1:5001/api/rotation/health` |
+| Service             | Framework | Port | Health check                                |
+| ------------------- | --------- | ---: | ------------------------------------------- |
+| Rotation visualizer | Flask     | 5001 | `http://127.0.0.1:5001/api/rotation/health` |
 
 DataViz telemetry is monitored through Prometheus and Grafana under
 `projects/dataviz/`; the former custom telemetry API and Chart.js page are archived.

@@ -3,6 +3,7 @@
 ## Telemetry
 
 **POST /api/v1/telemetry**
+
 ```json
 {
   "id": "sat_1",
@@ -18,6 +19,7 @@
 ```
 
 **GET /api/v1/telemetry/latest**
+
 ```json
 {
   "sat_1": {
@@ -36,6 +38,7 @@
 ## Commands
 
 **POST /api/v1/commands**
+
 ```json
 {
   "device_id": "sat_1",
@@ -49,6 +52,7 @@
 ```
 
 **Response**
+
 ```json
 {
   "command_id": "cmd_123",
@@ -58,6 +62,7 @@
 ```
 
 **GET /api/v1/commands/pending**
+
 ```json
 [
   {
@@ -74,6 +79,7 @@
 ```
 
 **POST /api/v1/commands/pending/{command_id}/ack**
+
 ```json
 {
   "status": "executed",
@@ -84,6 +90,7 @@
 ## Status
 
 **GET /api/v1/status**
+
 ```json
 {
   "status": "ok",

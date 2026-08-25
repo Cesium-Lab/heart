@@ -16,6 +16,7 @@ Server runs on `http://127.0.0.1:42002`
 Built with **NiceGUI** — a Python-based web GUI framework.
 
 ### Features
+
 - **Command Form** — Send thrust commands to one of the ten simulated satellites
 - **Freeze Control** — Pause telemetry simulation and queued command execution
 - **Command Execution Log** — View pending and completed commands

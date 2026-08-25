@@ -56,13 +56,13 @@ Apache remains the main HTTP entrypoint while the platform is developed.
 
 ## Components
 
-| Port | Service | Purpose |
-|---|---|---|
-| `80` | Apache | Main HTTP entrypoint |
-| `3000` | Vite | Frontend development |
-| `8000` | FastAPI | Cesium API |
-| `5432` | PostgreSQL | Database |
-| `22` | SSH | Server administration |
+| Port   | Service    | Purpose               |
+| ------ | ---------- | --------------------- |
+| `80`   | Apache     | Main HTTP entrypoint  |
+| `3000` | Vite       | Frontend development  |
+| `8000` | FastAPI    | Cesium API            |
+| `5432` | PostgreSQL | Database              |
+| `22`   | SSH        | Server administration |
 
 Ports `8000` and `5432` should normally listen only locally.
 
@@ -83,18 +83,23 @@ heart/
 ## Responsibility
 
 ### Apache
+
 Routing and production static-file serving.
 
 ### FastAPI
+
 Application and data logic.
 
 ### PostgreSQL
+
 Canonical structured data.
 
 ### React
+
 Human interface to Cesium Lab.
 
 ### Cloudflare
+
 Secure Internet ingress and authentication where appropriate.
 
 ## Long-Term Direction

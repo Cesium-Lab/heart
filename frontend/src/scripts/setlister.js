@@ -364,7 +364,9 @@ import exampleLibrary from "../data/setlister-example-library.json";
       try {
         payload = JSON.parse(raw);
       } catch {
-        throw Error(`Song API returned ${response.status} ${response.statusText || "with HTML"} at ${endpoint}. Check /api/setlister/health on this hostname.`);
+        throw Error(
+          `Song API returned ${response.status} ${response.statusText || "with HTML"} at ${endpoint}. Check /api/setlister/health on this hostname.`,
+        );
       }
       if (!response.ok)
         throw Error(payload.error || `Search failed (${response.status})`);
@@ -479,7 +481,8 @@ import exampleLibrary from "../data/setlister-example-library.json";
     const target = song(id);
     if (!target) return;
     const uses = state.setlists.reduce(
-      (total, item) => total + item.songIds.filter((songId) => songId === id).length,
+      (total, item) =>
+        total + item.songIds.filter((songId) => songId === id).length,
       0,
     );
     const usageWarning = uses
@@ -496,7 +499,10 @@ import exampleLibrary from "../data/setlister-example-library.json";
     });
     save();
     render();
-    notice(`“${target.title}” was deleted from the library and all setlists.`, "success");
+    notice(
+      `“${target.title}” was deleted from the library and all setlists.`,
+      "success",
+    );
   }
   function addTrack(id) {
     set().songIds.push(id);
@@ -542,7 +548,12 @@ import exampleLibrary from "../data/setlister-example-library.json";
       notice("Setlist reset. Your song library was not changed.", "success");
       return;
     }
-    if (!confirm(`Delete “${current.name}”? Download your library first if you want a backup. Are you sure?`)) return;
+    if (
+      !confirm(
+        `Delete “${current.name}”? Download your library first if you want a backup. Are you sure?`,
+      )
+    )
+      return;
     state.setlists = state.setlists.filter(
       (s) => s.id !== state.activeSetlistId,
     );
@@ -586,7 +597,9 @@ import exampleLibrary from "../data/setlister-example-library.json";
   async function loadExample() {
     try {
       const text = JSON.stringify(exampleLibrary);
-      await upload(new File([text], "example-library.json", { type: "application/json" }));
+      await upload(
+        new File([text], "example-library.json", { type: "application/json" }),
+      );
     } catch (error) {
       notice(error.message);
     }
@@ -628,7 +641,16 @@ import exampleLibrary from "../data/setlister-example-library.json";
     if (!$("songForm").reportValidity()) return;
     if (saveSong()) $("songDialog").close();
   };
-  const songFields = ["title", "artist", "key", "bpm", "energy", "duration", "tags", "notes"].map($);
+  const songFields = [
+    "title",
+    "artist",
+    "key",
+    "bpm",
+    "energy",
+    "duration",
+    "tags",
+    "notes",
+  ].map($);
   songFields.forEach((field, index) => {
     field.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || event.shiftKey) return;
@@ -636,7 +658,8 @@ import exampleLibrary from "../data/setlister-example-library.json";
       const next = songFields[index + 1];
       if (next) {
         next.focus();
-        if (typeof next.select === "function" && next.tagName !== "SELECT") next.select();
+        if (typeof next.select === "function" && next.tagName !== "SELECT")
+          next.select();
       } else {
         field.blur();
       }

@@ -31,12 +31,12 @@ python3 -m venv .venv
 
 The launcher uses tmux for the backend and NiceGUI, and Docker Compose for Prometheus and Grafana.
 
-| Component | Local address |
-| --- | --- |
-| Backend API | `http://127.0.0.1:42000` |
+| Component         | Local address            |
+| ----------------- | ------------------------ |
+| Backend API       | `http://127.0.0.1:42000` |
 | DataViz Dashboard | `http://127.0.0.1:42002` |
-| Grafana | `http://127.0.0.1:42003` |
-| Prometheus | `http://127.0.0.1:42004` |
+| Grafana           | `http://127.0.0.1:42003` |
+| Prometheus        | `http://127.0.0.1:42004` |
 
 Detach with `Ctrl+B`, then `D`. Reattach with:
 

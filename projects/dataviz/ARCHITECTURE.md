@@ -15,13 +15,13 @@ Browser -> NiceGUI dashboard (42002) -> FastAPI backend (42000)
 
 ## Components
 
-| Port | Component | Purpose |
-| --- | --- | --- |
-| 42000 | FastAPI backend | In-memory telemetry, command queue, simulation, API, and Prometheus metrics |
-| 42001 | Reserved | Available for a future telemetry stream |
-| 42002 | NiceGUI dashboard | Command entry, freeze control, and pending/executed command views |
-| 42003 | Grafana | Provisioned telemetry charts backed by Prometheus |
-| 42004 | Prometheus | Scrapes `host.docker.internal:42000/metrics` once per second |
+| Port  | Component         | Purpose                                                                     |
+| ----- | ----------------- | --------------------------------------------------------------------------- |
+| 42000 | FastAPI backend   | In-memory telemetry, command queue, simulation, API, and Prometheus metrics |
+| 42001 | Reserved          | Available for a future telemetry stream                                     |
+| 42002 | NiceGUI dashboard | Command entry, freeze control, and pending/executed command views           |
+| 42003 | Grafana           | Provisioned telemetry charts backed by Prometheus                           |
+| 42004 | Prometheus        | Scrapes `host.docker.internal:42000/metrics` once per second                |
 
 The backend loads ten simulated satellites from
 `backend/examples/telemetry10.json`. When unfrozen, it jitters their telemetry at
