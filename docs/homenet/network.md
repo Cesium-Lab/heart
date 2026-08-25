@@ -23,7 +23,6 @@ Application services:
 | --- | --- | --- |
 | Apache frontend | `127.0.0.1:80` | `/` |
 | Rotation visualizer | `127.0.0.1:5001` | `/api/rotation/` |
-| Telemetry visualizer | `127.0.0.1:5701` | deployment-specific |
 | Setlister | `127.0.0.1:5702` | `/api/setlister/` |
 | DataViz API | `127.0.0.1:42000` | `/api/dataviz/` |
 | DataViz GUI | `127.0.0.1:42002` | `dataviz.cesiumlab.net` |

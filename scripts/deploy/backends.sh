@@ -10,6 +10,13 @@ require_command python3
 require_command sudo
 require_command systemctl
 
+# Retire the archived custom telemetry service on hosts upgraded from older checkouts.
+if unit_exists telemetry-viz.service; then
+    log "Retiring archived telemetry-viz service"
+    sudo systemctl disable --now telemetry-viz.service
+    sudo rm -f /etc/systemd/system/telemetry-viz.service
+fi
+
 # Prepare Setlister only when that optional service exists in this checkout.
 if [[ -f "${SETLISTER_DIR}/server.py" ]]; then
     log "Preparing Setlister"
@@ -32,7 +39,7 @@ fi
 
 # Copy each available unit definition into systemd.
 log "Installing backend service definitions"
-for unit in rotation-viz.service telemetry-viz.service setlister.service dataviz-backend.service dataviz-gui.service; do
+for unit in rotation-viz.service setlister.service dataviz-backend.service dataviz-gui.service; do
     if [[ -f "${SYSTEMD_DIR}/${unit}" ]]; then
         sudo install -m 0644 "${SYSTEMD_DIR}/${unit}" "/etc/systemd/system/${unit}"
     fi
@@ -42,6 +49,6 @@ sudo systemctl daemon-reload
 
 # Configure installed backend services to start now and at boot.
 log "Enabling backend services"
-for unit in rotation-viz.service telemetry-viz.service setlister.service dataviz-backend.service dataviz-gui.service; do
+for unit in rotation-viz.service setlister.service dataviz-backend.service dataviz-gui.service; do
     enable_installed_unit "${unit}"
 done

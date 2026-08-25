@@ -192,7 +192,6 @@ heart/
 ├── deploy/
 │   └── systemd/
 │       ├── rotation-viz.service
-│       ├── telemetry-viz.service
 │       └── cloudflared.service.example
 │
 ├── scripts/

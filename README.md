@@ -44,10 +44,10 @@ an optional external API or production service is currently reachable.
 | Legacy homepage | `/Others/old_index` | Archived | Kept as a historical page |
 | Decorative dashboards | `/dash/system`, `/dash/visitors`, `/dash/vibes` | Partial | Presentation/mock data rather than live server data |
 | Rotation Visualizer | `/rotation-viz/rotation-visualizer` plus `backend/services/rotation-viz/` | Working | Interactive UI and conversion API; depends on Three.js CDN |
-| Telemetry Visualizer | `/telemetry-viz/dashboard` plus `backend/services/telemetry-viz/` | Working | Polling charts and telemetry API; depends on Chart.js CDN |
+| Custom Telemetry Visualizer | `archive/telemetry-viz/` | Archived | Replaced by DataViz Prometheus and Grafana monitoring |
 | Setlister | `/music/setlister/` plus `backend/music/setlister/` | Working | UI/API implemented; production secrets remain external under `/etc/cesium/` |
 | Piano | `/music/piano` | Partial | Standalone experimental music page |
-| DataViz POC | `projects/dataviz/` and `https://dataviz.cesiumlab.net` | Partial | Backend, NiceGUI command UI, Prometheus, and Grafana are implemented; state is in-memory and access control/real hardware are unfinished |
+| DataViz POC | `projects/dataviz/` and `https://dataviz.cesiumlab.net` | Partial | Backend, NiceGUI command UI, Prometheus, and Grafana are implemented and are the canonical telemetry UI; state is in-memory and access control/real hardware are unfinished |
 | API checker | `/api-check` | Working | Reports health for deployed backend services |
 
 DataViz-specific design, limitations, and startup instructions live in
@@ -56,11 +56,8 @@ DataViz-specific design, limitations, and startup instructions live in
 ## Troubleshooting
 
 ```bash
-systemctl status frontend-build.service rotation-viz.service telemetry-viz.service apache2.service
-journalctl -u frontend-build.service -u rotation-viz.service -u telemetry-viz.service -n 100 --no-pager
 curl --fail http://127.0.0.1/
 curl --fail http://127.0.0.1:5001/api/rotation/health
-curl --fail http://127.0.0.1:5701/health
 ```
 
 Never commit API keys or tokens. Keep production secrets in protected files under `/etc/cesium/`.
