@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-cd heart/robo-code
+cd heart/projects/robo-code
 pip install -r requirements.txt
 ```
 
