@@ -1,64 +1,73 @@
-# Setlister environment configuration
+# SETLISTER.EXE
 
-Setlister is a backend service and belongs in `backend/music/setlister/`. It is not copied into `frontend/dist`. Apache exposes `/api/setlister/` by proxying to `http://127.0.0.1:5702/api/setlister/`.
+Setlister is a local-first song library and setlist builder. Browser source lives under `frontend/src/`; the Python proxy in this directory keeps the GetSongBPM key out of the browser.
 
-## Migration status
+## Layout
 
-The configuration files have moved here, but the application is not yet fully migrated:
+- `server.py` — Flask lookup proxy on `127.0.0.1:5702`.
+- `requirements.txt` — backend-only Python dependencies.
+- `.env.example` — safe local configuration template.
+- `frontend/src/pages/music/setlister/index.astro` — Astro page route.
+- `frontend/src/scripts/setlister.js` — browser application bundled by Astro.
+- `frontend/src/styles/setlister.css` — page styles bundled by Astro.
+- `frontend/src/data/setlister-example-library.json` — example data imported at build time.
+- `deploy/systemd/setlister.service` — production service definition.
 
-- `server.py` is missing from this directory and is not tracked by Git.
-- `deploy/systemd/setlister.service` does not exist yet.
-- the installed `/etc/systemd/system/setlister.service` still names the removed `mr-ray-apache2/music/setlister` path.
-- the currently running process remains healthy only because it started before that directory was moved.
+Apache serves `/music/setlister/` from the Astro build and proxies `/api/setlister/` to port 5702.
 
-Do not restart the service or reboot expecting it to recover until `server.py` is restored and a corrected tracked unit is added. `scripts/deploy-startup.sh` can detect and check an installed Setlister unit, but it cannot install the missing application or unit.
+## Local setup
 
-## Local configuration
+From the repository root:
 
 ```bash
 cp backend/music/setlister/.env.example backend/music/setlister/.env
+python3 -m venv backend/music/setlister/.venv
+backend/music/setlister/.venv/bin/pip install -r backend/music/setlister/requirements.txt
+backend/music/setlister/.venv/bin/python backend/music/setlister/server.py
 ```
 
-Use port `5702` to match Apache:
+Set the real API key in `.env` and keep port 5702:
 
 ```dotenv
 GETSONGBPM_API_KEY=replace-with-your-real-key
 SETLISTER_PORT=5702
-SETLISTER_API_TIMEOUT=10
+SETLISTER_API_TIMEOUT=8
 SETLISTER_CACHE_TTL=3600
 SETLISTER_RATE_LIMIT=60
 ```
 
-Confirm that the secret file remains untracked:
+Never commit `.env` or expose the key through Astro `PUBLIC_*` variables.
 
-```bash
-git check-ignore backend/music/setlister/.env
-```
+## Production secrets
 
-Never commit `.env`, print it in logs, or copy its values into `frontend/` or an Astro variable beginning with `PUBLIC_`.
-
-## Intended production configuration
-
-Store production secrets outside the repository:
+The tracked unit reads `/etc/cesium/music.env`:
 
 ```bash
 sudo install -d -m 0750 -o root -g cskin /etc/cesium
 sudo install -m 0640 -o root -g cskin backend/music/setlister/.env /etc/cesium/music.env
 ```
 
-The future tracked unit should use:
-
-```ini
-[Service]
-User=cskin
-WorkingDirectory=/home/cskin/Cesium/heart/backend/music/setlister
-EnvironmentFile=/etc/cesium/music.env
-ExecStart=/home/cskin/Cesium/heart/.venv/bin/python server.py
-```
-
-Once `server.py` and `deploy/systemd/setlister.service` are restored, add that unit to `scripts/deploy-startup.sh`, rerun the helper, and verify:
+## Deploy and verify
 
 ```bash
+./scripts/deploy-startup.sh
+```
+
+The helper builds the static UI, installs `setlister.service`, starts it, and checks its health endpoint. Manual alternative:
+
+```bash
+sudo install -m 0644 deploy/systemd/setlister.service /etc/systemd/system/setlister.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now setlister.service
 systemctl status setlister.service --no-pager
 curl --fail http://127.0.0.1:5702/api/setlister/health
 ```
+
+Apache needs these rules inside the active virtual host:
+
+```apache
+ProxyPass /api/setlister/ http://127.0.0.1:5702/api/setlister/
+ProxyPassReverse /api/setlister/ http://127.0.0.1:5702/api/setlister/
+```
+
+Keep port 5702 bound to loopback. The browser should call `/api/setlister/search`, never the upstream service directly.

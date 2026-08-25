@@ -1,0 +1,18 @@
+[Unit]
+Description=SETLISTER.EXE song lookup proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/backend/music/setlister
+EnvironmentFile=/etc/cesium/music.env
+ExecStart=/home/cskin/Cesium/heart/backend/music/setlister/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -9,6 +9,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 FRONTEND_DIR="${REPO_ROOT}/frontend"
+SETLISTER_DIR="${REPO_ROOT}/backend/music/setlister"
 SYSTEMD_DIR="${REPO_ROOT}/deploy/systemd"
 FRONTEND_UNIT="${SYSTEMD_DIR}/frontend-build.service"
 
@@ -81,6 +82,7 @@ check_url() {
 
 # Verify all commands used later are available before requesting sudo access.
 require_command npm
+require_command python3
 require_command curl
 require_command systemctl
 require_command sudo
@@ -97,6 +99,7 @@ require_command apache2ctl
 log "Refreshing sudo credentials"
 sudo -v
 
+
 # Install exactly the dependency versions recorded in package-lock.json. npm ci
 # is deterministic and replaces node_modules, making it appropriate for deploys.
 log "Installing frontend dependencies"
@@ -108,11 +111,21 @@ log "Building Astro frontend"
 npm --prefix "${FRONTEND_DIR}" run build
 [[ -f "${FRONTEND_DIR}/dist/index.html" ]] || fail "Build completed without creating dist/index.html"
 
+# Create Setlister's isolated Python environment when its backend is present,
+# then synchronize its dependencies before systemd attempts to start the API.
+if [[ -f "${SETLISTER_DIR}/server.py" ]]; then
+    log "Installing Setlister backend dependencies"
+    if [[ ! -x "${SETLISTER_DIR}/.venv/bin/python" ]]; then
+        python3 -m venv "${SETLISTER_DIR}/.venv"
+    fi
+    "${SETLISTER_DIR}/.venv/bin/pip" install -r "${SETLISTER_DIR}/requirements.txt"
+fi
+
 # Install the version-controlled units so /etc cannot retain stale commands
 # after services move within the repository. The frontend unit runs at boot;
 # backend units keep the API processes alive and restart them after failures.
 log "Installing systemd service definitions"
-for unit in frontend-build.service rotation-viz.service telemetry-viz.service; do
+for unit in frontend-build.service rotation-viz.service telemetry-viz.service setlister.service; do
     if [[ -f "${SYSTEMD_DIR}/${unit}" ]]; then
         sudo install -m 0644 "${SYSTEMD_DIR}/${unit}" "/etc/systemd/system/${unit}"
     fi
@@ -163,6 +176,10 @@ fi
 
 if unit_exists telemetry-viz.service; then
     check_url "Telemetry API" "http://127.0.0.1:5701/health"
+fi
+
+if unit_exists setlister.service; then
+    check_url "Setlister API" "http://127.0.0.1:5702/api/setlister/health"
 fi
 
 # This line is reached only if every required build, unit, and HTTP check passed.
