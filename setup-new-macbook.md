@@ -136,6 +136,7 @@ cat ~/.ssh/id_ed25519.pub
 
 ## Apps
 
+- Tailscale
 - Spotify
 - Logic Pro X
 - Google Chrome
