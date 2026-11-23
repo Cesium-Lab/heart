@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="icon" href="/favicons/dash.ico?v=5" sizes="32x32" />
+<link rel="icon" href="/favicons/dash.svg?v=5" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>API Status</title>
@@ -228,9 +231,26 @@ async function checkOne(api, i) {
   }
 }
 
+// Live tab icon: the dashboard gauge with a green dot when every API is up, red when any is
+// down (and the count in the tab title), so a background tab shows trouble at a glance.
+const BASE_TITLE = document.title;
+function setStatusIcon(down) {
+  const dot = down === null ? "#5a6472" : down ? "#ff4d4d" : "#4dff91";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="12" fill="#14140f"/>
+    <g fill="none" stroke="#ffc93c" stroke-width="5" stroke-linecap="round"><path d="M12 40a20 20 0 0 1 40 0"/><path d="M32 40l11-13"/></g>
+    <circle cx="48" cy="50" r="11" fill="${dot}" stroke="#14140f" stroke-width="3"/></svg>`;
+  const link = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
+  if (link) link.href = "data:image/svg+xml," + encodeURIComponent(svg);
+  document.title = down ? `(${down} down) ${BASE_TITLE}` : BASE_TITLE;
+}
+
 function checkAll() {
   buildCards();
-  APIS.forEach((api, i) => checkOne(api, i));
+  setStatusIcon(null);
+  Promise.allSettled(APIS.map((api, i) => checkOne(api, i))).then(() => {
+    setStatusIcon(document.querySelectorAll(".api-card.down").length);
+  });
   document.getElementById("last-checked").textContent =
     "last checked: " + new Date().toLocaleTimeString();
 }

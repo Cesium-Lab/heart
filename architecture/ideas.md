@@ -39,7 +39,9 @@ serving the site.
   Measured 2026-11-23. Details in `backend/services/planes/README.md` ("Later").
 - Drive-health alerts (smartctl exporter → Prometheus/Grafana) and ntfy push notifications.
 - restic backups of the irreplaceable files (offsite or to the new drive).
-- ESP32 room sensors feeding Prometheus; Pi ADS-B receiver (RTL-SDR) feeding FR24/adsb.lol.
+- ESP32 room sensors feeding Prometheus.
+- **ADS-B feeder**: Pi 3 + RTL-SDR + 1090 MHz antenna (adsb.im image), feeding adsb.fi/adsb.lol/
+  FlightAware/FR24 and the planes map. How-to and links: `backend/services/planes/README.md`.
 
 ## Infrastructure
 
