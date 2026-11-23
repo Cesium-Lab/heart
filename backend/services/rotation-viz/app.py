@@ -1,8 +1,10 @@
 """
 Rotation Visualizer Backend
 Converts between quaternion, rotation matrix, Euler angles, and axis-angle representations.
-Run with: python app.py (listens on port 5001)
+Run with: python app.py (listens on port 42902)
 """
+
+import os
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -237,4 +239,9 @@ def health():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=False)
+    # Loopback only: Apache proxies /api/rotation/ here.
+    app.run(
+        host=os.getenv("ROTATION_HOST", "127.0.0.1"),
+        port=int(os.getenv("ROTATION_PORT", "42902")),
+        debug=False,
+    )

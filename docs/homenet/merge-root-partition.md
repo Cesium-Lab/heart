@@ -1,5 +1,8 @@
 # Merge `/srv/state` into the root partition (mr-ray)
 
+> **Status: deferred (2026-11-22).** `/srv/state` stays as its own partition for now. Revisit
+> when the new drive arrives and its role (data vs backup) is decided; see CLAUDE.md "Now".
+
 Goal: delete the empty `/srv/state` partition (`nvme0n1p1`, 76 GB) and grow the Linux root
 (`nvme0n1p5`, 40 GB) to fill the whole NVMe (~117 GB).
 

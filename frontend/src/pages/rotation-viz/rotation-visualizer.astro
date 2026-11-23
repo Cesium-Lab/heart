@@ -1022,7 +1022,7 @@ async function doConvert() {
     updateOutputs(data);
     if (!animating) applyRotation(data.rotation_matrix);
   } catch (e) {
-    showError(`Backend unreachable: ${e.message}. Is app.py running on port 5001?`);
+    showError(`Backend unreachable: ${e.message}. Is app.py running on port 42902?`);
     setStatusDot(false);
   }
 }

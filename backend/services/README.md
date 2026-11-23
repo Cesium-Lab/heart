@@ -4,10 +4,10 @@ These active Python APIs support the Astro frontend. Retired services belong und
 
 ## Services
 
-| Service                     | Framework | Port | Health check                                |
-| --------------------------- | --------- | ---: | ------------------------------------------- |
-| Rotation visualizer         | Flask     | 5001 | `http://127.0.0.1:5001/api/rotation/health` |
-| Planes (SFO board, private) | stdlib    | 5901 | `http://127.0.0.1:5901/health`              |
+| Service                     | Framework |  Port | Health check                                |
+| --------------------------- | --------- | ----: | ------------------------------------------- |
+| Rotation visualizer         | Flask     |  42902 | `http://127.0.0.1:42902/api/rotation/health` |
+| Planes (SFO board, private) | stdlib    | 42901 | `http://127.0.0.1:42901/health`             |
 
 DataViz telemetry is monitored through Prometheus and Grafana under
 `projects/dataviz/`; the former custom telemetry API and Chart.js page are archived.
@@ -27,9 +27,13 @@ Do not install these dependencies globally with `pip3 --break-system-packages`.
 ./scripts/deploy-startup.sh
 ```
 
-The helper installs `rotation-viz.service` and `frontend-build.service`, reloads
-systemd, enables and starts installed components, validates Apache, and checks the
-site and API health endpoints.
+The wrapper runs the stages in `scripts/deploy/` in order: `frontend.sh` (build +
+`frontend-build.service`), `backends.sh` (venvs and the Rotation, Setlister, Planes, and
+DataViz units), `monitoring.sh` (Grafana/Prometheus in Docker), `apache.sh` (sites and
+proxies from `deploy/apache/`), and `verify.sh` (unit state and health URLs). Each stage
+can be run on its own. `./scripts/status.sh` shows the result at any time.
+
+Ports and the checklist for adding a service are in `architecture/services.md`.
 
 The units assume the repository is `/home/cskin/Cesium/heart` and run as `cskin`.
 Edit `User`, `WorkingDirectory`, and `ExecStart` if those assumptions change.
@@ -47,7 +51,7 @@ sudo systemctl enable --now rotation-viz.service
 ```bash
 systemctl status rotation-viz.service --no-pager
 journalctl -u rotation-viz.service -n 100 --no-pager
-curl --fail http://127.0.0.1:5001/api/rotation/health
+curl --fail http://127.0.0.1:42902/api/rotation/health
 ```
 
 After code changes, restart the relevant API. After unit changes, rerun the

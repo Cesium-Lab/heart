@@ -18,7 +18,7 @@ load_dotenv()
 
 API_BASE = "https://api.getsong.co"
 API_KEY = os.getenv("GETSONGBPM_API_KEY", "").strip()
-PORT = int(os.getenv("SETLISTER_PORT", "5702"))
+PORT = int(os.getenv("SETLISTER_PORT", "42903"))
 TIMEOUT = float(os.getenv("SETLISTER_API_TIMEOUT", "8"))
 CACHE_TTL = int(os.getenv("SETLISTER_CACHE_TTL", "3600"))
 RATE_LIMIT = int(os.getenv("SETLISTER_RATE_LIMIT", "60"))

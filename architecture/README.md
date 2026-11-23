@@ -1,32 +1,46 @@
-| Port Range  | Purpose                     |
-| ----------- | --------------------------- |
-| 42000-42099 | Ground station services     |
-| 42100-42199 | Flight computer telemetry   |
-| 42200-42299 | GNC simulation              |
-| 42300-42399 | Hardware-in-the-loop (HITL) |
-| 42400-42499 | Cameras/video               |
-| 42500-42599 | Logging/data archive        |
-| 42600-42699 | Robot control               |
-| 42700-42799 | Sensor streaming            |
-| 42800-42899 | Development/debug           |
-| 42900-42999 | Web dashboards              |
+# Architecture
 
-| Port  | Service                         |
-| ----- | ------------------------------- |
-| 42000 | T&C Backend                     |
-| 42001 | (reserved)                      |
-| 42002 | DataViz Dashboard (NiceGUI)     |
-| 42003 | Telemetry Server (Grafana)      |
-| 42004 | Telemetry Database (Prometheus) |
+This folder is the source of truth for how mr-ray and cesiumlab.net are put together.
+CLAUDE.md imports these files, so keep them short, current, and factual. When something
+changes on the machine, update the matching file here in the same commit.
 
-| Port  | Service                   |
-| ----- | ------------------------- |
-| 42100 | Flight Computer Telemetry |
-| 42101 | Flight Computer Commands  |
-| 42200 | 6DOF Simulation           |
-| 42201 | Monte Carlo Runs          |
-| 42300 | HITL Sensor Feed          |
-| 42301 | HITL Actuator Feed        |
-| 42600 | Robot State               |
-| 42601 | Robot Commands            |
-| 42900 | Dashboard                 |
+| File                       | What it covers                                             |
+| -------------------------- | ---------------------------------------------------------- |
+| [machine.md](machine.md)   | Hardware, network, disks, storage layout                   |
+| [services.md](services.md) | How the site is served, every service and port, deploy, CI |
+| [ideas.md](ideas.md)       | Things for someday, deliberately not planned in detail     |
+
+## Principles
+
+- **Keep it simple.** Add features only when they're needed. One small service per job.
+- **Files are the truth.** Folder and file names carry the info. Any index or catalog built
+  later must be rebuildable from the files.
+- **Static site + small APIs.** Astro builds the site, Apache serves the build and proxies
+  `/api/...` to services bound to `127.0.0.1`. No big platform layer.
+- **Private by default.** Services listen on loopback. Anything public goes through Apache and
+  the Cloudflare tunnel; anything private is reached over SSH or the LAN.
+- **Paths and secrets come from config** (`/etc/cesium/*.env`), never hard-coded or committed.
+
+## Big picture
+
+```text
+Internet ─ Cloudflare ─ cloudflared ─┐
+                                     ▼
+LAN / SSH ───────────────────────► Apache :80 ── serves frontend/dist (astro build)
+                                     │
+                                     └─ /api/rotation  → rotation-viz   :42902
+                                        /api/setlister → setlister      :42903
+                                        /api/dataviz   → dataviz API    :42000
+                                        dataviz.cesiumlab.net → NiceGUI :42002
+Private (SSH tunnel): Planes :42901 · Grafana :42003 · Prometheus :42004
+LAN (development):    astro dev :42800
+```
+
+## Other docs
+
+- `docs/homenet/merge-root-partition.md`: deferred runbook for growing the root partition.
+- `docs/api/MUSIC_STORAGE.md`, `docs/api/ASSISTANT_MEMORY.md`: older, detailed sketches kept as
+  reference for Coda and Juice (see [ideas.md](ideas.md)). They assume a Postgres/FastAPI stack
+  that is not the plan.
+- `archive/docs/api/`: the retired Aug 2026 "personal platform" plan (Postgres, FastAPI, login,
+  retiring Apache). Historical only.

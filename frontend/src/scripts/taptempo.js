@@ -8,7 +8,8 @@ const MIN_BPM = 20;
 const MAX_BPM = 300;
 
 const $ = (id) => document.getElementById(id);
-const clampBpm = (v) => Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(Number(v) || 120)));
+const clampBpm = (v) =>
+  Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(Number(v) || 120)));
 
 // ---------- preferences ----------
 function loadPrefs() {
@@ -58,7 +59,8 @@ const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD_S = 0.12;
 
 function audio() {
-  if (!metro.ctx) metro.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!metro.ctx)
+    metro.ctx = new (window.AudioContext || window.webkitAudioContext)();
   if (metro.ctx.state === "suspended") metro.ctx.resume();
   return metro.ctx;
 }
@@ -88,14 +90,21 @@ function scheduler() {
       const run = metro.run;
       clearInterval(metro.timer);
       metro.timer = null;
-      setTimeout(() => run === metro.run && stop(), Math.max(0, (endAt - ctx.currentTime) * 1000));
+      setTimeout(
+        () => run === metro.run && stop(),
+        Math.max(0, (endAt - ctx.currentTime) * 1000),
+      );
       return;
     }
     const ticksPerBar = metro.beats * metro.sub;
     const inBar = metro.tick % ticksPerBar;
     const isBeat = inBar % metro.sub === 0;
     const beatIndex = Math.floor(inBar / metro.sub);
-    const kind = !isBeat ? "sub" : beatIndex === 0 && metro.accent ? "accent" : "beat";
+    const kind = !isBeat
+      ? "sub"
+      : beatIndex === 0 && metro.accent
+        ? "accent"
+        : "beat";
     click(metro.nextTime, kind);
     metro.queue.push({ time: metro.nextTime, beatIndex, isBeat });
 
@@ -113,7 +122,9 @@ function start({ countIn = false } = {}) {
   metro.tick = 0;
   metro.queue = [];
   metro.nextTime = ctx.currentTime + 0.06;
-  metro.countTicksLeft = countIn ? Number($("countBars").value) * metro.beats * metro.sub : null;
+  metro.countTicksLeft = countIn
+    ? Number($("countBars").value) * metro.beats * metro.sub
+    : null;
   metro.timer = setInterval(scheduler, LOOKAHEAD_MS);
   scheduler();
   renderTransport();
@@ -145,7 +156,8 @@ function renderTransport() {
 function buildLights() {
   const box = $("beatLights");
   box.innerHTML = "";
-  for (let i = 0; i < metro.beats; i++) box.appendChild(document.createElement("i"));
+  for (let i = 0; i < metro.beats; i++)
+    box.appendChild(document.createElement("i"));
 }
 
 function lightBeat(index) {
@@ -159,7 +171,8 @@ function drawLights() {
   if (!metro.running || !metro.ctx) return;
   const now = metro.ctx.currentTime;
   let last = null;
-  while (metro.queue.length && metro.queue[0].time <= now) last = metro.queue.shift();
+  while (metro.queue.length && metro.queue[0].time <= now)
+    last = metro.queue.shift();
   if (last && last.isBeat) lightBeat(last.beatIndex);
   requestAnimationFrame(drawLights);
 }
@@ -179,7 +192,8 @@ const TAP_WINDOW = 8;
 
 function doTap() {
   const now = performance.now();
-  if (tap.times.length && now - tap.times[tap.times.length - 1] > TAP_RESET_MS) tap.times = [];
+  if (tap.times.length && now - tap.times[tap.times.length - 1] > TAP_RESET_MS)
+    tap.times = [];
   tap.times.push(now);
   if (tap.times.length > TAP_WINDOW + 1) tap.times.shift();
 
@@ -196,10 +210,13 @@ function doTap() {
   }
   const intervals = tap.times.slice(1).map((t, i) => t - tap.times[i]);
   const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-  const sd = Math.sqrt(intervals.reduce((a, b) => a + (b - mean) ** 2, 0) / intervals.length);
+  const sd = Math.sqrt(
+    intervals.reduce((a, b) => a + (b - mean) ** 2, 0) / intervals.length,
+  );
   tap.bpm = 60000 / mean;
   $("tapBpm").textContent = tap.bpm.toFixed(1);
-  const steadiness = sd / mean < 0.03 ? "steady" : sd / mean < 0.08 ? "ok" : "wobbly";
+  const steadiness =
+    sd / mean < 0.03 ? "steady" : sd / mean < 0.08 ? "ok" : "wobbly";
   $("tapInfo").textContent = `${tap.times.length} taps · ${steadiness}`;
   renderTapButtons();
 }
@@ -225,7 +242,8 @@ const set = { library: null, activeId: null, index: -1 };
 function readLibrary() {
   try {
     const lib = JSON.parse(localStorage.getItem(SETLISTER_STORE));
-    if (lib && Array.isArray(lib.songs) && Array.isArray(lib.setlists)) return lib;
+    if (lib && Array.isArray(lib.songs) && Array.isArray(lib.setlists))
+      return lib;
   } catch {
     /* fall through */
   }
@@ -236,14 +254,18 @@ function activeSongs() {
   if (!set.library) return [];
   const byId = new Map(set.library.songs.map((s) => [String(s.id), s]));
   const list = set.library.setlists.find((s) => String(s.id) === set.activeId);
-  return list ? (list.songIds || []).map((id) => byId.get(String(id))).filter(Boolean) : [];
+  return list
+    ? (list.songIds || []).map((id) => byId.get(String(id))).filter(Boolean)
+    : [];
 }
 
 function renderSetlist() {
   const select = $("setlistSelect");
   const lists = set.library ? set.library.setlists : [];
   select.innerHTML = "";
-  lists.forEach((l) => select.add(new Option(l.name || "Untitled Set", String(l.id))));
+  lists.forEach((l) =>
+    select.add(new Option(l.name || "Untitled Set", String(l.id))),
+  );
   select.value = set.activeId ?? "";
   select.disabled = !lists.length;
 
@@ -254,9 +276,14 @@ function renderSetlist() {
     const li = document.createElement("li");
     li.className = "track" + (i === set.index ? " current" : "");
     li.innerHTML = `<div class="track-number"></div><div class="track-info"><strong></strong><span></span></div><div class="track-meta"></div>`;
-    li.querySelector(".track-number").textContent = String(i + 1).padStart(2, "0");
+    li.querySelector(".track-number").textContent = String(i + 1).padStart(
+      2,
+      "0",
+    );
     li.querySelector("strong").textContent = s.title || "Untitled";
-    li.querySelector(".track-info span").textContent = [s.artist, s.key].filter(Boolean).join(" · ");
+    li.querySelector(".track-info span").textContent = [s.artist, s.key]
+      .filter(Boolean)
+      .join(" · ");
     li.querySelector(".track-meta").textContent = `${clampBpm(s.bpm)} BPM`;
     li.addEventListener("click", () => selectSong(i));
     ol.appendChild(li);
@@ -291,9 +318,12 @@ function useLibrary(lib, preferredId) {
 // ---------- wiring ----------
 function isTyping(e) {
   const t = e.target;
-  return t instanceof HTMLInputElement && !["range", "checkbox"].includes(t.type)
-    || t instanceof HTMLSelectElement
-    || t instanceof HTMLTextAreaElement;
+  return (
+    (t instanceof HTMLInputElement &&
+      !["range", "checkbox"].includes(t.type)) ||
+    t instanceof HTMLSelectElement ||
+    t instanceof HTMLTextAreaElement
+  );
 }
 
 function init() {
@@ -348,7 +378,9 @@ function init() {
     metro.running && metro.countTicksLeft === null ? stop() : start(),
   );
   $("countIn").addEventListener("click", () =>
-    metro.running && metro.countTicksLeft !== null ? stop() : start({ countIn: true }),
+    metro.running && metro.countTicksLeft !== null
+      ? stop()
+      : start({ countIn: true }),
   );
 
   $("setlistSelect").addEventListener("change", (e) => {

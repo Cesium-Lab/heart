@@ -19,7 +19,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 HOST = os.getenv("PLANES_HOST", "127.0.0.1")
-PORT = int(os.getenv("PLANES_PORT", "5901"))
+PORT = int(os.getenv("PLANES_PORT", "42901"))
 AIRPORT = os.getenv("PLANES_AIRPORT", "SFO")
 LAT = float(os.getenv("PLANES_LAT", "37.6213"))
 LON = float(os.getenv("PLANES_LON", "-122.3790"))

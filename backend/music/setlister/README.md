@@ -4,7 +4,7 @@ Setlister is a local-first song library and setlist builder. Browser source live
 
 ## Layout
 
-- `server.py` — Flask lookup proxy on `127.0.0.1:5702`.
+- `server.py` — Flask lookup proxy on `127.0.0.1:42903`.
 - `requirements.txt` — backend-only Python dependencies.
 - `.env.example` — safe local configuration template.
 - `frontend/src/pages/music/setlister/index.astro` — Astro page route.
@@ -13,7 +13,7 @@ Setlister is a local-first song library and setlist builder. Browser source live
 - `frontend/src/data/setlister-example-library.json` — example data imported at build time.
 - `deploy/systemd/setlister.service` — production service definition.
 
-Apache serves `/music/setlister/` from the Astro build and proxies `/api/setlister/` to port 5702.
+Apache serves `/music/setlister/` from the Astro build and proxies `/api/setlister/` to port 42903.
 
 ## Local setup
 
@@ -26,11 +26,11 @@ backend/music/setlister/.venv/bin/pip install -r backend/music/setlister/require
 backend/music/setlister/.venv/bin/python backend/music/setlister/server.py
 ```
 
-Set the real API key in `.env` and keep port 5702:
+Set the real API key in `.env` and keep port 42903:
 
 ```dotenv
 GETSONGBPM_API_KEY=replace-with-your-real-key
-SETLISTER_PORT=5702
+SETLISTER_PORT=42903
 SETLISTER_API_TIMEOUT=8
 SETLISTER_CACHE_TTL=3600
 SETLISTER_RATE_LIMIT=60
@@ -60,14 +60,14 @@ sudo install -m 0644 deploy/systemd/setlister.service /etc/systemd/system/setlis
 sudo systemctl daemon-reload
 sudo systemctl enable --now setlister.service
 systemctl status setlister.service --no-pager
-curl --fail http://127.0.0.1:5702/api/setlister/health
+curl --fail http://127.0.0.1:42903/api/setlister/health
 ```
 
 Apache needs these rules inside the active virtual host:
 
 ```apache
-ProxyPass /api/setlister/ http://127.0.0.1:5702/api/setlister/
-ProxyPassReverse /api/setlister/ http://127.0.0.1:5702/api/setlister/
+ProxyPass /api/setlister/ http://127.0.0.1:42903/api/setlister/
+ProxyPassReverse /api/setlister/ http://127.0.0.1:42903/api/setlister/
 ```
 
-Keep port 5702 bound to loopback. The browser should call `/api/setlister/search`, never the upstream service directly.
+Keep port 42903 bound to loopback. The browser should call `/api/setlister/search`, never the upstream service directly.

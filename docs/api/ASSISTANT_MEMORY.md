@@ -1,5 +1,9 @@
 # Personal Assistant Memory Integration
 
+> **Reference sketch, not the plan.** Kept as background for a future idea in
+> `architecture/ideas.md`. It assumes a PostgreSQL + FastAPI stack that is not the current
+> direction (files are the truth; any index must be rebuildable). See `architecture/`.
+
 ## Goal
 
 Use the Cesium Lab backend as the persistent memory layer for a personal assistant AI.
