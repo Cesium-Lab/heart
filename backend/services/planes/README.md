@@ -1,14 +1,18 @@
-# Planes: SFO board
+# Planes: SFO board API
 
-A split-flap style departures/arrivals board for SFO, built from live ADS-B data.
-**Private**: it binds to localhost only and is not part of the public Astro site. View it through an SSH tunnel.
+Data for the split-flap departures/arrivals board at **`/planes/`** on the site. The page lives in
+the Astro build (`frontend/src/pages/planes/index.astro`); this service only serves JSON.
+
+```text
+browser → cesiumlab.net/planes/          (static page from frontend/dist)
+        → fetch /api/planes/board        → Apache → this service on 127.0.0.1:42901
+```
 
 - `server.py`: standard-library Python, no venv needed. Binds `127.0.0.1:42901`.
-  - `/`: the board (`board.html`)
-  - `/api/board`: JSON (departures, arrivals, plus lat/lon/track per flight for the future map)
-  - `/health`
-- Positions come from [adsb.lol](https://api.adsb.lol) (free, no key), fetched at most once
-  every 10 s and only while someone has the page open.
+  - `/api/planes/board`: departures, arrivals, plus lat/lon/track per flight (for a future map)
+  - `/api/planes/health` (and `/health`)
+- Positions come from [adsb.lol](https://api.adsb.lol) (free, no key), fetched at most once every
+  10 s however many people are watching, and only while someone has the page open.
 - Routes come from [adsbdb.com](https://www.adsbdb.com) and are cached for 6 h per callsign. They are
   best guesses (airlines reuse flight numbers across legs), so a few flights are missing or mislabeled.
 - How a flight is classified: the route says origin SFO → departure, destination SFO → arrival.
@@ -17,26 +21,18 @@ A split-flap style departures/arrivals board for SFO, built from live ADS-B data
 Config (all optional, env vars): `PLANES_PORT`, `PLANES_AIRPORT`, `PLANES_LAT`, `PLANES_LON`,
 `PLANES_RADIUS_NM`, `PLANES_CACHE_S`.
 
+Routing: `/api/planes/` is proxied by Apache (`deploy/apache/includes/api-proxies.conf`) and by the
+Astro dev server (`frontend/astro.config.mjs`), so the page works on cesiumlab.net, `http://mr-ray/`,
+and `http://mr-ray:42800/`.
+
 ## Run locally
 
 ```bash
-python3 backend/services/planes/server.py   # http://127.0.0.1:42901/
+python3 backend/services/planes/server.py
+curl http://127.0.0.1:42901/api/planes/board
 ```
 
 ## Deploy (changes the machine, so ask first)
 
-`./scripts/deploy-startup.sh` installs and starts `planes.service`, or do it by hand:
-
-```bash
-sudo install -m 0644 deploy/systemd/planes.service /etc/systemd/system/planes.service
-sudo systemctl daemon-reload && sudo systemctl enable --now planes.service
-```
-
-## View it from the Mac
-
-```bash
-ssh -L 42901:127.0.0.1:42901 cskin@mr-ray    # then open http://localhost:42901/
-```
-
-Or add `LocalForward 42901 127.0.0.1:42901` under the mr-ray `Host` entry in `~/.ssh/config`,
-and the tunnel opens with every ssh session.
+`./scripts/deploy-startup.sh` installs and starts `planes.service`. After code changes:
+`sudo systemctl restart planes`.

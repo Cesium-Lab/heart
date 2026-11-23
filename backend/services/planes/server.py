@@ -1,8 +1,8 @@
 """SFO departure/arrival board.
 
 Polls adsb.lol for aircraft near SFO, looks up routes on adsbdb.com, and serves a
-split-flap style board. Standard library only. Binds to 127.0.0.1; view it through
-an SSH tunnel (see README).
+JSON API for the split-flap board page at /planes/ on the site. Standard library
+only. Binds to 127.0.0.1; Apache proxies /api/planes/ here (see README).
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ import threading
 import time
 import unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -27,7 +26,6 @@ RADIUS_NM = int(os.getenv("PLANES_RADIUS_NM", "40"))
 CACHE_S = float(os.getenv("PLANES_CACHE_S", "10"))
 ROUTE_TTL_S = 6 * 3600
 UA = "cesium-planes/1.0"
-HERE = Path(__file__).resolve().parent
 
 # ---------------------------------------------------------------- upstream
 
@@ -231,14 +229,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802
+        # Data only. The page lives in the Astro site (frontend/src/pages/planes/),
+        # and Apache proxies /api/planes/ here.
         path = self.path.split("?", 1)[0].rstrip("/") or "/"
-        if path in ("/", "/index.html"):
-            self._send(
-                200, (HERE / "board.html").read_bytes(), "text/html; charset=utf-8"
-            )
-        elif path == "/api/board":
+        if path == "/api/planes/board":
             self._send(200, json.dumps(board()).encode(), "application/json")
-        elif path == "/health":
+        elif path in ("/api/planes/health", "/health"):
             self._send(200, b'{"ok":true}', "application/json")
         else:
             self._send(404, b"not found", "text/plain")
@@ -250,7 +246,8 @@ class Handler(BaseHTTPRequestHandler):
 def main() -> None:
     threading.Thread(target=route_worker, daemon=True).start()
     print(
-        f"planes board on http://{HOST}:{PORT}/ ({AIRPORT}, {RADIUS_NM} nm)", flush=True
+        f"planes API on http://{HOST}:{PORT}/api/planes/board ({AIRPORT}, {RADIUS_NM} nm)",
+        flush=True,
     )
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
 

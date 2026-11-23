@@ -20,7 +20,7 @@ log "Checking HTTP endpoints"
 check_url "Frontend" "http://127.0.0.1/"
 unit_exists rotation-viz.service && check_url "Rotation API" "http://127.0.0.1:42902/api/rotation/health"
 unit_exists setlister.service && check_url "Setlister API" "http://127.0.0.1:42903/api/setlister/health"
-unit_exists planes.service && check_url "Planes board" "http://127.0.0.1:42901/health"
+unit_exists planes.service && check_url "Planes API" "http://127.0.0.1:42901/api/planes/health"
 unit_exists dataviz-backend.service && check_url "DataViz API" "http://127.0.0.1:42000/api/v1/health"
 unit_exists dataviz-gui.service && check_url "DataViz Dashboard" "http://127.0.0.1:42002/"
 

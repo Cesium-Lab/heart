@@ -1,12 +1,17 @@
+---
+// Split-flap SFO board. Data: /api/planes/board (Apache → planes service :42901).
+---
+
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Live departures and arrivals board for SFO from ADS-B data">
 <title>SFO Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
-<style>
+<style is:inline>
   :root {
     --bg: #0b0c0e; --panel: #141518; --cell: #1c1d21; --cell-edge: #0a0a0c;
     --text: #f2f2ee; --amber: #ffc93c; --green: #7ee08a; --red: #ff7a6b; --muted: #8a8f98;
@@ -42,6 +47,7 @@
   .hide-sm { }
   footer { color: var(--muted); font-size: 12px; line-height: 1.6; }
   footer b { color: var(--text); font-weight: 500; }
+  footer a { color: var(--amber); }
   .err { color: var(--red); }
   @media (max-width: 1000px) { :root { --cw: 17px; --ch: 26px; --fs: 15px; } }
   @media (max-width: 700px) {
@@ -74,10 +80,11 @@
   </section>
   <footer>
     <div id="meta">Loading…</div>
+    <div><a href="/">home</a> · <a href="/sitemap/">site map</a></div>
     <div>Positions: adsb.lol · Routes: adsbdb.com (best guesses, so some flights are missing or mislabeled)</div>
   </footer>
 </div>
-<script>
+<script is:inline>
 const ROWS = 10;
 const COLS = [
   { key: "flight", label: "FLIGHT", w: 7 },
@@ -170,7 +177,7 @@ const meta = document.getElementById("meta");
 
 async function refresh() {
   try {
-    const res = await fetch("api/board", { cache: "no-store" });
+    const res = await fetch("/api/planes/board", { cache: "no-store" });
     const b = await res.json();
     render(depRows, b.departures || []);
     render(arrRows, b.arrivals || []);
