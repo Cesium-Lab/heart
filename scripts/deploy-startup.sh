@@ -1,4 +1,20 @@
 #!/usr/bin/env bash
+# deploy-startup.sh: build the site and (re)install/start every service on mr-ray.
+# Uses sudo. Run from anywhere.
+#
+#   Full deploy/repair (build site, install units, start + health-check all):
+#       ./scripts/deploy-startup.sh
+#
+#   Install or update just one service after editing its unit file:
+#       sudo install -m 0644 deploy/systemd/<name>.service /etc/systemd/system/
+#       sudo systemctl daemon-reload && sudo systemctl enable --now <name>
+#
+#   Pick up code changes (deploy does NOT restart services that are already running):
+#       sudo systemctl restart <name>
+#
+#   Something broke? Check, then read the logs:
+#       ./scripts/status.sh
+#       journalctl -u <name> -n 50 --no-pager
 
 # Exit on command failures, unset variables, and failed pipeline components.
 # These strict settings keep a broken step from producing a partial deployment.
