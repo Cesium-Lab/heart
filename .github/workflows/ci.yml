@@ -99,6 +99,36 @@ jobs:
           # Replay needs no upstream either: nothing recorded yet means an empty list.
           curl -fsS http://127.0.0.1:42901/api/planes/replay | grep -q '"planes":\[\]'
 
+  inbox-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r backend/services/inbox/requirements.txt
+
+      # Save a note, then check it landed in the day's inbox.md and the digest builds.
+      - name: Save an entry and build the digest
+        working-directory: backend/services/inbox
+        run: |
+          INBOX_DIR="$RUNNER_TEMP/inbox" python server.py &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:42904/inbox/health && break; sleep 0.5; done
+          # Pretend to be on the home LAN (Apache would add this header); elsewhere needs a login.
+          curl -fsS -o /dev/null -H 'X-Forwarded-For: 192.168.0.5' -F 'text=ci check https://example.com' http://127.0.0.1:42904/inbox/add
+          grep -q 'ci check' "$RUNNER_TEMP"/inbox/*/inbox.md
+          curl -fsS -o /dev/null -H 'X-Forwarded-For: 192.168.0.5' -X POST "http://127.0.0.1:42904/inbox/send/$(date +%F)"
+          # From outside, the page is a login form and saving is refused.
+          curl -fsS http://127.0.0.1:42904/inbox/ | grep -q 'name="password"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -F 'text=x' http://127.0.0.1:42904/inbox/add)" = 401
+          ls "$RUNNER_TEMP"/inbox/*/digest-preview.eml
+
   lint-everything:
     runs-on: ubuntu-latest
 

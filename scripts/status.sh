@@ -26,6 +26,7 @@ SERVICES=(
     "setlister|42903|http://127.0.0.1:42903/api/setlister/health"
     "rotation-viz|42902|http://127.0.0.1:42902/api/rotation/health"
     "planes|42901|http://127.0.0.1:42901/api/planes/health"
+    "inbox|42904|http://127.0.0.1:42904/inbox/health"
     "dataviz-backend|42000|http://127.0.0.1:42000/api/v1/health"
     "dataviz-gui|42002|http://127.0.0.1:42002/"
     "docker|-|-"
