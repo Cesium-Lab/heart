@@ -164,6 +164,29 @@ def delete_entries(day: str, indexes: set[int]) -> int:
         return len(gone)
 
 
+def delete_file(day: str, name: str) -> bool:
+    """Remove one attachment from its entry and move the file to <day>/.deleted/. An entry left
+    with no note and no files is removed too."""
+    name = safe_name(name)
+    with _write_lock:
+        entries = read_day(day)
+        hit = next((e for e in entries if name in e["files"]), None)
+        if not hit:
+            return False
+        hit["files"].remove(name)
+        trash = day_dir(day) / ".deleted"
+        trash.mkdir(exist_ok=True)
+        with (trash / "deleted.md").open("a", encoding="utf-8") as fh:
+            fh.write(
+                f"## {hit['time']}: file {name} (deleted {datetime.now():%H:%M:%S})\n\n"
+            )
+        src = day_dir(day) / name
+        if src.is_file():
+            src.rename(trash / name)
+        write_day(day, [e for e in entries if e["text"] or e["files"]])
+        return True
+
+
 def read_day(day: str) -> list[dict]:
     """Parse a day's inbox.md back into entries: [{time, text, files}]."""
     md = day_dir(day) / "inbox.md"
@@ -466,8 +489,8 @@ LOGIN_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Inbox</title>
 <meta name="robots" content="noindex"><link rel="icon" href="/favicon.svg?v=5" type="image/svg+xml">
 <style>
-:root{--bg:#fafaf7;--card:#fff;--ink:#1a1a1a;--muted:#6b6b66;--line:#e5e3dc;--accent:#c4541c}
-@media(prefers-color-scheme:dark){:root{--bg:#14140f;--card:#1c1c17;--ink:#f5f3ec;--muted:#8a8a82;--line:#2a2a23;--accent:#f0997b}}
+:root{--bg:#fafaf7;--card:#fff;--ink:#111;--muted:#4a4a45;--line:#e5e3dc;--accent:#c4541c;--bright:#111}
+@media(prefers-color-scheme:dark){:root{--bg:#14140f;--card:#1c1c17;--ink:#fff;--muted:#c4c4bc;--line:#3a3a32;--accent:#f0997b;--bright:#fff}}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,Helvetica,Arial,sans-serif}
 form{max-width:320px;margin:18vh auto 0;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:12px;display:grid;gap:12px}
 h1{font-size:18px;margin:0}input{font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit}
@@ -494,10 +517,22 @@ PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/favicon.svg?v=5" type="image/svg+xml">
 <style>
-:root{--bg:#fafaf7;--card:#fff;--ink:#1a1a1a;--muted:#6b6b66;--line:#e5e3dc;--accent:#c4541c}
-@media(prefers-color-scheme:dark){:root{--bg:#14140f;--card:#1c1c17;--ink:#f5f3ec;--muted:#8a8a82;--line:#2a2a23;--accent:#f0997b}}
+:root{--bg:#fafaf7;--card:#fff;--ink:#111;--muted:#4a4a45;--line:#e5e3dc;--accent:#c4541c;--bright:#111}
+@media(prefers-color-scheme:dark){:root{--bg:#14140f;--card:#1c1c17;--ink:#fff;--muted:#c4c4bc;--line:#3a3a32;--accent:#f0997b;--bright:#fff}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,Helvetica,Arial,sans-serif}
 main{max-width:640px;margin:0 auto;padding:20px 16px 60px}
+/* Desktop: entries on the left, the entry box on the right (stays in view while scrolling). */
+@media(min-width:900px){
+  main{max-width:1100px}
+  /* about 65/35: entries get most of the width; the divider line sits at the split */
+  .cols{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(0,1fr);gap:0;align-items:start}
+  .list{padding-right:28px}
+  .compose{padding-left:28px;border-left:1px solid var(--line);min-height:calc(100vh - 140px)}
+  .compose{grid-column:2;grid-row:1;position:sticky;top:20px}
+  .list{grid-column:1;grid-row:1}
+  .list h2{margin-top:0}
+  .compose:empty{display:none}
+}
 form{display:grid;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
 textarea{width:100%;min-height:96px;font:inherit;color:inherit;background:transparent;border:0;outline:0;resize:vertical}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -514,7 +549,8 @@ button{font:inherit;font-weight:600;color:#fff;background:var(--accent);border:0
 button:disabled{opacity:.4;cursor:not-allowed}
 .pick{width:16px;height:16px;vertical-align:-3px;margin-right:4px;accent-color:var(--accent)}
 label.t{cursor:pointer;user-select:none}
-.selall{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-left:8px}.meta{font-size:11px;opacity:.8}
+/* Same size/style as the "N saved · emailed" text beside it, in white. */
+.selall{font:inherit;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--bright);background:transparent;border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-left:8px;cursor:pointer}.meta{font-size:11px}
 .del{position:sticky;bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;
   background:var(--card);border:1px solid #dc2626;border-radius:12px;padding:10px;box-shadow:0 6px 20px rgba(0,0,0,.15)}
 .del[hidden]{display:none}.del input{flex:1;min-width:110px;font:inherit;padding:7px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit}
@@ -526,13 +562,40 @@ h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute
 h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
 .e{padding:12px 2px;border-bottom:1px solid var(--line)}.t{color:var(--muted);font-size:12px}
 .e p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}.e a{color:var(--accent)}
+.atts{border:1px solid var(--line);border-radius:10px;margin-top:8px;padding:4px 10px}
+.att{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px}
+.att+.att{border-top:1px solid var(--line)}
+.delfile{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 8px}
+.delfile input{flex:1;min-width:100px;font:inherit;font-size:13px;padding:6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit}
+.delfile button{font-size:13px;padding:6px 12px;background:#dc2626}.delfile .plain{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.delatt:hover{color:#dc2626;border-color:#dc2626}
+.attname{min-width:0;overflow-wrap:anywhere}.atticons{display:flex;gap:6px;flex:none}
+.attbtn{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;padding:0;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px;text-decoration:none;cursor:pointer}
+.attbtn:hover{color:var(--bright);border-color:var(--muted)}.attbtn.ok{color:#16a34a;border-color:#16a34a}
+/* Preview overlay (click a file name) */
+.pv{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(0,0,0,.72);padding:16px}
+.pv[hidden]{display:none}
+.pvbox{position:relative;max-width:min(1000px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--card);border-radius:12px;overflow:hidden}
+.pvhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;font-size:13px;border-bottom:1px solid var(--line)}
+.pvhead span{overflow-wrap:anywhere}.pvclose{font-size:20px;line-height:1;color:var(--bright);background:transparent;border:0;padding:0 4px;cursor:pointer}
+.pvbody{overflow:auto;min-height:0}.pvbody img,.pvbody video{display:block;max-width:100%;max-height:80vh;margin:auto}
+.pvbody pre{margin:0;padding:12px;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:80vh}
+.pvbody iframe{display:block;width:min(1000px,92vw);height:80vh;border:0;background:#fff}.pvbody audio{display:block;margin:20px}
 .e img{max-width:100%;max-height:320px;border-radius:8px;margin-top:6px;display:block}
 .tools{display:flex;gap:8px;margin:14px 2px;flex-wrap:wrap}.tools button,.tools a{font-size:13px;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none;font-weight:500}
-.nav{display:flex;justify-content:space-between;margin:20px 2px;font-size:14px}
+/* three columns: equal sides keep the middle link centered whatever the dates say */
+.nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:0 2px 12px;font-size:14px}
+.nav>:last-child{justify-self:end}
+.nav .today{font-weight:600;color:var(--bright);text-align:center}
+.title{font-size:28px;margin:4px 2px 12px;letter-spacing:-.01em}
 </style></head><body><main>
 {logout}
-{form}
-{flash}
+<h1 class="title">Drop a line.</h1>
+<div class="nav">{prev}{today}{next}</div>
+<div class="cols">
+<aside class="compose">{form}
+{flash}</aside>
+<section class="list">
 <h2><span>{title}</span><span>{count} <button type="button" id="selectall" class="selall" hidden>Select all</button></span></h2>
 {entries}
 <div id="selbar" class="del" hidden>
@@ -592,15 +655,83 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
   };
 })();
 </script>
+<div class="pv" id="pv" hidden role="dialog" aria-modal="true" aria-labelledby="pvname">
+  <div class="pvbox"><div class="pvhead"><span id="pvname"></span><button type="button" class="pvclose" id="pvclose" aria-label="Close">×</button></div>
+  <div class="pvbody" id="pvbody"></div></div>
+</div>
 <div class="tools">
   <button type="button" id="copy">Copy for Claude</button>
   <a href="{base}day/{day}.md">inbox.md</a>
   {send}
 </div>
-<div class="nav">{prev}<span></span>{next}</div>
+</section>
+</div>
 </main>
 <script>
 const text = {plain};
+const CHECK = {check_icon};
+// Trash icon on a file: confirm right under that line with username + password.
+document.querySelectorAll(".delatt").forEach((btn) => btn.onclick = () => {
+  const line = btn.closest(".att");
+  if (line.nextElementSibling && line.nextElementSibling.classList.contains("delfile")) return;
+  const f = document.createElement("form");
+  f.method = "post"; f.action = "{base}delete/{day}"; f.className = "delfile";
+  f.innerHTML = '<input type="hidden" name="file">' +
+    '<input name="username" placeholder="Username" autocomplete="username" autocapitalize="none" required>' +
+    '<input type="password" name="password" placeholder="Password" autocomplete="current-password" required>' +
+    '<button>Delete file</button><button type="button" class="plain">Cancel</button>';
+  f.elements.file.value = btn.dataset.file;
+  f.querySelector(".plain").onclick = () => f.remove();
+  line.after(f);
+  f.elements.username.focus();
+});
+// Click a file name: preview it here (image, text, video/audio, PDF); other types open normally.
+(() => {
+  const pv = document.getElementById("pv"), body = document.getElementById("pvbody");
+  const close = () => { pv.hidden = true; body.replaceChildren(); };
+  document.getElementById("pvclose").onclick = close;
+  pv.addEventListener("click", (e) => { if (e.target === pv) close(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !pv.hidden) close(); });
+  document.querySelectorAll(".attname").forEach((a) => a.addEventListener("click", async (e) => {
+    const card = a.closest(".att"), url = card.dataset.url, ext = (url.split(".").pop() || "").toLowerCase();
+    const media = { mp4: "video", mov: "video", webm: "video", m4v: "video", m4a: "audio", mp3: "audio", wav: "audio", aac: "audio", ogg: "audio" }[ext];
+    let el;
+    if (card.dataset.kind === "image") { el = document.createElement("img"); el.src = url; el.alt = ""; }
+    else if (media) { el = document.createElement(media); el.src = url; el.controls = true; el.autoplay = true; }
+    else if (ext === "pdf") { el = document.createElement("iframe"); el.src = url; el.title = a.textContent; }
+    else if (card.dataset.kind === "text") {
+      el = document.createElement("pre"); el.textContent = "Loading…";
+      fetch(url).then((r) => r.text()).then((t) => (el.textContent = t)).catch(() => (el.textContent = "Couldn't load it."));
+    } else return;  // zip etc.: let the link open/download as usual
+    e.preventDefault();
+    document.getElementById("pvname").textContent = a.textContent;
+    body.replaceChildren(el);
+    pv.hidden = false;
+  }));
+})();
+// Attachment Copy: text files copy their text, images copy the picture (as PNG, what
+// clipboards accept), anything else copies its full link.
+document.querySelectorAll(".copyatt").forEach((btn) => btn.onclick = async () => {
+  const card = btn.closest(".att"), url = new URL(card.dataset.url, location.href).href;
+  // Like GitHub: the copy icon turns into a green check for a moment.
+  const icon = btn.innerHTML;
+  const done = (t) => { btn.innerHTML = CHECK; btn.classList.add("ok"); btn.title = t;
+    setTimeout(() => { btn.innerHTML = icon; btn.classList.remove("ok"); btn.title = "Copy"; }, 1500); };
+  try {
+    if (card.dataset.kind === "text") {
+      await navigator.clipboard.writeText(await (await fetch(url)).text());
+    } else if (card.dataset.kind === "image" && window.ClipboardItem) {
+      const bmp = await createImageBitmap(await (await fetch(url)).blob()), c = document.createElement("canvas");
+      c.width = bmp.width; c.height = bmp.height; c.getContext("2d").drawImage(bmp, 0, 0);
+      const png = await new Promise((r) => c.toBlob(r, "image/png"));
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+    } else {
+      await navigator.clipboard.writeText(url);
+      return done("Link copied");
+    }
+    done("Copied");
+  } catch { await navigator.clipboard.writeText(url).then(() => done("Link copied"), () => prompt("Copy:", url)); }
+});
 document.getElementById("copy").onclick = async (e) => {
   try { await navigator.clipboard.writeText(text); e.target.textContent = "Copied"; } catch { prompt("Copy:", text); }
 };
@@ -689,6 +820,72 @@ LOGOUT = """<div class="top"><button type="button" id="logout">Log out</button><
 </script>"""
 
 
+TEXT_EXT = {
+    ".txt",
+    ".md",
+    ".csv",
+    ".json",
+    ".log",
+    ".py",
+    ".js",
+    ".ts",
+    ".html",
+    ".css",
+    ".xml",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".sh",
+    ".c",
+    ".h",
+    ".cpp",
+    ".rs",
+    ".tsv",
+}
+
+
+# GitHub-style 16px line icons (Octicons shapes), drawn in the text color.
+_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="{d}"/></svg>'
+ICON_DOWNLOAD = _SVG.format(
+    d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"
+)
+ICON_COPY = _SVG.format(
+    d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Zm5-5C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"
+)
+ICON_TRASH = _SVG.format(
+    d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"
+)
+ICON_CHECK = _SVG.format(
+    d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"
+)
+
+
+def attachment_card(day: str, f: str) -> str:
+    """One attachment as one line: the file name (a link that opens it) on the left, and
+    Download / Copy icons right-justified. Copy copies a text file's text, an image itself, or
+    otherwise the file's link."""
+    url = f"/inbox/files/{day}/{quote(f)}"
+    ext = Path(f).suffix.lower()
+    kind = (
+        "image"
+        if ext in IMAGE_EXT - {".heic", ".heif"}
+        else "text"
+        if ext in TEXT_EXT
+        else "link"
+    )
+    name = html.escape(f)
+    return (
+        f'<div class="att" data-kind="{kind}" data-url="{url}">'
+        f'<a class="attname" href="{url}" target="_blank" rel="noopener">{name}</a>'
+        f'<span class="atticons">'
+        f'<a class="attbtn" href="{url}?download=1" title="Download" aria-label="Download {name}">{ICON_DOWNLOAD}</a>'
+        f'<button type="button" class="attbtn copyatt" title="Copy" aria-label="Copy {name}">{ICON_COPY}</button>'
+        f'<button type="button" class="attbtn delatt" data-file="{name}" title="Delete" aria-label="Delete {name}">{ICON_TRASH}</button>'
+        f"</span></div>"
+    )
+
+
 def js_json(value) -> str:
     """JSON safe to drop into an inline <script>: no "</script>", and no braces, so user text
     can never look like one of this page's {placeholders}."""
@@ -716,14 +913,9 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
             body.append(f'<div class="t meta">{html.escape(e["meta"])}</div>')
         if e["text"]:
             body.append(f"<p>{linkify(e['text'])}</p>")
-        for f in e["files"]:
-            url = f"{base}files/{day}/{quote(f)}"
-            if Path(f).suffix.lower() in IMAGE_EXT - {".heic", ".heif"}:
-                body.append(
-                    f'<a href="{url}"><img src="{url}" alt="" loading="lazy"></a>'
-                )
-            else:
-                body.append(f'<p><a href="{url}">{html.escape(f)}</a></p>')
+        if e["files"]:
+            cards = "".join(attachment_card(day, f) for f in e["files"])
+            body.append(f'<div class="atts">{cards}</div>')
         items.append('<div class="e">' + "".join(body) + "</div>")
     d = date.fromisoformat(day)
     prev_day, next_day = (
@@ -760,9 +952,18 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         .replace("{send}", send)
         .replace("{prev}", f'<a href="{base}day/{prev_day}">← {prev_day}</a>')
         .replace(
-            "{next}",
-            f'<a href="{base}day/{next_day}">{next_day} →</a>' if day < today else "",
+            "{today}",
+            f'<a class="today" href="{base}">Go to today ({date.today():%a %b %-d})</a>'
+            if day != today
+            else f'<span class="today">Today · {date.today():%a %b %-d}</span>',
         )
+        .replace(
+            "{next}",
+            f'<a href="{base}day/{next_day}">{next_day} →</a>'
+            if day < today
+            else "<span></span>",
+        )
+        .replace("{check_icon}", js_json(ICON_CHECK))
         .replace("{plain}", js_json(plain_text(day, entries)))
         .replace("{entries_json}", js_json([entry_text(day, e) for e in entries]))
     )
@@ -827,6 +1028,9 @@ class Handler(BaseHTTPRequestHandler):
             flash = unquote(m[1])
         if m := re.search(r"[?&]deleted=(\d+)", self.path):
             flash = f"Deleted {m[1]}."
+        if path in ("/inbox/day", "/inbox/day/"):
+            self._redirect("/inbox/")  # no day given: today
+            return
         if path in ("/inbox", "/inbox/"):
             page = render(date.today().isoformat(), flash, session)
             self._send(200, page, "text/html; charset=utf-8")
@@ -854,7 +1058,16 @@ class Handler(BaseHTTPRequestHandler):
                     ".pdf": "application/pdf",
                     ".m4a": "audio/mp4",
                 }.get(f.suffix.lower(), "application/octet-stream")
-                self._send(200, f.read_bytes(), ctype)
+                extra = {}
+                if "download=1" in self.path:
+                    extra["Content-Disposition"] = f'attachment; filename="{f.name}"'
+                elif (
+                    ctype == "application/octet-stream" or f.suffix.lower() in TEXT_EXT
+                ):
+                    # Text-like files are shown on the page; served as plain text so the
+                    # browser never runs an uploaded .html/.js.
+                    ctype = "text/plain; charset=utf-8"
+                self._send(200, f.read_bytes(), ctype, extra)
             else:
                 self._send(404, b"not found", "text/plain")
         elif m := re.fullmatch(r"/inbox/export/(\d{4}-\d{2}-\d{2})", path):
@@ -959,6 +1172,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._redirect(
                     f"/inbox/day/{m[1]}?sent={quote('Not deleted: wrong username or password.')}"
                 )
+                return
+            if f.get("file"):  # one attachment (trash icon on its line)
+                ok = delete_file(m[1], f["file"][0])
+                msg = "Deleted the file." if ok else "That file wasn't found."
+                self._redirect(f"/inbox/day/{m[1]}?sent={quote(msg)}")
                 return
             picks = {int(v) for v in f.get("del", []) if v.isdigit()}
             n = delete_entries(m[1], picks)
