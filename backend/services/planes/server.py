@@ -1,6 +1,6 @@
 """SFO departure/arrival board.
 
-Polls adsb.lol for aircraft near SFO, looks up routes on adsbdb.com, and serves a
+Polls adsb.fi (or adsb.lol) for aircraft near SFO, looks up routes on adsbdb.com, and serves a
 JSON API for the split-flap board page at /planes/ on the site. Standard library
 only. Binds to 127.0.0.1; Apache proxies /api/planes/ here (see README).
 """
@@ -24,6 +24,13 @@ LAT = float(os.getenv("PLANES_LAT", "37.6213"))
 LON = float(os.getenv("PLANES_LON", "-122.3790"))
 RADIUS_NM = int(os.getenv("PLANES_RADIUS_NM", "40"))
 CACHE_S = float(os.getenv("PLANES_CACHE_S", "10"))
+# Position source. adsb.fi allows 1 request/s with no daily cap; adsb.lol caps
+# anonymous use at 500 requests/day, which a page polling every 10 s uses up in ~1.5 h.
+SOURCE = os.getenv("PLANES_SOURCE", "adsbfi")
+SOURCE_URLS = {
+    "adsbfi": "https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{nm}",
+    "adsblol": "https://api.adsb.lol/v2/point/{lat}/{lon}/{nm}",
+}
 ROUTE_TTL_S = 6 * 3600
 UA = "cesium-planes/1.0"
 
@@ -177,14 +184,58 @@ def classify(ac: dict) -> dict | None:
 
 _board: dict = {}
 _board_at = 0.0
+_retry_at = 0.0  # set when the source says "slow down" (HTTP 429)
 _board_lock = threading.Lock()
 
 
+def map_entry(ac: dict, kind: str, data_now: float) -> dict | None:
+    """Every aircraft with a position, for the map. kind: dep, arr, or other."""
+    lat, lon = ac.get("lat"), ac.get("lon")
+    if lat is None or lon is None:
+        return None
+    cs = (ac.get("flight") or "").strip()
+    alt = ac.get("alt_baro")
+    route = get_route(cs) if cs else None
+    return {
+        "hex": ac.get("hex"),
+        "kind": kind,
+        "flight": flight_label(cs, route) if cs else (ac.get("r") or ac.get("hex")),
+        "callsign": cs,
+        "airline": (route or {}).get("airline") or "",
+        "origin": (route or {}).get("origin") or "",
+        "origin_city": ascii_upper((route or {}).get("origin_city") or ""),
+        "dest": (route or {}).get("dest") or "",
+        "dest_city": ascii_upper((route or {}).get("dest_city") or ""),
+        "type": ac.get("t") or "",
+        "reg": ac.get("r") or "",
+        "ground": alt == "ground",
+        "alt": 0 if alt == "ground" else alt if isinstance(alt, (int, float)) else None,
+        "gs": ac.get("gs"),
+        "track": ac.get("track"),
+        "vr": ac.get("baro_rate") or ac.get("geom_rate"),
+        "squawk": ac.get("squawk") or "",
+        "lat": lat,
+        "lon": lon,
+        # When this position was received (epoch s). The map dead-reckons from here;
+        # an absolute time stays correct however long the board sits in the cache.
+        "pos_time": round(data_now - (ac.get("seen_pos") or 0), 2),
+    }
+
+
 def build_board() -> dict:
-    data = fetch_json(f"https://api.adsb.lol/v2/point/{LAT}/{LON}/{RADIUS_NM}") or {}
-    deps, arrs, over = [], [], 0
-    for ac in data.get("ac", []):
+    url = SOURCE_URLS[SOURCE].format(lat=LAT, lon=LON, nm=RADIUS_NM)
+    data = fetch_json(url) or {}
+    # Same readsb format from both sources, except the list key and `now` units.
+    acs = data.get("ac") or data.get("aircraft") or []
+    now = data.get("now") or time.time()
+    data_now = now / 1000 if now > 1e11 else now  # adsb.lol sends ms, adsb.fi seconds
+    deps, arrs, over, aircraft = [], [], 0, []
+    for ac in acs:
         row = classify(ac)
+        kind = row["kind"] if row and row["kind"] in ("dep", "arr") else "other"
+        entry = map_entry(ac, kind, data_now)
+        if entry:
+            aircraft.append(entry)
         if not row:
             continue
         if row["kind"] == "over":
@@ -199,19 +250,28 @@ def build_board() -> dict:
         "departures": deps,
         "arrivals": arrs,
         "overhead": over,
-        "tracked": len(data.get("ac", [])),
+        "tracked": len(acs),
+        "source": SOURCE,
+        "aircraft": aircraft,
     }
 
 
 def board() -> dict:
-    global _board, _board_at
+    global _board, _board_at, _retry_at
     with _board_lock:
-        if time.time() - _board_at > CACHE_S:
+        now = time.time()
+        if now - _board_at > CACHE_S and now >= _retry_at:
             try:
-                _board, _board_at = build_board(), time.time()
+                _board, _board_at = build_board(), now
                 _board.pop("error", None)
-            except (URLError, HTTPError, TimeoutError, ValueError, OSError) as e:
-                _board_at = time.time()  # back off for one cache period
+            except HTTPError as e:
+                _board_at = now
+                if e.code == 429:  # rate limited: wait as long as asked (default 60 s)
+                    wait = e.headers.get("Retry-After", "60")
+                    _retry_at = now + (float(wait) if wait.isdigit() else 60)
+                _board = {**_board, "error": f"upstream: HTTP {e.code}"}
+            except (URLError, TimeoutError, ValueError, OSError) as e:
+                _board_at = now  # back off for one cache period
                 _board = {**_board, "error": f"upstream: {e.__class__.__name__}"}
         return _board
 

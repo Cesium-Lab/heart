@@ -29,7 +29,6 @@ serving the site.
 
 ## Nerd stuff
 
-- **Planes map**: a map view for the SFO board (`/api/board` already has lat/lon/track).
 - Drive-health alerts (smartctl exporter → Prometheus/Grafana) and ntfy push notifications.
 - restic backups of the irreplaceable files (offsite or to the new drive).
 - ESP32 room sensors feeding Prometheus; Pi ADS-B receiver (RTL-SDR) feeding FR24/adsb.lol.

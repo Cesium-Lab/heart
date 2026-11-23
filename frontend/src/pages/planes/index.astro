@@ -28,6 +28,9 @@
   nav { display: flex; gap: 6px; margin-bottom: 16px; }
   nav button { font: inherit; letter-spacing: .1em; color: var(--muted); background: var(--panel); border: 1px solid #2a2c31; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
   nav button[aria-pressed="true"] { color: var(--bg); background: var(--amber); border-color: var(--amber); }
+  .map-btn { margin-left: auto; font: inherit; letter-spacing: .1em; color: var(--amber); background: var(--panel);
+             border: 1px solid var(--amber); border-radius: 6px; padding: 8px 14px; text-decoration: none; }
+  .map-btn:hover { color: var(--bg); background: var(--amber); }
   section { background: var(--panel); border: 1px solid #23252a; border-radius: 10px; padding: 14px 16px 16px; margin-bottom: 18px; }
   section[hidden] { display: none; }
   .board-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
@@ -69,6 +72,7 @@
     <button data-view="both" aria-pressed="true">BOTH</button>
     <button data-view="dep" aria-pressed="false">DEPARTURES</button>
     <button data-view="arr" aria-pressed="false">ARRIVALS</button>
+    <a class="map-btn" href="/planes/map/">MAP →</a>
   </nav>
   <section id="dep">
     <div class="board-title"><h2>DEPARTURES</h2><span id="depCount"></span></div>
@@ -80,8 +84,8 @@
   </section>
   <footer>
     <div id="meta">Loading…</div>
-    <div><a href="/">home</a> · <a href="/sitemap/">site map</a></div>
-    <div>Positions: adsb.lol · Routes: adsbdb.com (best guesses, so some flights are missing or mislabeled)</div>
+    <div><a href="/planes/map/">map</a> · <a href="/">home</a> · <a href="/sitemap/">site map</a></div>
+    <div>Positions: <a href="https://adsb.fi" target="_blank" rel="noopener">adsb.fi</a> · Routes: <a href="https://www.adsbdb.com" target="_blank" rel="noopener">adsbdb.com</a> (best guesses, so some flights are missing or mislabeled)</div>
   </footer>
 </div>
 <script is:inline>
