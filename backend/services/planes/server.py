@@ -7,8 +7,10 @@ only. Binds to 127.0.0.1; Apache proxies /api/planes/ here (see README).
 
 from __future__ import annotations
 
+import gzip
 import json
 import math
+import re
 import os
 import queue
 import threading
@@ -32,16 +34,46 @@ SOURCE_URLS = {
     "adsbfi": "https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/{nm}",
     "adsblol": "https://api.adsb.lol/v2/point/{lat}/{lon}/{nm}",
 }
+# One plane anywhere, for follow mode (same format, ~0.4 KB).
+HEX_URLS = {
+    "adsbfi": "https://opendata.adsb.fi/api/v2/hex/{hex}",
+    "adsblol": "https://api.adsb.lol/v2/hex/{hex}",
+}
+FOLLOW_MAX = 5  # planes followed at once, across all viewers
+FOLLOW_IDLE_S = 120  # a follow ends this long after its page stops asking
 ROUTE_TTL_S = 6 * 3600
 UA = "cesium-planes/1.0"
 
 # ---------------------------------------------------------------- upstream
 
 
+# adsb.fi allows 1 request/s. Board and follow fetches can coincide, so space them out.
+_upstream_lock = threading.Lock()
+_upstream_last = 0.0
+UPSTREAM_GAP_S = 1.1
+
+
+def _throttle(url: str) -> None:
+    global _upstream_last
+    if "adsbdb.com" in url:  # route lookups have their own pacing
+        return
+    with _upstream_lock:
+        wait = _upstream_last + UPSTREAM_GAP_S - time.time()
+        if wait > 0:
+            time.sleep(wait)
+        _upstream_last = time.time()
+
+
 def fetch_json(url: str, timeout: float = 8) -> dict | None:
+    _throttle(url)
+    # gzip cuts the adsb.fi download from ~27 KB to ~6 KB per fetch.
+    headers = {"User-Agent": UA, "Accept-Encoding": "gzip"}
     try:
-        with urlopen(Request(url, headers={"User-Agent": UA}), timeout=timeout) as r:
-            return json.load(r)
+        with urlopen(Request(url, headers=headers), timeout=timeout) as r:
+            body = r.read()
+            if r.headers.get("Content-Encoding") == "gzip":
+                body = gzip.decompress(body)
+            return json.loads(body)
     except HTTPError as e:
         if e.code == 404:
             return None
@@ -372,6 +404,94 @@ def classify(ac: dict) -> dict | None:
     }
 
 
+# Recent positions per plane, recorded only from fetches the pages trigger (nothing is
+# fetched when nobody is watching). In memory only: a restart wipes it.
+TRACK_TTL_S = float(os.getenv("PLANES_TRACK_HOURS", "5")) * 3600  # oldest point kept
+TRACK_GONE_S = 10 * 60  # drop a plane's track this long after it leaves the area
+_tracks: dict[str, list[list[float]]] = {}  # hex -> [[lon, lat, alt_ft, epoch_s], ...]
+_track_seen: dict[str, float] = {}  # hex -> last time it was in the data
+_followed: dict[str, float] = {}  # hex -> last time a page asked to follow it
+_tracks_lock = threading.Lock()
+
+
+def record_tracks(entries: list[dict]) -> None:
+    now = time.time()
+    with _tracks_lock:
+        for e in entries:
+            h = e.get("hex")
+            if not h or e.get("lat") is None:
+                continue
+            _track_seen[h] = now
+            pts = _tracks.setdefault(h, [])
+            point = [e["lon"], e["lat"], e.get("alt") or 0, e["pos_time"]]
+            if (
+                not pts or pts[-1][:2] != point[:2]
+            ):  # parked planes don't pile up points
+                pts.append(point)
+        for h in list(_tracks):
+            # A followed plane keeps its whole history (a long flight outlasts the 5 h cap),
+            # until nobody has followed it for FOLLOW_IDLE_S.
+            if now - _followed.get(h, 0) < FOLLOW_IDLE_S:
+                continue
+            if now - _track_seen.get(h, 0) > TRACK_GONE_S:
+                _tracks.pop(h, None)
+                _track_seen.pop(h, None)
+                continue
+            pts = _tracks[h]
+            while pts and now - pts[0][3] > TRACK_TTL_S:
+                pts.pop(0)
+
+
+_follow_cache: dict[str, tuple[float, dict]] = {}  # hex -> (fetched_at, response)
+_follow_lock = threading.Lock()
+
+
+def follow(hex_: str) -> tuple[int, dict]:
+    """Where one followed plane is now, wherever it is (not just near SFO)."""
+    now = time.time()
+    with _follow_lock:
+        for h in [h for h, t in _followed.items() if now - t > FOLLOW_IDLE_S]:
+            del _followed[h]
+        if hex_ not in _followed and len(_followed) >= FOLLOW_MAX:
+            return 429, {
+                "error": f"already following {FOLLOW_MAX} planes; try again soon"
+            }
+        _followed[hex_] = now
+        hit = _follow_cache.get(hex_)
+        if hit and now - hit[0] < CACHE_S:
+            return 200, hit[1]
+        try:
+            data = fetch_json(HEX_URLS[SOURCE].format(hex=hex_)) or {}
+        except (URLError, HTTPError, TimeoutError, ValueError, OSError) as e:
+            return 502, {"error": f"upstream: {e.__class__.__name__}"}
+        acs = data.get("ac") or data.get("aircraft") or []
+        t = data.get("now") or now
+        data_now = t / 1000 if t > 1e11 else t
+        entry = None
+        if acs and acs[0].get("lat") is not None:
+            ac = acs[0]
+            ac["dst"] = nm_between(
+                LAT, LON, ac["lat"], ac["lon"]
+            )  # the hex lookup omits it
+            row = None if is_vehicle(ac) else classify(ac)
+            kind = (
+                row["kind"] if row and row["kind"] in ("dep", "arr", "sfo") else "other"
+            )
+            entry = map_entry(
+                ac, kind, data_now, row.pop("_route", None) if row else None
+            )
+            if entry:
+                record_tracks([entry])
+        body = {"hex": hex_, "aircraft": entry, "updated": data_now}
+        _follow_cache[hex_] = (now, body)
+        return 200, body
+
+
+def track_for(hex_: str) -> list[list[float]]:
+    with _tracks_lock:
+        return list(_tracks.get(hex_, []))
+
+
 _board: dict = {}
 _board_at = 0.0
 _retry_at = 0.0  # set when the source says "slow down" (HTTP 429)
@@ -446,6 +566,7 @@ def build_board() -> dict:
             over += 1
             continue
         {"arr": arrs, "dep": deps, "sfo": at_sfo}[row["kind"]].append(row)
+    record_tracks(aircraft)
     cutoff = time.time() - PHASE_TTL_S
     for h in [h for h, (_, t) in _phase.items() if t < cutoff]:
         del _phase[h]
@@ -506,6 +627,12 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0].rstrip("/") or "/"
         if path == "/api/planes/board":
             self._send(200, json.dumps(board()).encode(), "application/json")
+        elif m := re.fullmatch(r"/api/planes/track/([0-9a-f~]{1,8})", path):
+            body = {"hex": m[1], "points": track_for(m[1])}
+            self._send(200, json.dumps(body).encode(), "application/json")
+        elif m := re.fullmatch(r"/api/planes/follow/([0-9a-f~]{1,8})", path):
+            code, body = follow(m[1])
+            self._send(code, json.dumps(body).encode(), "application/json")
         elif path in ("/api/planes/health", "/health"):
             self._send(200, b'{"ok":true}', "application/json")
         else:

@@ -1,49 +1,101 @@
-# Planes: SFO map + board API
+# Planes: SFO map + board
 
-Data for **`/planes/`** on the site: a live map of every aircraft around SFO, with the split-flap
-departures/arrivals board as a drawer on the left. The page lives in the Astro build
-(`frontend/src/pages/planes/index.astro`); this service only serves JSON. `/planes/map/` redirects
-to `/planes/` (`frontend/astro.config.mjs`).
+**`/planes/`** on the site is a live map of every aircraft within 40 nm of SFO, with a split-flap
+departures/arrivals board in a drawer. The page lives in the Astro build
+(`frontend/src/pages/planes/index.astro`); this service (`server.py`) only serves JSON.
+`/planes/map/` redirects to `/planes/` (`frontend/astro.config.mjs`).
 
 ```text
-browser → cesiumlab.net/planes/          (static page from frontend/dist)
-        → fetch /api/planes/board        → Apache → this service on 127.0.0.1:42901
+browser → cesiumlab.net/planes/              static page from frontend/dist
+        → fetch /api/planes/...              Apache → planes service on 127.0.0.1:42901
+                                             → adsb.fi (positions), adsbdb.com (routes)
 ```
-
-- `server.py`: standard-library Python, no venv needed. Binds `127.0.0.1:42901`.
-  - `/api/planes/board`: departures, arrivals, plus lat/lon/track per flight (for a future map)
-  - Board lists, each in time order like an airport board: `departures` (already gone by takeoff
-    time, then taxiing, then at the gate), `arrivals` (landed, then airborne by ETA), `at_sfo`
-    (on the ground at SFO, direction unknown), and `other` (everything else, nearest first). No free
-    source has schedules, so times are what the service watched happen, or estimates.
-  - `/api/planes/health` (and `/health`)
-- Positions come from [adsb.fi](https://adsb.fi) open data (free, no key, 1 request/s allowed),
-  fetched at most once every 10 s however many people are watching, and only while someone has a
-  page open. If the source answers HTTP 429, the service waits as long as it asks (default 60 s).
-  `PLANES_SOURCE=adsblol` switches to adsb.lol, but that caps anonymous use at 500 requests/day
-  (~1.5 h of viewing), so it's only a fallback.
-- `/api/planes/board` also has an `aircraft` list (every plane in range, for the map), with
-  an absolute `pos_time` per position, so the map can glide planes correctly.
-- Routes come from [adsbdb.com](https://www.adsbdb.com) and are cached for 6 h per callsign. They are
-  best guesses (airlines reuse flight numbers across legs), so a few flights are missing or mislabeled.
-- How a flight is classified (location beats the route database near SFO, because routes are often
-  for a different leg of the same flight number):
-  - Seen taking off from SFO, or climbing out within 12 nm while nearer SFO than OAK/SJC →
-    **departure** (red).
-  - Seen landing, or descending toward SFO within 25 nm (lined up on SFO rather than OAK/SJC
-    beyond 8 nm) → **arrival** (green).
-  - On the ground at SFO: the route decides if it mentions SFO; otherwise **at SFO** (amber,
-    direction unknown, listed with departures) until the plane moves. Airport vehicles are skipped.
-  - Further out, the route decides (origin/destination SFO). Everything else is other traffic (blue).
-  - When the route disagrees with what the plane is doing, the board still shows its city with a "?".
-  - What each plane was seen doing is remembered for 45 min (in memory; reset on restart).
-
-Config (all optional, env vars): `PLANES_PORT`, `PLANES_AIRPORT`, `PLANES_LAT`, `PLANES_LON`,
-`PLANES_RADIUS_NM`, `PLANES_CACHE_S`, `PLANES_SOURCE` (`adsbfi` or `adsblol`).
 
 Routing: `/api/planes/` is proxied by Apache (`deploy/apache/includes/api-proxies.conf`) and by the
 Astro dev server (`frontend/astro.config.mjs`), so the page works on cesiumlab.net, `http://mr-ray/`,
 and `http://mr-ray:42800/`.
+
+## The page
+
+- **Map** (MapLibre GL + OpenFreeMap "Positron" tiles, no API key). Planes point along their
+  heading and glide between updates (dead reckoning from each position's timestamp).
+  - Colors: green arriving SFO, red departing SFO, amber on the ground at SFO with direction
+    unknown, blue other traffic. Planes on the ground are smaller and faded.
+  - Callsign labels; the 40 nm range ring; a "data Ns ago" timer (red past 30 s).
+  - Hover or click a plane: its past track (solid, colored by altitude) and a dashed great-circle
+    line to its destination. Click opens an info panel (route, type, registration, altitude,
+    speed, vertical rate, heading, squawk).
+- **Board drawer** (left edge, chevron tab; open/closed is remembered).
+  - Tabs **SFO** (ALL / DEPARTURES / ARRIVALS / AT SFO) and **OTHER** (flight, route, altitude,
+    nearest first). Every flight gets a row; the list scrolls.
+  - While the drawer is open, hovering a plane highlights its row (and scrolls to it), hovering a
+    row rings the plane. Clicking a row selects the plane and snaps the map to it. An edge arrow
+    points to a hovered/selected plane that is off screen.
+  - **MAP: ALL / DIM / ONLY** fades or hides planes that aren't in the current list.
+- **Follow mode** (button in the info panel). The map stays on the plane for its whole journey,
+  beyond the 40 nm area. Toggles: **Auto zoom** (in near the ground, out at cruise) and **Rotate**
+  (plane points up). Dragging pauses (Resume button). Ends when the plane has landed and slowed
+  below 40 kt, or after 5 min without a signal, with a popup: flight, route, type, registration,
+  time, how long it was followed, distance flown, max altitude, top speed, and a mini map.
+- Tab, map filter, and follow camera choices are saved in the browser (`localStorage`).
+
+## API
+
+| Endpoint                   | What it returns                                                                                                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/planes/board`        | Board lists `departures`, `arrivals`, `at_sfo`, `other`, plus `aircraft` (every plane in range for the map, with an absolute `pos_time`), `updated`, `routes_pending`, `source`. |
+| `/api/planes/track/<hex>`  | What the service remembers of one plane's path: `[[lon, lat, alt_ft, epoch_s], ...]`. The map loads it on hover/select.                                                          |
+| `/api/planes/follow/<hex>` | Where one plane is now, anywhere in the world (follow mode). HTTP 429 when 5 planes are already being followed.                                                                  |
+| `/api/planes/health`       | `{"ok": true}` (also at `/health`).                                                                                                                                              |
+
+Board lists are in time order, like an airport board. No free source has schedules, so times are
+what the service watched happen (takeoff, landing) or estimates from distance and speed:
+departures = already gone (by takeoff time), then taxiing, then at the gate; arrivals = landed, then
+airborne by ETA; `at_sfo` = taxiing first; `other` = nearest first.
+
+## Data sources and limits
+
+- **Positions: [adsb.fi](https://adsb.fi) open data** (free, no key, 1 request/s). The board fetch
+  happens at most every 10 s however many people are watching, and **only while someone has a page
+  open**. Follow mode adds one ~0.4 KB lookup per followed plane every 10 s, only while followed.
+  All adsb.fi requests are spaced at least 1.1 s apart and gzip-compressed (~6 KB per board fetch).
+  On HTTP 429 the service waits as long as asked (default 60 s).
+  `PLANES_SOURCE=adsblol` switches to adsb.lol, but that caps anonymous use at 500 requests/day
+  (~1.5 h of viewing), so it's only a fallback.
+- **Routes: [adsbdb.com](https://www.adsbdb.com)**, looked up once per callsign (one at a time,
+  ~0.5 s apart) and cached 6 h. adsbdb matches by flight number only, so routes are often for a
+  different leg (AS 404 "SEA → ORD" while landing at SFO).
+
+## How flights are classified
+
+Near SFO, what the plane is doing beats the route database:
+
+- Seen taking off from SFO, or climbing out within 12 nm while nearer SFO than OAK/SJC →
+  **departure**.
+- Seen landing, or descending toward SFO within 25 nm on a loose approach profile (lined up on SFO
+  rather than OAK/SJC beyond 8 nm) → **arrival**.
+- On the ground at SFO: the route decides if it mentions SFO; otherwise **at SFO** (direction
+  unknown) until the plane moves. Airport ground vehicles are dropped entirely.
+- Further out, the route decides (origin or destination SFO). Everything else is **other**.
+- When the route contradicts what the plane is doing, only the known part is shown: `? → SFO` for an
+  arrival, `SFO → ?` for a departure, with a note in the info panel; the board's city shows `?`.
+
+## What the service remembers (all in memory; a restart wipes it)
+
+| What                                         | Kept for                                                                                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Routes per callsign                          | 6 h                                                                                                                             |
+| What each plane was seen doing at SFO        | 45 min                                                                                                                          |
+| Track points (only from page-driven fetches) | `PLANES_TRACK_HOURS` (default 5 h); a plane's track is dropped 10 min after it leaves the area; parked planes add no new points |
+| Followed planes' tracks                      | Whole journey (exempt from the limits above) until nobody has followed the plane for 2 min                                      |
+
+Roughly 1-3 MB on top of the ~13 MB the service uses.
+
+## Config
+
+All optional env vars: `PLANES_PORT` (42901), `PLANES_HOST` (127.0.0.1), `PLANES_AIRPORT` (SFO),
+`PLANES_LAT` / `PLANES_LON`, `PLANES_RADIUS_NM` (40), `PLANES_CACHE_S` (10), `PLANES_SOURCE`
+(`adsbfi` or `adsblol`), `PLANES_TRACK_HOURS` (5).
 
 ## Run locally
 
@@ -52,7 +104,12 @@ python3 backend/services/planes/server.py
 curl http://127.0.0.1:42901/api/planes/board
 ```
 
+The page: `npm --prefix frontend run dev` and open `http://localhost:42800/planes/` (the dev server
+proxies `/api/planes/` to the service).
+
 ## Deploy (changes the machine, so ask first)
 
-`./scripts/deploy-startup.sh` installs and starts `planes.service`. After code changes:
-`sudo systemctl restart planes`.
+- Service: `./scripts/deploy-startup.sh` installs and starts `planes.service`. After code changes:
+  `sudo systemctl restart planes` (this also clears everything the service remembers; routes refill
+  within about a minute, shown as "looking up N routes…" on the map).
+- Page: `npm --prefix frontend run build` publishes it; Apache serves the new files immediately.

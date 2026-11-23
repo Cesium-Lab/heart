@@ -93,6 +93,9 @@ jobs:
           python server.py &
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:42901/api/planes/health && break; sleep 0.5; done
           curl -fsS http://127.0.0.1:42901/api/planes/health
+          # Track lookups need no upstream: an unknown plane returns an empty track.
+          curl -fsS http://127.0.0.1:42901/api/planes/track/abc123 | grep -q '"points": \[\]'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:42901/api/planes/track/not-a-hex)" = 404
 
   lint-everything:
     runs-on: ubuntu-latest

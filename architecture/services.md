@@ -20,7 +20,7 @@
 | Astro dev server    | `cesium-frontend`           | `0.0.0.0:42800`   | LAN only (development)                          |
 | Rotation visualizer | `rotation-viz`              | `127.0.0.1:42902` | `/api/rotation/`                                |
 | Setlister           | `setlister`                 | `127.0.0.1:42903` | `/api/setlister/`                               |
-| Planes (SFO board)  | `planes`                    | `127.0.0.1:42901` | `/planes/` (map + board drawer), `/api/planes/` |
+| Planes (SFO map)    | `planes`                    | `127.0.0.1:42901` | `/planes/` (map + board drawer), `/api/planes/` |
 | DataViz API         | `dataviz-backend`           | `127.0.0.1:42000` | `/api/dataviz/`                                 |
 | DataViz GUI         | `dataviz-gui`               | `127.0.0.1:42002` | `dataviz.cesiumlab.net`                         |
 | Grafana             | docker (`projects/dataviz`) | `127.0.0.1:42003` | private/admin                                   |
@@ -67,7 +67,7 @@ Assigned and reserved ports:
 | 42601 | Robot commands               |
 | 42800 | Astro dev server             |
 | 42900 | Dashboard (reserved)         |
-| 42901 | Planes (SFO board)           |
+| 42901 | Planes (SFO map + board)     |
 | 42902 | Rotation visualizer API      |
 | 42903 | Setlister API                |
 
@@ -92,5 +92,5 @@ Assigned and reserved ports:
 ## CI
 
 `.github/workflows/ci.yml` runs on every push and PR: frontend Prettier check + build, an import
-test per Python service (each with its own requirements), a Planes smoke test, ruff lint + format
+test per Python service (each with its own requirements), a Planes smoke test (health + track endpoint), ruff lint + format
 (`ruff.toml`), and shellcheck on all scripts.
