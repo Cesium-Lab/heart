@@ -197,6 +197,44 @@ def delete_file(day: str, name: str) -> bool:
         return True
 
 
+def delete_selection(day: str, indexes: set[int], files: set[str]) -> tuple[int, int]:
+    """Delete what's selected. A selected entry whose files are all ticked (or that has none) is
+    deleted whole; other ticked files are deleted on their own and their notes stay. Everything
+    moves to <day>/.deleted/. Returns (entries deleted, files deleted)."""
+    files = {safe_name(f) for f in files}
+    with _write_lock:
+        entries = read_day(day)
+        trash = day_dir(day) / ".deleted"
+        trash.mkdir(exist_ok=True)
+        whole, nfiles, keep = 0, 0, []
+        with (trash / "deleted.md").open("a", encoding="utf-8") as fh:
+            for i, e in enumerate(entries):
+                gone = [f for f in e["files"] if f in files]
+                if i in indexes and set(e["files"]) <= files:
+                    whole += 1
+                    gone = e["files"]
+                    fh.write(
+                        f"## {e['n']} · {e['time']} (deleted {datetime.now():%H:%M:%S})\n\n"
+                    )
+                    fh.write("".join(f"> {ln}\n" for ln in e["text"].splitlines()))
+                    fh.write("".join(f"- {f}\n" for f in gone) + "\n")
+                elif gone:
+                    fh.write(
+                        f"## {e['n']} · {e['time']}: files {', '.join(gone)} (deleted {datetime.now():%H:%M:%S})\n\n"
+                    )
+                    e = {**e, "files": [f for f in e["files"] if f not in files]}
+                    keep.append(e)
+                else:
+                    keep.append(e)
+                for f in gone:
+                    src = day_dir(day) / safe_name(f)
+                    if src.is_file():
+                        src.rename(trash / src.name)
+                        nfiles += 1
+        write_day(day, [e for e in keep if e["text"] or e["files"]])
+        return whole, nfiles
+
+
 def read_day(day: str) -> list[dict]:
     """Parse a day's inbox.md back into entries: [{time, text, files}]."""
     md = day_dir(day) / "inbox.md"
@@ -286,6 +324,18 @@ def thumbnail(path: Path, size: int = 480) -> bytes | None:
         return None
 
 
+def entry_head(day: str, e: dict) -> str:
+    """An entry's number, time, note, and metadata (no attachments)."""
+    lines = [f"[{day}.{e['n']} · {e['time']}] {e['text'] or '(no note)'}"]
+    if e.get("meta"):
+        lines.append(f"  ({e['meta']})")
+    return "\n".join(lines)
+
+
+def attach_line(day: str, f: str) -> str:
+    return f"  attachment: {f} ({PUBLIC_URL}files/{day}/{quote(f)})"
+
+
 def entry_text(day: str, e: dict) -> str:
     """One entry as plain text (for Claude/ChatGPT)."""
     lines = [f"[{day}.{e['n']} · {e['time']}] {e['text'] or '(no note)'}"]
@@ -302,21 +352,31 @@ def plain_text(day: str, entries: list[dict]) -> str:
     return "\n\n".join([head] + [entry_text(day, e) for e in entries])
 
 
-def export_zip(day: str, indexes: set[int]) -> bytes:
-    """Selected entries as a zip: selected.md (same format as inbox.md) plus their files."""
-    entries = [e for i, e in enumerate(read_day(day)) if i in indexes]
+def export_zip(day: str, indexes: set[int], files: set[str] | None = None) -> bytes:
+    """Exactly what's selected, as a zip: selected.md (same format as inbox.md) plus files.
+
+    indexes: selected entries (their notes). files: ticked attachments; for a selected entry
+    only its ticked files are included, and files ticked on their own come with their entry's
+    number/time but not its note. files=None means "all files of the selected entries"."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         md = [f"# Inbox {day} (selected)", ""]
-        for e in entries:
-            md += (
-                [f"## {e['n']} · {e['time']}"]
-                + ([f"_{e['meta']}_"] if e.get("meta") else [])
-                + [""]
-            )
-            md += [f"> {ln}" if ln else ">" for ln in e["text"].splitlines()]
-            md += [f"- [{f}]({quote(f)})" for f in e["files"]] + [""]
-            for f in e["files"]:
+        for i, e in enumerate(read_day(day)):
+            keep = [
+                f
+                for f in e["files"]
+                if (files is None and i in indexes) or (files and f in files)
+            ]
+            if i not in indexes and not keep:
+                continue
+            md += [
+                f"## {e['n']} · {e['time']}" + ("" if i in indexes else " (files only)")
+            ]
+            md += ([f"_{e['meta']}_"] if e.get("meta") else []) + [""]
+            if i in indexes:
+                md += [f"> {ln}" if ln else ">" for ln in e["text"].splitlines()]
+            md += [f"- [{f}]({quote(f)})" for f in keep] + [""]
+            for f in keep:
                 src = day_dir(day) / safe_name(f)
                 if src.is_file():
                     z.write(src, src.name)
@@ -575,6 +635,20 @@ button{font:inherit;font-weight:600;color:#fff;background:var(--accent);border:0
 .size{font-size:13px;color:var(--muted);margin:0 2px}.size.bad{color:#dc2626;font-weight:600}
 button:disabled{opacity:.4;cursor:not-allowed}
 .num{color:var(--bright);font-weight:600}
+.details{position:relative;margin-left:10px;text-decoration:underline;text-underline-offset:2px;cursor:default;outline:0}
+/* The card fades in, stays open while the mouse moves onto it (so its text can be selected and
+   copied), and waits 0.05 s before fading out so tiny slips don't close it. */
+.details .tip{position:absolute;left:calc(100% + 8px);top:-7px;z-index:20;width:max-content;max-width:min(360px,80vw);
+  padding:8px 10px;border-radius:8px;background:var(--bright);color:var(--bg);font-size:12px;line-height:1.5;
+  text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25);overflow-wrap:anywhere;cursor:text;user-select:text;
+  opacity:0;visibility:hidden;transform:translateX(-3px);
+  transition:opacity .15s ease .05s,transform .15s ease .05s,visibility 0s linear .2s}
+/* Invisible bridge over the 8px gap between "details" and the card (which opens to its right),
+   so moving across never leaves the hover area. */
+.details .tip::before{content:"";position:absolute;top:0;bottom:0;left:-8px;width:8px}
+.details:hover .tip,.details:focus .tip,.details:focus-within .tip{opacity:1;visibility:visible;transform:none;
+  transition:opacity .15s ease,transform .15s ease,visibility 0s}
+.ehead .copynote{margin-left:auto}
 .ehead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .e{-webkit-touch-callout:none;cursor:default;border-radius:8px;padding-left:8px;padding-right:8px;transition:background .1s}
 .e.sel{background:color-mix(in srgb,var(--accent) 14%,transparent)}
@@ -598,12 +672,17 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .e{padding:12px 2px;border-bottom:1px solid var(--line)}.t{color:var(--muted);font-size:12px}
 .e p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}.e a{color:var(--accent)}
 .atts{border:1px solid var(--line);border-radius:10px;margin-top:8px;padding:4px 10px}
-.att{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px}
+.att{cursor:default;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px}
 .att+.att{border-top:1px solid var(--line)}
 .delfile{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 8px}
 .delfile input{flex:1;min-width:100px;font:inherit;font-size:13px;padding:6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit}
 .delfile button{font-size:13px;padding:6px 12px;background:#dc2626}.delfile .plain{background:transparent;color:var(--muted);border:1px solid var(--line)}
 .delatt:hover{color:#dc2626;border-color:#dc2626}
+.atticons{align-items:center}
+.apick{appearance:none;-webkit-appearance:none;flex:none;width:14px;height:14px;margin:0 0 0 2px;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
+.apick:checked{background:var(--accent);border-color:var(--accent)}
+.apick:checked::after{content:"";width:3px;height:6px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:translateY(-1px) rotate(45deg)}
+.att.asel{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:6px}
 .attname{min-width:0;overflow-wrap:anywhere}.atticons{display:flex;gap:6px;flex:none}
 .attbtn{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;padding:0;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px;text-decoration:none;cursor:pointer}
 .attbtn:hover{color:var(--bright);border-color:var(--muted)}.attbtn.ok{color:#16a34a;border-color:#16a34a}
@@ -669,12 +748,14 @@ async function copyText(text) {
 (() => {
   const bar = document.getElementById("selbar"), form = document.getElementById("delform");
   const picks = [...document.querySelectorAll(".pick")];
-  const ENTRIES = {entries_json};  // full entry text per position, for "Copy entry"
+  const ENTRIES = {entries_json};  // entry head (number, time, note, source) per position
+  const FILES = {files_json};      // per position: file name -> its attachment line
   const NOTES = {notes_json};      // just the note per position, for "Copy text"
   const chosen = () => picks.filter((p) => p.checked).map((p) => Number(p.value)).sort((a, b) => a - b);
   const all = document.getElementById("selectall");
   let last = null;
-  const update = () => {
+  const update = (fromFile = false) => {
+    if (!fromFile && typeof syncFiles === "function") syncFiles();
     const n = picks.filter((p) => p.checked).length;
     bar.hidden = n === 0;
     if (n === 0) form.hidden = true;
@@ -682,15 +763,41 @@ async function copyText(text) {
     document.getElementById("selcopytext").hidden = n !== 1;  // just one note: copy its text
     all.textContent = n === picks.length && n ? "Select none" : "Select all";
     picks.forEach((p) => p.closest(".e").classList.toggle("sel", p.checked));
+    apicks.flat().forEach((a) => a.closest(".att") && a.closest(".att").classList.toggle("asel", a.checked));
+    const files = apicks.flat().filter((a) => a.checked).length;
+    bar.hidden = n === 0 && files === 0;
+    document.getElementById("delcount").textContent =
+      `${n} entr${n === 1 ? "y" : "ies"}` + (files ? `, ${files} file${files === 1 ? "" : "s"}` : "") + " selected";
   };
   all.hidden = picks.length === 0;
   // Outlook-style: click an entry to select it (Ctrl/Cmd-click adds or removes one,
   // Shift-click selects a range). The round checkbox on the right ticks just that entry.
   const rows = picks.map((p) => p.closest(".e"));
+  // Attachment circles: independent, except that changing an entry's selection sets all of its
+  // attachments to match (select entry -> all its files; deselect entry -> none of them).
+  const apicks = rows.map((r) => (r && r.querySelectorAll ? [...r.querySelectorAll(".apick")] : []));
+  let before = picks.map((p) => p.checked);
+  var syncFiles = () => {  // entries whose selection changed: their files follow
+    picks.forEach((p, i) => {
+      if (p.checked !== before[i]) apicks[i].forEach((a) => (a.checked = p.checked));
+    });
+    before = picks.map((p) => p.checked);
+  };
+  apicks.forEach((list) => list.forEach((a) => {
+    a.addEventListener("click", (e) => { e.stopPropagation(); update(true); });
+    // Click anywhere on the file's line (not its name link or icons) to toggle it, like entries.
+    const line = a.closest(".att");
+    if (line && line.addEventListener) line.addEventListener("click", (e) => {
+      e.stopPropagation();  // a file click never toggles the entry around it
+      if (e.target.closest("a, button, input, form")) return;
+      a.checked = !a.checked;
+      update(true);
+    });
+  }));
   const range = (a, b, on) => { const [x, y] = a < b ? [a, b] : [b, a]; for (let k = x; k <= y; k++) picks[k].checked = on; };
   // Phones: press and hold an entry to select it; while anything is selected, taps add or
   // remove entries. With nothing selected a tap does nothing, so scrolling never selects.
-  const busy = (t) => t.closest("a, button, input, textarea, select, form, video, audio");
+  const busy = (t) => t.closest("a, button, input, textarea, select, form, video, audio, .details");
   let touchTimer = null, held = false, lastTouch = 0;
   rows.forEach((row, i) => {
     row.addEventListener("touchstart", (e) => {
@@ -712,6 +819,10 @@ async function copyText(text) {
         if (held) { held = false; return; }  // the hold already selected it
         if (picks.some((p) => p.checked)) { picks[i].checked = !picks[i].checked; last = i; update(); }
         return;
+      }
+      // Selected entry with a deselected file: clicking it deselects the entry and its files.
+      if (picks[i].checked && apicks[i].some((a) => !a.checked) && !e.shiftKey) {
+        picks[i].checked = false; apicks[i].forEach((a) => (a.checked = false)); last = i; update(); return;
       }
       const add = e.ctrlKey || e.metaKey;
       if (e.shiftKey && last !== null) {
@@ -740,11 +851,44 @@ async function copyText(text) {
     last = null;
     update();
   };
-  document.getElementById("delcancel").onclick = () => { picks.forEach((p) => (p.checked = false)); last = null; update(); };
+  const clearAll = () => { picks.forEach((p) => (p.checked = false)); apicks.flat().forEach((a) => (a.checked = false)); last = null; update(); };
+  document.getElementById("delcancel").onclick = clearAll;
+  // Escape deselects everything; Ctrl/Cmd+A selects everything (both skipped while a preview
+  // is open).
+  document.addEventListener("keydown", (e) => {
+    const pv = document.getElementById("pv");
+    if (pv && !pv.hidden) return;
+    // Ctrl/Cmd+A selects every entry, except while typing (then it selects text as usual).
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+      if (e.target.closest("input, textarea, [contenteditable]") || !picks.length) return;
+      e.preventDefault();
+      picks.forEach((p) => (p.checked = true));
+      update();
+      return;
+    }
+    if (e.key !== "Escape") return;
+    if (!picks.some((p) => p.checked) && !apicks.flat().some((a) => a.checked)) return;
+    clearAll();
+  });
   document.getElementById("seldelete").onclick = () => { form.hidden = false; form.querySelector("input").focus(); };
+  // Copy-text icon on each entry: copies just that entry's note.
+  document.querySelectorAll(".copynote").forEach((btn) => btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const icon = btn.innerHTML, ok = await copyText(NOTES[Number(btn.dataset.i)] || "");
+    btn.innerHTML = ok ? CHECK : icon; btn.classList.toggle("ok", ok); btn.title = ok ? "Copied" : "Couldn't copy";
+    setTimeout(() => { btn.innerHTML = icon; btn.classList.remove("ok"); btn.title = "Copy text"; }, 1500);
+  }));
+  // What's selected, entry by entry: selected entries with only their ticked files; files
+  // ticked on their own come under their entry's number marked "(files only)".
+  const ticked = (i) => apicks[i].filter((a) => a.checked).map((a) => a.value);
   document.getElementById("selcopy").onclick = async (e) => {
-    const ids = chosen();
-    const text = [`From my inbox for {day} (${ids.length} of ${ENTRIES.length} entries):`, ...ids.map((i) => ENTRIES[i])].join("\\n\\n");
+    const blocks = [];
+    picks.forEach((p, k) => {
+      const i = Number(p.value), files = ticked(k).map((f) => FILES[i][f]).filter(Boolean);
+      if (p.checked) blocks.push([ENTRIES[i], ...files].join("\\n"));
+      else if (files.length) blocks.push([(ENTRIES[i].match(/^\\[[^\\]]*\\]/) || [""])[0] + " (files only)", ...files].join("\\n"));
+    });
+    const text = [`From my inbox for {day}:`, ...blocks.reverse()].join("\\n\\n");  // oldest first
     copyOut(e.target, text, "Copy entry");
   };
   document.getElementById("selcopytext").onclick = (e) => {
@@ -755,7 +899,8 @@ async function copyText(text) {
     setTimeout(() => (btn.textContent = label), 1500);
   }
   document.getElementById("selexport").onclick = () => {
-    location.href = "{base}export/{day}?" + chosen().map((i) => "i=" + i).join("&");
+    const files = apicks.flat().filter((a) => a.checked).map((a) => "f=" + encodeURIComponent(a.value));
+    location.href = "{base}export/{day}?" + [...chosen().map((i) => "i=" + i), ...(files.length ? files : ["f="])].join("&");
   };
 })();
 </script>
@@ -986,19 +1131,16 @@ def attachment_card(day: str, f: str) -> str:
         f'<a class="attbtn" href="{url}?download=1" title="Download" aria-label="Download {name}">{ICON_DOWNLOAD}</a>'
         f'<button type="button" class="attbtn copyatt" title="Copy" aria-label="Copy {name}">{ICON_COPY}</button>'
         f'<button type="button" class="attbtn delatt" data-file="{name}" title="Delete" aria-label="Delete {name}">{ICON_TRASH}</button>'
+        f'<input type="checkbox" class="apick" name="dfile" value="{name}" form="delform" aria-label="Select {name}">'
         f"</span></div>"
     )
 
 
 def js_json(value) -> str:
-    """JSON safe to drop into an inline <script>: no "</script>", and no braces, so user text
-    can never look like one of this page's {placeholders}."""
-    return (
-        json.dumps(value)
-        .replace("</", "<\\/")
-        .replace("{", "\\u007b")
-        .replace("}", "\\u007d")
-    )
+    """JSON safe to drop into an inline <script>: no "</script>", and nothing shaped like one of
+    this page's {placeholders} (so user text can never be substituted). JSON's own braces stay."""
+    out = json.dumps(value).replace("</", "<\\/")
+    return re.sub(r"\{([A-Za-z_]+)\}", r"\\u007b\1\\u007d", out)
 
 
 def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
@@ -1010,12 +1152,21 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         list(enumerate(entries))
     ):  # newest first; i = position in inbox.md
         body = [
-            f'<div class="ehead"><span class="t"><b class="num">{day}.{e["n"]}</b> · {html.escape(e["time"])}</span>'
-            f'<input type="checkbox" class="pick" name="del" value="{i}" form="delform" '
+            f'<div class="ehead"><span class="t"><b class="num">{day}.{e["n"]}</b>'
+            # Time + metadata live in a tooltip on "details" (hover, or tap/focus on phones).
+            f'<span class="details" tabindex="0">details<span class="tip" role="tooltip">'
+            f"{html.escape(e['time'])}"
+            + (f"<br>{html.escape(e['meta'])}" if e.get("meta") else "")
+            + "</span></span></span>"
+            + (
+                f'<button type="button" class="attbtn copynote" data-i="{i}" title="Copy text" '
+                f'aria-label="Copy the note of entry {day}.{e["n"]}">{ICON_COPY}</button>'
+                if e["text"]
+                else ""
+            )
+            + f'<input type="checkbox" class="pick" name="del" value="{i}" form="delform" '
             f'aria-label="Select entry from {html.escape(e["time"])}"></div>'
         ]
-        if e.get("meta"):
-            body.append(f'<div class="t meta">{html.escape(e["meta"])}</div>')
         if e["text"]:
             body.append(f"<p>{linkify(e['text'])}</p>")
         if e["files"]:
@@ -1070,7 +1221,11 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         )
         .replace("{check_icon}", js_json(ICON_CHECK))
         .replace("{plain}", js_json(plain_text(day, entries)))
-        .replace("{entries_json}", js_json([entry_text(day, e) for e in entries]))
+        .replace("{entries_json}", js_json([entry_head(day, e) for e in entries]))
+        .replace(
+            "{files_json}",
+            js_json([{f: attach_line(day, f) for f in e["files"]} for e in entries]),
+        )
         .replace("{notes_json}", js_json([e["text"] for e in entries]))
     )
     return page.encode()
@@ -1178,11 +1333,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(404, b"not found", "text/plain")
         elif m := re.fullmatch(r"/inbox/export/(\d{4}-\d{2}-\d{2})", path):
             query = self.path.split("?", 1)[1] if "?" in self.path else ""
-            picks = {int(v) for v in parse_qs(query).get("i", []) if v.isdigit()}
+            q = parse_qs(query, keep_blank_values=True)
+            picks = {int(v) for v in q.get("i", []) if v.isdigit()}
+            files = {f for f in q["f"] if f} if "f" in q else None
             name = f"inbox-{m[1]}-selected.zip"
             self._send(
                 200,
-                export_zip(m[1], picks),
+                export_zip(m[1], picks, files),
                 "application/zip",
                 {"Content-Disposition": f'attachment; filename="{name}"'},
             )
@@ -1285,8 +1442,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._redirect(f"/inbox/day/{m[1]}?sent={quote(msg)}")
                 return
             picks = {int(v) for v in f.get("del", []) if v.isdigit()}
-            n = delete_entries(m[1], picks)
-            self._redirect(f"/inbox/day/{m[1]}?deleted={n}")
+            whole, nfiles = delete_selection(m[1], picks, set(f.get("dfile", [])))
+            msg = (
+                f"Deleted {whole} entr{'y' if whole == 1 else 'ies'}"
+                + (f" and {nfiles} file{'' if nfiles == 1 else 's'}" if nfiles else "")
+                + "."
+            )
+            self._redirect(f"/inbox/day/{m[1]}?sent={quote(msg)}")
             return
         if path == "/inbox/add":
             text, files = "", []
