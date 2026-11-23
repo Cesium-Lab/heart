@@ -22,12 +22,22 @@ and `http://mr-ray:42800/`.
   - Colors: green arriving SFO, red departing SFO, amber on the ground at SFO with direction
     unknown, blue other traffic. Planes on the ground are smaller and faded.
   - Callsign labels; the 40 nm range ring; a "data Ns ago" timer (red past 30 s).
+  - **Search** (top bar, or press `/`): flight number (`UA 2482`), callsign (`UAL2482`), or
+    registration (`N566AS`). Planes on the map are found instantly; otherwise the service looks the
+    flight up anywhere and offers to follow it.
+  - **Weather chip**: SFO's latest METAR (temperature, wind, visibility, ceiling, flight category
+    with a colored dot), linking to the full report on aviationweather.gov.
+  - **Replay**: scrub the last hour of recorded traffic at 1×/10×/60×; LIVE returns to now.
   - Hover or click a plane: its past track (solid, colored by altitude) and a dashed great-circle
     line to its destination. Click opens an info panel (route, type, registration, altitude,
-    speed, vertical rate, heading, squawk).
+    speed, vertical rate, heading, squawk, takeoff/landing time) with links to the real flight on
+    Flightradar24, FlightAware, and the adsb.fi globe.
 - **Board drawer** (left edge, chevron tab; open/closed is remembered).
   - Tabs **SFO** (ALL / DEPARTURES / ARRIVALS / AT SFO) and **OTHER** (flight, route, altitude,
     nearest first). Every flight gets a row; the list scrolls.
+  - SFO rows have a **TIME** column: white = what the service saw (takeoff, landing), amber = an
+    estimate (takeoff from distance flown, arrival ETA), `--:--` = unknown (e.g. still at the gate).
+    No free source has airline schedules, so there are no scheduled times.
   - While the drawer is open, hovering a plane highlights its row (and scrolls to it), hovering a
     row rings the plane. Clicking a row selects the plane and snaps the map to it. An edge arrow
     points to a hovered/selected plane that is off screen.
@@ -45,6 +55,9 @@ and `http://mr-ray:42800/`.
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/api/planes/board`        | Board lists `departures`, `arrivals`, `at_sfo`, `other`, plus `aircraft` (every plane in range for the map, with an absolute `pos_time`), `updated`, `routes_pending`, `source`. |
 | `/api/planes/track/<hex>`  | What the service remembers of one plane's path: `[[lon, lat, alt_ft, epoch_s], ...]`. The map loads it on hover/select.                                                          |
+| `/api/planes/replay`       | Every plane's points from the last hour (`PLANES_REPLAY_MIN`), compacted: `{since, now, planes: [{hex, flight, kind, type, points}]}`.                                           |
+| `/api/planes/find/<query>` | Looks a flight up anywhere by callsign, flight number (via adsbdb), or registration: `{hex, callsign, reg}`, or 404. One or two small upstream requests per search.              |
+| `/api/planes/weather`      | SFO's latest METAR from aviationweather.gov (cached 10 min, fetched only when a page asks): temperature, wind, visibility, clouds, category, raw text, link.                     |
 | `/api/planes/follow/<hex>` | Where one plane is now, anywhere in the world (follow mode). HTTP 429 when 5 planes are already being followed.                                                                  |
 | `/api/planes/health`       | `{"ok": true}` (also at `/health`).                                                                                                                                              |
 
@@ -62,6 +75,8 @@ airborne by ETA; `at_sfo` = taxiing first; `other` = nearest first.
   On HTTP 429 the service waits as long as asked (default 60 s).
   `PLANES_SOURCE=adsblol` switches to adsb.lol, but that caps anonymous use at 500 requests/day
   (~1.5 h of viewing), so it's only a fallback.
+- **Weather: [aviationweather.gov](https://aviationweather.gov)** METAR API (free, no key), at most
+  once per 10 min, only while a page is open.
 - **Routes: [adsbdb.com](https://www.adsbdb.com)**, looked up once per callsign (one at a time,
   ~0.5 s apart) and cached 6 h. adsbdb matches by flight number only, so routes are often for a
   different leg (AS 404 "SEA → ORD" while landing at SFO).
@@ -82,20 +97,22 @@ Near SFO, what the plane is doing beats the route database:
 
 ## What the service remembers (all in memory; a restart wipes it)
 
-| What                                         | Kept for                                                                                                                        |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Routes per callsign                          | 6 h                                                                                                                             |
-| What each plane was seen doing at SFO        | 45 min                                                                                                                          |
-| Track points (only from page-driven fetches) | `PLANES_TRACK_HOURS` (default 5 h); a plane's track is dropped 10 min after it leaves the area; parked planes add no new points |
-| Followed planes' tracks                      | Whole journey (exempt from the limits above) until nobody has followed the plane for 2 min                                      |
+| What                                         | Kept for                                                                                                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Routes per callsign                          | 6 h                                                                                                                                                                                  |
+| SFO weather (METAR)                          | 10 min                                                                                                                                                                               |
+| What each plane was seen doing at SFO        | 45 min                                                                                                                                                                               |
+| Track points (only from page-driven fetches) | `PLANES_TRACK_HOURS` (default 5 h); a plane's track is dropped `PLANES_REPLAY_MIN` (default 60 min) after it leaves the area, so replay can show it; parked planes add no new points |
+| Followed planes' tracks                      | Whole journey (exempt from the limits above) until nobody has followed the plane for 2 min                                                                                           |
 
-Roughly 1-3 MB on top of the ~13 MB the service uses.
+Roughly 3-6 MB on top of the ~13 MB the service uses (more of it now, since planes that left are
+kept an hour for replay).
 
 ## Config
 
 All optional env vars: `PLANES_PORT` (42901), `PLANES_HOST` (127.0.0.1), `PLANES_AIRPORT` (SFO),
 `PLANES_LAT` / `PLANES_LON`, `PLANES_RADIUS_NM` (40), `PLANES_CACHE_S` (10), `PLANES_SOURCE`
-(`adsbfi` or `adsblol`), `PLANES_TRACK_HOURS` (5).
+(`adsbfi` or `adsblol`), `PLANES_TRACK_HOURS` (5), `PLANES_REPLAY_MIN` (60).
 
 ## Run locally
 

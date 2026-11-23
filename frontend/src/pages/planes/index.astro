@@ -74,7 +74,7 @@
       .warn { color: #b91c1c; }
 
       /* ---------- board drawer (split-flap, dark) ---------- */
-      .board { position: fixed; z-index: 11; top: 0; left: 0; bottom: 0; width: 440px;
+      .board { position: fixed; z-index: 11; top: 0; left: 0; bottom: 0; width: 505px;
         --cw: 11px; --ch: 18px; --fs: 11px;
         display: flex; flex-direction: column; background: #0b0c0e; color: #f2f2ee;
         box-shadow: 0 0 24px rgba(0, 0, 0, 0.35); transform: translateX(-100%); transition: transform 0.25s ease; }
@@ -86,7 +86,7 @@
       .board-toggle:hover { color: #fff; }
       .board-toggle svg { transition: transform 0.25s ease; }
       body.board-open .board-toggle svg { transform: rotate(180deg); }
-      body.board-open .topbar { left: 452px; }
+      body.board-open .topbar { left: 517px; }
       .board header { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 10px 6px; }
       .board h1 { margin: 0; font-size: 15px; letter-spacing: 0.16em; color: #ffc93c; }
       .board .clock { font-size: 15px; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
@@ -125,7 +125,44 @@
       .board .st-amber .c { color: #ffc93c; }
       .board footer { padding: 6px 10px 10px; color: #8a8f98; font-size: 10px; line-height: 1.5; }
       .board footer a { color: #ffc93c; }
-      body.board-open .legend { left: 452px; }
+      body.board-open .legend { left: 517px; }
+      .board .st-est .c { color: #ffc93c; } /* estimated times; actual ones stay white */
+      .board .scroll { overflow-x: auto; }
+      /* ---------- weather ---------- */
+      .wx { color: var(--text); text-decoration: none; white-space: nowrap; }
+      .wx:hover { border-color: #9ca3af !important; }
+      .wx i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #9ca3af; }
+      .wx.VFR i { background: #16a34a; } .wx.MVFR i { background: #2563eb; }
+      .wx.IFR i { background: #dc2626; } .wx.LIFR i { background: #c026d3; }
+      @media (max-width: 900px) { .wx .wx-more { display: none; } }
+
+      /* ---------- replay ---------- */
+      .replay-btn { font: inherit; cursor: pointer; color: var(--text); }
+      .replay-btn[aria-pressed="true"] { color: #fff; background: #7c3aed !important; border-color: #7c3aed !important; }
+      .replay-bar { position: fixed; z-index: 12; left: 50%; bottom: 28px; transform: translateX(-50%);
+        width: min(640px, calc(100% - 24px)); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        background: #2e1065; color: #fff; border-radius: 12px; padding: 8px 12px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3); font-size: 12px; }
+      .replay-bar[hidden] { display: none; }
+      .replay-bar input[type="range"] { flex: 1; min-width: 160px; accent-color: #c4b5fd; }
+      .replay-bar button { font: inherit; font-size: 11px; color: #ddd6fe; background: #4c1d95; border: 0; border-radius: 999px;
+        padding: 5px 10px; cursor: pointer; }
+      .replay-bar button[aria-pressed="true"] { color: #2e1065; background: #c4b5fd; }
+      .replay-bar .live { background: #16a34a; color: #fff; }
+      .replay-bar time { font-variant-numeric: tabular-nums; min-width: 8ch; }
+      body.replaying .follow-bar { display: none; }
+
+      /* ---------- search ---------- */
+      .search { position: relative; padding: 4px 6px !important; }
+      .search input { width: 170px; font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+        background: #fff; color: var(--text); }
+      .search .result { position: absolute; top: calc(100% + 6px); left: 0; min-width: 100%; width: max-content; max-width: 300px;
+        background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); font-size: 12px; }
+      .search .result[hidden] { display: none; }
+      .search .result button { font: inherit; margin-top: 6px; color: #fff; background: #1f2328; border: 0;
+        border-radius: 5px; padding: 4px 10px; cursor: pointer; }
+      .panel .links-out { display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 10px 0 0; font-size: 11px; }
+      .panel .links-out a { color: var(--accent); }
       /* Off-screen indicator for the selected plane, pinned to the visible map edge. */
       .edge-arrow { position: fixed; z-index: 9; display: flex; align-items: center; gap: 6px; transform: translate(-50%, -50%);
         background: #1f2328; color: #fff; border: 0; border-radius: 999px; padding: 5px 10px 5px 6px; font: inherit;
@@ -189,6 +226,13 @@
     <div class="topbar">
       <div class="title">SFO MAP<small>LIVE ADS-B · 40 NM</small></div>
       <div class="links"><a href="/">home</a><a href="/sitemap/">site map</a></div>
+      <form class="search" id="search" role="search" autocomplete="off">
+        <input id="searchInput" type="search" placeholder="Find flight (UA 2482, N566AS)" aria-label="Find a flight" />
+        <div class="result" id="searchResult" hidden aria-live="polite"></div>
+      </form>
+      <a class="wx" id="wx" href="https://aviationweather.gov/data/metar/?id=KSFO&hours=0&decoded=yes" target="_blank" rel="noopener"
+        title="SFO weather (METAR) from aviationweather.gov"><i></i><span id="wxText">SFO weather…</span></a>
+      <button class="replay-btn" id="replayBtn" aria-pressed="false" title="Replay the last hour of traffic">REPLAY</button>
       <div id="status">loading planes…</div>
       <div id="age" title="Time since the server last fetched positions from adsb.fi">data —</div>
     </div>
@@ -229,6 +273,15 @@
       <svg id="edgeArrowIcon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 20 20 12 15 4 20z" fill="#ffc93c" /></svg>
       <span id="edgeArrowText"></span>
     </button>
+    <div class="replay-bar" id="replayBar" hidden role="group" aria-label="Replay controls">
+      <button id="replayPlay" aria-label="Play">▶</button>
+      <input type="range" id="replaySlider" min="0" max="1000" value="0" aria-label="Replay time" />
+      <time id="replayTime">--:--:--</time>
+      <button data-speed="1" aria-pressed="false">1×</button>
+      <button data-speed="10" aria-pressed="true">10×</button>
+      <button data-speed="60" aria-pressed="false">60×</button>
+      <button class="live" id="replayLive">LIVE</button>
+    </div>
     <div class="follow-bar" id="followBar" hidden role="status">
       <span><span class="muted" id="followState">FOLLOWING</span> <b id="followName"></b></span>
       <button id="followZoom" aria-pressed="false" title="Zoom in near the ground, out at cruise">Auto zoom</button>
@@ -461,6 +514,7 @@
       // ------------------------------------------------------------ board drawer
       const ROWS = 10;
       const SFO_COLS = [
+        { key: "timeText", label: "TIME", w: 5 },
         { key: "flight", label: "FLIGHT", w: 7 },
         { key: "city", label: "CITY", w: 13 },
         { key: "status", label: "STATUS", w: 10 },
@@ -543,6 +597,7 @@
             const text = plain(f ? f[c.key] : "").slice(0, c.w).padEnd(c.w);
             r.cols[c.key].forEach((cell, j) => flipTo(cell, text[j], Math.min(i, 12) * 25 + j * 18));
             if (c.key === "status") r.cols[c.key][0].parentElement.className = "col " + statusTone(f ? f.status : "");
+            if (c.key === "timeText") r.cols[c.key][0].parentElement.className = "col" + (f && f.time_kind === "est" ? " st-est" : "");
           }
           if (f && f.hex) r.row.dataset.hex = f.hex; else delete r.row.dataset.hex;
           r.row.onmouseenter = () => setHover(r.row.dataset.hex || null);
@@ -585,6 +640,10 @@
       const otherRows = buildBoard(document.getElementById("otherRows"), OTHER_COLS);
       function allBoards() { return [depRows, arrRows, sfoRows, otherRows]; }
 
+      // HH:MM in SFO time; "--:--" when unknown (e.g. still at the gate).
+      const hhmm = (t) => new Date(t * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "America/Los_Angeles" });
+      const withTime = (rows) => rows.map((r) => ({ ...r, timeText: r.time ? hhmm(r.time) : "--:--" }));
+
       function altText(o) {
         if (o.ground) return "GND";
         if (o.alt == null) return "";
@@ -593,9 +652,9 @@
 
       function updateBoard(b) {
         const lists = [
-          [depRows, b.departures || [], "depCount"],
-          [arrRows, b.arrivals || [], "arrCount"],
-          [sfoRows, b.at_sfo || [], "sfoCount"],
+          [depRows, withTime(b.departures || []), "depCount"],
+          [arrRows, withTime(b.arrivals || []), "arrCount"],
+          [sfoRows, withTime(b.at_sfo || []), "sfoCount"],
           [otherRows, (b.other || []).map((o) => ({ ...o, altText: altText(o) })), "otherCount"],
         ];
         for (const [board, rows, countId] of lists) {
@@ -913,6 +972,192 @@
         close.focus();
       }
 
+      // --------------------------------------------------------------- weather
+      // SFO's latest METAR via the planes service (cached there 10 min). Links to the full report.
+      const wxEl = document.getElementById("wx");
+      async function loadWeather() {
+        try {
+          const res = await fetch("/api/planes/weather", { cache: "no-store" });
+          const w = await res.json();
+          if (!w.raw) return;
+          const wind = w.wind_kt == null ? "" : w.wind_kt === 0 ? "calm" :
+            `${w.wind_dir === "VRB" ? "VRB" : String(w.wind_dir).padStart(3, "0") + "°"}/${w.wind_kt}${w.gust_kt ? "G" + w.gust_kt : ""} kt`;
+          const low = (w.clouds || []).find((c) => ["BKN", "OVC", "VV"].includes(c.cover));
+          const ceiling = low ? `${low.cover} ${Number(low.base).toLocaleString("en-US")} ft` : "";
+          const temp = w.temp_c == null ? "" : `${Math.round(w.temp_c)}°C`;
+          const wxText = document.getElementById("wxText");
+          wxText.replaceChildren(document.createTextNode(["SFO", temp, wind].filter(Boolean).join(" · ")));
+          const more = document.createElement("span");
+          more.className = "wx-more";
+          more.textContent = [w.visibility_sm != null ? ` · vis ${w.visibility_sm} mi` : "", ceiling ? ` · ${ceiling}` : "", w.category ? ` · ${w.category}` : ""].join("");
+          wxText.append(more);
+          wxEl.className = "wx " + (w.category || "");
+          wxEl.title = w.raw + "\n(click for the full report on aviationweather.gov)";
+          if (w.link) wxEl.href = w.link;
+        } catch {}
+      }
+      loadWeather();
+      setInterval(loadWeather, 10 * 60 * 1000);
+
+      // ---------------------------------------------------------------- replay
+      // Scrubs the last hour from /api/planes/replay (tracks the service recorded while anyone
+      // had the page open). Live data keeps updating underneath; LIVE returns to it.
+      const replay = { on: false, data: null, t: 0, playing: false, speed: 10, lastTs: null };
+      const replayBtn = document.getElementById("replayBtn");
+      const replayBar = document.getElementById("replayBar");
+      const replaySlider = document.getElementById("replaySlider");
+      const replayPlay = document.getElementById("replayPlay");
+      const replayTime = document.getElementById("replayTime");
+
+      async function startReplay() {
+        replayBtn.textContent = "LOADING…";
+        try {
+          const res = await fetch("/api/planes/replay", { cache: "no-store" });
+          const d = await res.json();
+          const pts = d.planes.flatMap((p) => p.points.map((q) => q[3]));
+          if (!pts.length) { replayBtn.textContent = "REPLAY"; status.textContent = "nothing recorded yet to replay"; return; }
+          replay.data = d;
+          replay.start = Math.min(...pts);
+          replay.end = Math.max(...pts);
+          replay.t = replay.start;
+          replay.on = true;
+          replay.playing = true;
+          if (follow.hex) stopFollow(true);
+          select(null);
+          document.body.classList.add("replaying");
+          replayBar.hidden = false;
+          replayBtn.setAttribute("aria-pressed", "true");
+        } catch { status.textContent = "replay failed to load"; }
+        replayBtn.textContent = "REPLAY";
+        renderReplayBar();
+      }
+
+      function stopReplay() {
+        replay.on = false;
+        replay.playing = false;
+        replay.data = null;
+        document.body.classList.remove("replaying");
+        replayBar.hidden = true;
+        replayBtn.setAttribute("aria-pressed", "false");
+      }
+
+      function renderReplayBar() {
+        if (!replay.on) return;
+        const span = Math.max(1, replay.end - replay.start);
+        replaySlider.value = String(Math.round(((replay.t - replay.start) / span) * 1000));
+        replayTime.textContent = new Date(replay.t * 1000).toLocaleTimeString("en-US", { hour12: false, timeZone: "America/Los_Angeles" });
+        replayPlay.textContent = replay.playing ? "❚❚" : "▶";
+        replayPlay.setAttribute("aria-label", replay.playing ? "Pause" : "Play");
+        for (const b of replayBar.querySelectorAll("[data-speed]")) b.setAttribute("aria-pressed", String(Number(b.dataset.speed) === replay.speed));
+      }
+
+      // Planes at replay time t: interpolate between recorded points; skip planes with no point
+      // within 60 s (not in range then).
+      function replayFeatures(t) {
+        const features = [];
+        for (const p of replay.data.planes) {
+          const pts = p.points;
+          if (t < pts[0][3] - 30 || t > pts[pts.length - 1][3] + 60) continue;
+          let i = pts.findIndex((q) => q[3] > t);
+          let pos, hdg;
+          if (i <= 0) {
+            const q = pts[i === 0 ? 0 : pts.length - 1];
+            pos = [q[0], q[1]];
+            const prev = pts[pts.length - 2] || q;
+            hdg = (Math.atan2(q[0] - prev[0], q[1] - prev[1]) * 180) / Math.PI;
+          } else {
+            const a = pts[i - 1], b = pts[i];
+            const f = (t - a[3]) / Math.max(1, b[3] - a[3]);
+            pos = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+            const k = Math.cos((a[1] * Math.PI) / 180);
+            hdg = (Math.atan2((b[0] - a[0]) * k, b[1] - a[1]) * 180) / Math.PI;
+          }
+          features.push({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: pos },
+            properties: { hex: p.hex, kind: p.kind || "other", label: p.flight || p.hex, track: (hdg + 360) % 360,
+              ground: 0, sel: 0, hov: 0, dim: 0 },
+          });
+        }
+        return { type: "FeatureCollection", features };
+      }
+
+      function replayFrame(ts) {
+        if (replay.playing && replay.lastTs != null) {
+          replay.t = Math.min(replay.end, replay.t + ((ts - replay.lastTs) / 1000) * replay.speed);
+          if (replay.t >= replay.end) replay.playing = false;
+        }
+        replay.lastTs = ts;
+        renderReplayBar();
+        return replayFeatures(replay.t);
+      }
+
+      replayBtn.addEventListener("click", () => (replay.on ? stopReplay() : startReplay()));
+      document.getElementById("replayLive").addEventListener("click", stopReplay);
+      replayPlay.addEventListener("click", () => {
+        if (replay.t >= replay.end) replay.t = replay.start;
+        replay.playing = !replay.playing;
+        renderReplayBar();
+      });
+      replaySlider.addEventListener("input", () => {
+        replay.t = replay.start + (Number(replaySlider.value) / 1000) * (replay.end - replay.start);
+        renderReplayBar();
+      });
+      for (const b of replayBar.querySelectorAll("[data-speed]")) {
+        b.addEventListener("click", () => { replay.speed = Number(b.dataset.speed); renderReplayBar(); });
+      }
+
+      // ---------------------------------------------------------------- search
+      const searchForm = document.getElementById("search");
+      const searchInput = document.getElementById("searchInput");
+      const searchResult = document.getElementById("searchResult");
+      const norm = (s) => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+      function showResult(text, action) {
+        searchResult.replaceChildren(el("div", text));
+        if (action) { const b = el("button", action.label); b.type = "button"; b.onclick = action.run; searchResult.append(b); }
+        searchResult.hidden = false;
+      }
+
+      // Planes on the map first (flight number, callsign, registration, hex); otherwise ask the
+      // service, which looks the flight up anywhere and lets you follow it.
+      searchForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const q = norm(searchInput.value);
+        if (q.length < 2) return;
+        const exact = [...planes.entries()].find(([h, p]) => [p.data.flight, p.data.callsign, p.data.reg, h].some((v) => norm(v) === q));
+        const partial = exact || [...planes.entries()].find(([h, p]) => [p.data.flight, p.data.callsign, p.data.reg].some((v) => norm(v).startsWith(q)));
+        if (partial) {
+          searchResult.hidden = true;
+          select(partial[0]);
+          snapTo(partial[0]);
+          return;
+        }
+        showResult(`Looking for ${q}…`);
+        try {
+          const res = await fetch(`/api/planes/find/${encodeURIComponent(q)}`, { cache: "no-store" });
+          const body = await res.json();
+          if (!res.ok || !body.hex) return showResult(body.error || `${q} not found`);
+          const name = body.callsign || body.reg || body.hex;
+          if (planes.has(body.hex)) { searchResult.hidden = true; select(body.hex); snapTo(body.hex); return; }
+          showResult(`${name} is flying outside the 40 nm area.`, {
+            label: "Follow it",
+            run: async () => {
+              const r = await fetch(`/api/planes/follow/${encodeURIComponent(body.hex)}`, { cache: "no-store" });
+              const f = await r.json();
+              if (!r.ok || !f.aircraft) return showResult(f.error || `${name}: no position right now`);
+              ingest([f.aircraft], Date.now(), true);
+              searchResult.hidden = true;
+              startFollow(body.hex);
+            },
+          });
+        } catch { showResult("Search failed; try again"); }
+      });
+      searchInput.addEventListener("input", () => { if (!searchInput.value) searchResult.hidden = true; });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "/" && document.activeElement !== searchInput) { e.preventDefault(); searchInput.focus(); }
+      });
+
       // ------------------------------------------------------------ info panel
       const panel = document.getElementById("panel");
       const panelBody = document.getElementById("panelBody");
@@ -960,12 +1205,23 @@
         row("Vertical", a.vr ? (a.vr > 0 ? "↑ " : "↓ ") + Math.abs(a.vr).toLocaleString("en-US") + " ft/min" : null);
         row("Heading", a.track != null ? Math.round(a.track) + "°" : null);
         row("Squawk", a.squawk);
+        if (b && b.time) {
+          const label = { "dep:actual": "Took off", "dep:est": "Took off (est.)", "arr:actual": "Landed", "arr:est": "Arrives (est.)" }[`${b.kind}:${b.time_kind}`];
+          row(label || "Time", hhmm(b.time));
+        }
         row("Callsign", a.callsign);
         row("ICAO hex", a.hex);
         const fb = el("button", follow.hex === selected ? "■ STOP FOLLOWING" : "▶ FOLLOW FLIGHT", "follow-btn");
         if (follow.hex === selected) fb.classList.add("on");
         fb.onclick = () => (follow.hex === selected ? stopFollow() : startFollow(selected));
-        panelBody.append(fb, dl);
+        // The real flight elsewhere: schedules, history, photos.
+        const out = el("div", null, "links-out");
+        const link = (text, href) => { const l = el("a", text); l.href = href; l.target = "_blank"; l.rel = "noopener"; out.append(l); };
+        const flightNo = (a.flight && a.flight !== a.callsign ? a.flight : a.callsign || "").replace(/\s+/g, "");
+        if (flightNo) link("Flightradar24 ↗", `https://www.flightradar24.com/data/flights/${encodeURIComponent(flightNo.toLowerCase())}`);
+        if (a.callsign || a.reg) link("FlightAware ↗", `https://www.flightaware.com/live/flight/${encodeURIComponent(a.callsign || a.reg)}`);
+        if (a.hex) link("adsb.fi globe ↗", `https://globe.adsb.fi/?icao=${encodeURIComponent(a.hex)}`);
+        panelBody.append(fb, dl, out);
         panel.hidden = false;
       }
 
@@ -1018,7 +1274,7 @@
             status.innerHTML = '<span class="warn">planes API is out of date (restart the planes service)</span>';
             return;
           }
-          boardRows = new Map([...(b.departures || []), ...(b.arrivals || [])].map((r) => [r.callsign, r]));
+          boardRows = new Map([...(b.departures || []), ...(b.arrivals || []), ...(b.at_sfo || [])].map((r) => [r.callsign, r]));
           // Older service versions lack row.hex: fill it in from the aircraft list by callsign.
           const hexByCs = new Map(b.aircraft.map((a) => [a.callsign, a.hex]));
           for (const r of boardRows.values()) if (!r.hex) r.hex = hexByCs.get(r.callsign);
@@ -1136,7 +1392,7 @@
 
         map.on("mousemove", "planes", (e) => setHover(e.features[0].properties.hex, true));
         map.on("mouseleave", "planes", () => setHover(null));
-        map.on("click", "planes", (e) => select(e.features[0].properties.hex));
+        map.on("click", "planes", (e) => { if (!replay.on) select(e.features[0].properties.hex); });
         map.on("click", (e) => {
           if (!map.queryRenderedFeatures(e.point, { layers: ["planes"] }).length) select(null);
         });
@@ -1148,9 +1404,17 @@
         const frame = (ts) => {
           if (ts - lastFrame > 50) {
             const now = Date.now();
-            map.getSource("planes").setData(planeFeatures(now));
-            map.getSource("track").setData(trackFeatures(now));
-            map.getSource("future").setData(futureFeatures(now));
+            if (replay.on) {
+              const empty = { type: "FeatureCollection", features: [] };
+              map.getSource("planes").setData(replayFrame(ts));
+              map.getSource("track").setData(empty);
+              map.getSource("future").setData(empty);
+            } else {
+              replay.lastTs = null;
+              map.getSource("planes").setData(planeFeatures(now));
+              map.getSource("track").setData(trackFeatures(now));
+              map.getSource("future").setData(futureFeatures(now));
+            }
             if (hoverHex) map.setPaintProperty("hover-ring", "circle-radius", 15 + 3 * Math.sin(ts / 180));
             updateEdgeArrow(now);
             followFrame(now);

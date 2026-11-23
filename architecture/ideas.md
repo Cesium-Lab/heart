@@ -29,6 +29,9 @@ serving the site.
 
 ## Nerd stuff
 
+- **Planes traffic stats** in Grafana (arrivals/departures per hour, busiest airlines): a `/metrics`
+  endpoint on the planes service for Prometheus. Placeholder note: Grafana dashboard "Planes (to do)"
+  (`projects/dataviz/telemetry_server/grafana/provisioning/dashboards/planes-todo.json`).
 - Drive-health alerts (smartctl exporter → Prometheus/Grafana) and ntfy push notifications.
 - restic backups of the irreplaceable files (offsite or to the new drive).
 - ESP32 room sensors feeding Prometheus; Pi ADS-B receiver (RTL-SDR) feeding FR24/adsb.lol.

@@ -18,6 +18,7 @@ import time
 import unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError, URLError
+from urllib.parse import unquote
 from urllib.request import Request, urlopen
 
 HOST = os.getenv("PLANES_HOST", "127.0.0.1")
@@ -345,6 +346,7 @@ def classify(ac: dict) -> dict | None:
     if kind == "sfo":
         status = "AT GATE" if gs < 3 else "TAXIING"
         sort = (0 if gs >= 3 else 1, dist)
+        shown_time, time_kind = None, None
     elif kind == "dep":
         if on_ground:
             status = "AT GATE" if gs < 3 else "TAXIING" if gs < 50 else "TAKEOFF"
@@ -354,14 +356,17 @@ def classify(ac: dict) -> dict | None:
             status = "CLIMBING"
         else:
             status = "DEPARTED"
+        shown_time, time_kind = None, None  # unknown for planes still on the ground
         if on_ground:  # still to go: taxiing leaves before parked
             when = now + (300 if gs >= 3 else 1800)
         elif seen_at[0] == "dep":
             when = seen_at[1]  # when we saw it take off / start climbing out
+            shown_time, time_kind = when, "actual"
         else:
             when = (
                 now - dist / max(gs, 150) * 3600
             )  # estimated takeoff from distance flown
+            shown_time, time_kind = when, "est"
         sort = (when,)
     else:
         if on_ground:
@@ -379,8 +384,13 @@ def classify(ac: dict) -> dict | None:
             when = (
                 seen_at[1] if seen_at[0] == "arr" else now - (300 if gs >= 3 else 1200)
             )
+            # Landing time is only shown when we actually saw it land.
+            shown_time, time_kind = (
+                (when, "actual") if seen_at[0] == "arr" else (None, None)
+            )
         else:
             when = now + eta * 60
+            shown_time, time_kind = when, "est"
         sort = (when,)
 
     return {
@@ -396,6 +406,9 @@ def classify(ac: dict) -> dict | None:
         "gs": round(gs),
         "dist": round(dist, 1),
         "status": status,
+        # Board TIME: takeoff/landing we saw ("actual") or an estimate ("est"); None if unknown.
+        "time": round(shown_time) if shown_time else None,
+        "time_kind": time_kind,
         "lat": ac.get("lat"),
         "lon": ac.get("lon"),
         "track": ac.get("track"),
@@ -407,10 +420,13 @@ def classify(ac: dict) -> dict | None:
 # Recent positions per plane, recorded only from fetches the pages trigger (nothing is
 # fetched when nobody is watching). In memory only: a restart wipes it.
 TRACK_TTL_S = float(os.getenv("PLANES_TRACK_HOURS", "5")) * 3600  # oldest point kept
-TRACK_GONE_S = 10 * 60  # drop a plane's track this long after it leaves the area
+# Planes that left keep their track this long, so replay can show the last hour of traffic.
+REPLAY_S = float(os.getenv("PLANES_REPLAY_MIN", "60")) * 60
+TRACK_GONE_S = REPLAY_S  # drop a plane's track this long after it leaves the area
 _tracks: dict[str, list[list[float]]] = {}  # hex -> [[lon, lat, alt_ft, epoch_s], ...]
 _track_seen: dict[str, float] = {}  # hex -> last time it was in the data
 _followed: dict[str, float] = {}  # hex -> last time a page asked to follow it
+_track_info: dict[str, dict] = {}  # hex -> label/kind for replay
 _tracks_lock = threading.Lock()
 
 
@@ -422,6 +438,11 @@ def record_tracks(entries: list[dict]) -> None:
             if not h or e.get("lat") is None:
                 continue
             _track_seen[h] = now
+            _track_info[h] = {
+                "flight": e.get("flight"),
+                "kind": e.get("kind"),
+                "type": e.get("type"),
+            }
             pts = _tracks.setdefault(h, [])
             point = [e["lon"], e["lat"], e.get("alt") or 0, e["pos_time"]]
             if (
@@ -436,6 +457,7 @@ def record_tracks(entries: list[dict]) -> None:
             if now - _track_seen.get(h, 0) > TRACK_GONE_S:
                 _tracks.pop(h, None)
                 _track_seen.pop(h, None)
+                _track_info.pop(h, None)
                 continue
             pts = _tracks[h]
             while pts and now - pts[0][3] > TRACK_TTL_S:
@@ -485,6 +507,104 @@ def follow(hex_: str) -> tuple[int, dict]:
         body = {"hex": hex_, "aircraft": entry, "updated": data_now}
         _follow_cache[hex_] = (now, body)
         return 200, body
+
+
+def replay() -> dict:
+    """Every plane's points from the last REPLAY_S, compacted (~5 m precision)."""
+    since = time.time() - REPLAY_S
+    with _tracks_lock:
+        out = []
+        for h, pts in _tracks.items():
+            recent = [
+                [round(p[0], 4), round(p[1], 4), int(p[2]), int(p[3])]
+                for p in pts
+                if p[3] >= since
+            ]
+            if recent:
+                out.append({"hex": h, **_track_info.get(h, {}), "points": recent})
+    return {"since": int(since), "now": int(time.time()), "planes": out}
+
+
+def find(query: str) -> tuple[int, dict]:
+    """Look up a flight anywhere: callsign (UAL2482), flight number (UA2482), or
+    registration (N566AS). One or two small upstream requests per search."""
+    q = re.sub(r"[^A-Z0-9-]", "", query.upper())[:10]
+    if len(q) < 2:
+        return 400, {"error": "type a flight, callsign, or registration"}
+    base = (
+        "https://opendata.adsb.fi/api/v2"
+        if SOURCE == "adsbfi"
+        else "https://api.adsb.lol/v2"
+    )
+    tries = [f"{base}/callsign/{q}"]
+    if re.fullmatch(
+        r"[A-Z0-9]{2}\d{1,4}[A-Z]?", q
+    ):  # IATA flight number: ask adsbdb for the callsign
+        r = None
+        try:
+            r = fetch_json(f"https://api.adsbdb.com/v0/callsign/{q}", timeout=6)
+        except (URLError, HTTPError, TimeoutError, ValueError, OSError):
+            pass
+        fr = (r or {}).get("response") or {}
+        icao = (
+            fr.get("flightroute", {}).get("callsign_icao")
+            if isinstance(fr, dict)
+            else None
+        )
+        if icao and icao != q:
+            tries.insert(0, f"{base}/callsign/{icao}")
+    tries.append(f"{base}/registration/{q}")
+    for url in tries:
+        try:
+            data = fetch_json(url) or {}
+        except (URLError, HTTPError, TimeoutError, ValueError, OSError):
+            continue
+        acs = [
+            a
+            for a in (data.get("ac") or data.get("aircraft") or [])
+            if a.get("lat") is not None
+        ]
+        if acs:
+            a = acs[0]
+            return 200, {
+                "hex": a.get("hex"),
+                "callsign": (a.get("flight") or "").strip(),
+                "reg": a.get("r"),
+            }
+    return 404, {"error": f"no live aircraft found for {q}"}
+
+
+_wx: tuple[float, dict] = (0.0, {})
+_wx_lock = threading.Lock()
+WX_URL = "https://aviationweather.gov/api/data/metar?ids=K{icao}&format=json"
+
+
+def weather() -> dict:
+    """Current METAR for the airport, cached 10 min (fetched only when a page asks)."""
+    global _wx
+    with _wx_lock:
+        if time.time() - _wx[0] < 600 and _wx[1]:
+            return _wx[1]
+        try:
+            rows = fetch_json(WX_URL.format(icao=AIRPORT)) or []
+        except (URLError, HTTPError, TimeoutError, ValueError, OSError) as e:
+            return {**_wx[1], "error": f"upstream: {e.__class__.__name__}"}
+        m = rows[0] if isinstance(rows, list) and rows else {}
+        body = {
+            "station": f"K{AIRPORT}",
+            "raw": m.get("rawOb"),
+            "temp_c": m.get("temp"),
+            "wind_dir": m.get("wdir"),
+            "wind_kt": m.get("wspd"),
+            "gust_kt": m.get("wgst"),
+            "visibility_sm": m.get("visib"),
+            "clouds": m.get("clouds") or [],
+            "category": m.get("fltCat"),  # VFR / MVFR / IFR / LIFR
+            "observed": m.get("obsTime"),
+            "link": f"https://aviationweather.gov/data/metar/?id=K{AIRPORT}&hours=0&decoded=yes",
+        }
+        _wx = (time.time(), body)
+        return body
 
 
 def track_for(hex_: str) -> list[list[float]]:
@@ -630,6 +750,19 @@ class Handler(BaseHTTPRequestHandler):
         elif m := re.fullmatch(r"/api/planes/track/([0-9a-f~]{1,8})", path):
             body = {"hex": m[1], "points": track_for(m[1])}
             self._send(200, json.dumps(body).encode(), "application/json")
+        elif path == "/api/planes/replay":
+            self._send(
+                200,
+                json.dumps(replay(), separators=(",", ":")).encode(),
+                "application/json",
+            )
+        elif path == "/api/planes/weather":
+            self._send(200, json.dumps(weather()).encode(), "application/json")
+        elif m := re.fullmatch(
+            r"/api/planes/find/([A-Za-z0-9 -]{2,12})", unquote(path)
+        ):
+            code, body = find(m[1])
+            self._send(code, json.dumps(body).encode(), "application/json")
         elif m := re.fullmatch(r"/api/planes/follow/([0-9a-f~]{1,8})", path):
             code, body = follow(m[1])
             self._send(code, json.dumps(body).encode(), "application/json")

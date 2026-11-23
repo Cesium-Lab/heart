@@ -92,5 +92,5 @@ Assigned and reserved ports:
 ## CI
 
 `.github/workflows/ci.yml` runs on every push and PR: frontend Prettier check + build, an import
-test per Python service (each with its own requirements), a Planes smoke test (health + track endpoint), ruff lint + format
+test per Python service (each with its own requirements), a Planes smoke test (health, track, replay), ruff lint + format
 (`ruff.toml`), and shellcheck on all scripts.

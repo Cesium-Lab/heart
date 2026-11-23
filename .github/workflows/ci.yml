@@ -96,6 +96,8 @@ jobs:
           # Track lookups need no upstream: an unknown plane returns an empty track.
           curl -fsS http://127.0.0.1:42901/api/planes/track/abc123 | grep -q '"points": \[\]'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:42901/api/planes/track/not-a-hex)" = 404
+          # Replay needs no upstream either: nothing recorded yet means an empty list.
+          curl -fsS http://127.0.0.1:42901/api/planes/replay | grep -q '"planes":\[\]'
 
   lint-everything:
     runs-on: ubuntu-latest

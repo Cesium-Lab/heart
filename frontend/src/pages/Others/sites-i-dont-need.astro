@@ -51,7 +51,9 @@ const domains = ["colin-skinner.com", "monarchband.net", "monarchmusic.live"];
       ul.domains li { display: flex; justify-content: space-between; align-items: center; gap: 12px;
         padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
       ul.domains li:last-child { border-bottom: 0; }
-      .name { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 16px; }
+      .name { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 16px; color: var(--ink);
+        text-decoration: none; border-bottom: 1px solid var(--line); }
+      .name:hover { border-color: var(--accent); }
       .ask { font-size: 14px; color: var(--accent); text-decoration: none; }
       .ask:hover { text-decoration: underline; }
       h2 { font-size: 13px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px;
@@ -74,7 +76,7 @@ const domains = ["colin-skinner.com", "monarchband.net", "monarchmusic.live"];
         {
           domains.map((d) => (
             <li>
-              <span class="name">{d}</span>
+              <a class="name" href={`https://${d}`}>{d}</a>
               <a class="ask" data-domain={d} href="#contact">I want this one →</a>
             </li>
           ))
