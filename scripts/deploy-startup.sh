@@ -125,7 +125,7 @@ fi
 # after services move within the repository. The frontend unit runs at boot;
 # backend units keep the API processes alive and restart them after failures.
 log "Installing systemd service definitions"
-for unit in frontend-build.service rotation-viz.service telemetry-viz.service setlister.service; do
+for unit in frontend-build.service rotation-viz.service telemetry-viz.service setlister.service planes.service; do
     if [[ -f "${SYSTEMD_DIR}/${unit}" ]]; then
         sudo install -m 0644 "${SYSTEMD_DIR}/${unit}" "/etc/systemd/system/${unit}"
     fi
@@ -148,6 +148,7 @@ enable_installed_unit apache2.service
 enable_installed_unit rotation-viz.service
 enable_installed_unit telemetry-viz.service
 enable_installed_unit setlister.service
+enable_installed_unit planes.service
 enable_installed_unit cloudflared.service
 
 # Reload Apache without stopping the process or dropping active connections.
@@ -162,6 +163,7 @@ check_unit frontend-build.service
 check_unit rotation-viz.service
 check_unit telemetry-viz.service
 check_unit setlister.service
+check_unit planes.service
 check_unit cloudflared.service
 
 # Test real HTTP responses. This verifies that Apache can read dist and that the
@@ -180,6 +182,10 @@ fi
 
 if unit_exists setlister.service; then
     check_url "Setlister API" "http://127.0.0.1:5702/api/setlister/health"
+fi
+
+if unit_exists planes.service; then
+    check_url "Planes board" "http://127.0.0.1:5901/health"
 fi
 
 # This line is reached only if every required build, unit, and HTTP check passed.

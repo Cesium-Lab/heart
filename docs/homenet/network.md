@@ -25,6 +25,7 @@ Application services:
 | Rotation visualizer | `127.0.0.1:5001` | `/api/rotation/` |
 | Telemetry visualizer | `127.0.0.1:5701` | deployment-specific |
 | Setlister | `127.0.0.1:5702` | `/api/setlister/` |
+| Planes (SFO board) | `127.0.0.1:5901` | private: SSH tunnel only |
 
 See `scripts/deploy-startup.sh` for the deployment and health-check sequence. A topology document can be added under this directory when the network diagram is ready.
 

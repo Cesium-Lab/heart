@@ -1,0 +1,121 @@
+---
+import "../../../styles/setlister.css";
+import "../../../styles/taptempo.css";
+---
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Tap tempo, metronome, and setlist count-ins" />
+    <title>TAPTEMPO.EXE</title>
+</head>
+
+<body>
+    <main class="app">
+        <header class="titlebar">
+            <span>♩ TAPTEMPO.EXE — TEMPO &amp; COUNT-IN UNIT</span><span class="window-buttons"
+                aria-hidden="true"><i>_</i><i>□</i><i>×</i></span>
+        </header>
+        <nav class="toolbar" aria-label="Links">
+            <a class="button" href="/music/setlister/">← Setlister</a>
+            <span class="tt-keys">
+                <kbd>T</kbd> tap · <kbd>Space</kbd> start/stop · <kbd>C</kbd> count-in ·
+                <kbd>↑</kbd><kbd>↓</kbd> BPM · <kbd>N</kbd>/<kbd>P</kbd> next/prev song
+            </span>
+        </nav>
+
+        <section class="tt-workspace">
+            <div class="tt-column">
+                <article class="panel">
+                    <header class="panel-title"><span>TAP</span><button id="tapReset" class="small">Reset</button></header>
+                    <div class="tt-body">
+                        <button id="tapPad" class="tt-pad" aria-label="Tap tempo">
+                            <span id="tapBpm" class="tt-tap-bpm">---</span>
+                            <small id="tapInfo">tap here or press T</small>
+                        </button>
+                        <div class="tt-row">
+                            <button id="tapHalf" class="small" disabled>½× <span id="tapHalfVal"></span></button>
+                            <button id="tapDouble" class="small" disabled>2× <span id="tapDoubleVal"></span></button>
+                            <button id="tapUse" class="small primary" disabled>Use tapped BPM</button>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <header class="panel-title"><span>METRONOME</span><span id="songLabel" class="tt-song-label"></span></header>
+                    <div class="tt-body">
+                        <div class="tt-bpm-row">
+                            <button id="bpmDown" class="tt-step" aria-label="Decrease BPM">−</button>
+                            <label class="tt-bpm">
+                                <input id="bpmInput" type="number" min="20" max="300" step="1" value="120"
+                                    aria-label="BPM" />
+                                <span>BPM</span>
+                            </label>
+                            <button id="bpmUp" class="tt-step" aria-label="Increase BPM">+</button>
+                        </div>
+                        <input id="bpmSlider" type="range" min="20" max="300" step="1" value="120" aria-label="BPM slider" />
+
+                        <div id="beatLights" class="tt-lights" aria-hidden="true"></div>
+
+                        <div class="tt-controls">
+                            <label>Beats/bar
+                                <select id="beatsSelect">
+                                    <option>2</option><option>3</option><option selected>4</option>
+                                    <option>5</option><option>6</option><option>7</option>
+                                </select>
+                            </label>
+                            <label>Subdivision
+                                <select id="subSelect">
+                                    <option value="1" selected>Quarter</option>
+                                    <option value="2">8ths</option>
+                                    <option value="3">Triplets</option>
+                                    <option value="4">16ths</option>
+                                </select>
+                            </label>
+                            <label>Count-in
+                                <select id="countBars">
+                                    <option value="1">1 bar</option>
+                                    <option value="2" selected>2 bars</option>
+                                    <option value="4">4 bars</option>
+                                </select>
+                            </label>
+                            <label>Volume
+                                <input id="volume" type="range" min="0" max="1" step="0.05" value="0.7" />
+                            </label>
+                            <label class="tt-check"><input id="accent" type="checkbox" checked /> Accent beat 1</label>
+                        </div>
+
+                        <div class="tt-row">
+                            <button id="startStop" class="primary tt-big">▶ Start</button>
+                            <button id="countIn" class="tt-big">Count in</button>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <article class="panel">
+                <header class="panel-title"><span>SETLIST</span>
+                    <span><button id="prevSong" class="small">↑ Prev</button><button id="nextSong" class="small">↓ Next</button></span>
+                </header>
+                <div class="set-controls tt-set-controls">
+                    <select id="setlistSelect" aria-label="Choose setlist"></select>
+                    <button id="loadExample" class="small">Load example</button>
+                </div>
+                <ol id="songList" class="tracks"></ol>
+                <div id="setEmpty" class="empty compact">
+                    <b>No setlist found.</b>
+                    <span>Build one in <a href="/music/setlister/">Setlister</a> in this browser, or load the example.</span>
+                </div>
+            </article>
+        </section>
+        <footer class="footer">Reads your Setlister library from this browser. Nothing is uploaded.</footer>
+    </main>
+
+    <script>
+        import "../../../scripts/taptempo.js";
+    </script>
+</body>
+
+</html>

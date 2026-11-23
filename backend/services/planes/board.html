@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SFO Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0c0e; --panel: #141518; --cell: #1c1d21; --cell-edge: #0a0a0c;
+    --text: #f2f2ee; --amber: #ffc93c; --green: #7ee08a; --red: #ff7a6b; --muted: #8a8f98;
+    --cw: 22px; --ch: 32px; --fs: 20px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { min-height: 100vh; padding: 24px 16px; font: 500 14px/1.3 'Roboto Mono', ui-monospace, monospace; }
+  .wrap { width: fit-content; max-width: 100%; margin: 0 auto; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: .14em; color: var(--amber); }
+  h1 small { display: block; font-size: 12px; letter-spacing: .1em; color: var(--muted); font-weight: 500; }
+  .clock { font-size: 28px; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  nav { display: flex; gap: 6px; margin-bottom: 16px; }
+  nav button { font: inherit; letter-spacing: .1em; color: var(--muted); background: var(--panel); border: 1px solid #2a2c31; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+  nav button[aria-pressed="true"] { color: var(--bg); background: var(--amber); border-color: var(--amber); }
+  section { background: var(--panel); border: 1px solid #23252a; border-radius: 10px; padding: 14px 16px 16px; margin-bottom: 18px; }
+  section[hidden] { display: none; }
+  .board-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .board-title h2 { margin: 0; font-size: 18px; letter-spacing: .2em; color: var(--amber); }
+  .board-title span { color: var(--muted); font-size: 12px; }
+  .row { display: flex; gap: calc(var(--cw) * .6); margin-bottom: 4px; }
+  .head { color: var(--muted); font-size: 11px; letter-spacing: .12em; margin-bottom: 6px; }
+  .head span { display: inline-block; }
+  .col { display: flex; gap: 2px; }
+  .c { position: relative; width: var(--cw); height: var(--ch); display: grid; place-items: center;
+       background: var(--cell); border-radius: 3px; font-size: var(--fs); font-weight: 700; color: var(--text);
+       box-shadow: inset 0 -1px 0 var(--cell-edge); overflow: hidden; }
+  .c::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--cell-edge); }
+  .c.flip { animation: flip .07s linear; }
+  @keyframes flip { 50% { transform: scaleY(.15); } }
+  .st-green .c { color: var(--green); } .st-amber .c { color: var(--amber); } .st-red .c { color: var(--red); }
+  .hide-sm { }
+  footer { color: var(--muted); font-size: 12px; line-height: 1.6; }
+  footer b { color: var(--text); font-weight: 500; }
+  .err { color: var(--red); }
+  @media (max-width: 1000px) { :root { --cw: 17px; --ch: 26px; --fs: 15px; } }
+  @media (max-width: 700px) {
+    :root { --cw: 16px; --ch: 24px; --fs: 14px; }
+    .hide-sm { display: none !important; }
+    h1, .clock { font-size: 22px; }
+  }
+  @media (max-width: 380px) { :root { --cw: 13px; --ch: 21px; --fs: 12px; } }
+  @media (prefers-reduced-motion: reduce) { .c.flip { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>SFO <small>SAN FRANCISCO INTERNATIONAL · LIVE ADS-B</small></h1>
+    <div class="clock" id="clock">--:--:--</div>
+  </header>
+  <nav aria-label="Board">
+    <button data-view="both" aria-pressed="true">BOTH</button>
+    <button data-view="dep" aria-pressed="false">DEPARTURES</button>
+    <button data-view="arr" aria-pressed="false">ARRIVALS</button>
+  </nav>
+  <section id="dep">
+    <div class="board-title"><h2>DEPARTURES</h2><span id="depCount"></span></div>
+    <div id="depRows"></div>
+  </section>
+  <section id="arr">
+    <div class="board-title"><h2>ARRIVALS</h2><span id="arrCount"></span></div>
+    <div id="arrRows"></div>
+  </section>
+  <footer>
+    <div id="meta">Loading…</div>
+    <div>Positions: adsb.lol · Routes: adsbdb.com (best guesses, so some flights are missing or mislabeled)</div>
+  </footer>
+</div>
+<script>
+const ROWS = 10;
+const COLS = [
+  { key: "flight", label: "FLIGHT", w: 7 },
+  { key: "city",   label: "CITY",   w: 13 },
+  { key: "type",   label: "TYPE",   w: 4, sm: true },
+  { key: "alt",    label: "ALT",    w: 5, sm: true },
+  { key: "status", label: "STATUS", w: 10 },
+];
+const FLAP = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+function buildBoard(el) {
+  const head = document.createElement("div");
+  head.className = "row head";
+  for (const c of COLS) {
+    const s = document.createElement("span");
+    s.textContent = c.label;
+    s.style.width = `calc(${c.w} * var(--cw) + ${c.w - 1} * 2px)`;
+    if (c.sm) s.className = "hide-sm";
+    head.append(s);
+  }
+  el.append(head);
+  const rows = [];
+  for (let r = 0; r < ROWS; r++) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const cols = {};
+    for (const c of COLS) {
+      const col = document.createElement("div");
+      col.className = "col" + (c.sm ? " hide-sm" : "");
+      col.dataset.key = c.key;
+      cols[c.key] = Array.from({ length: c.w }, () => {
+        const cell = document.createElement("span");
+        cell.className = "c";
+        cell.textContent = " ";
+        col.append(cell);
+        return cell;
+      });
+      row.append(col);
+    }
+    el.append(row);
+    rows.push({ row, cols });
+  }
+  return rows;
+}
+
+function flipTo(cell, ch, delay) {
+  if (cell.dataset.target === ch) return;
+  cell.dataset.target = ch;
+  const steps = ch === " " ? 2 : 3 + Math.floor(Math.random() * 4);
+  let i = 0;
+  setTimeout(function tick() {
+    if (cell.dataset.target !== ch) return;
+    cell.classList.remove("flip"); void cell.offsetWidth; cell.classList.add("flip");
+    cell.textContent = ++i >= steps ? ch : FLAP[Math.floor(Math.random() * FLAP.length)];
+    if (i < steps) setTimeout(tick, 70);
+  }, delay);
+}
+
+function fmtAlt(a) {
+  if (a === 0) return "GND";
+  return a >= 18000 ? "FL" + Math.round(a / 100) : String(Math.round(a / 100) * 100);
+}
+
+function statusTone(s) {
+  if (/TAKEOFF|ON FINAL|LANDED/.test(s)) return "st-green";
+  if (/GATE|TAXI/.test(s)) return "st-amber";
+  return "";
+}
+
+function render(rows, data) {
+  rows.forEach((r, i) => {
+    const f = data[i];
+    const vals = f ? {
+      flight: f.flight, city: f.city, type: f.type,
+      alt: fmtAlt(f.alt), status: f.status,
+    } : {};
+    let d = i * 25;
+    for (const c of COLS) {
+      const text = String(vals[c.key] || "").toUpperCase().slice(0, c.w).padEnd(c.w);
+      r.cols[c.key].forEach((cell, j) => flipTo(cell, text[j], d + j * 18));
+      if (c.key === "status") r.cols[c.key][0].parentElement.className = "col " + statusTone(vals.status || "");
+    }
+    r.row.title = f ? [f.airline, f.callsign, f.reg, `${f.dist} nm · ${f.gs} kt`].filter(Boolean).join(" · ") : "";
+  });
+}
+
+const depRows = buildBoard(document.getElementById("depRows"));
+const arrRows = buildBoard(document.getElementById("arrRows"));
+const meta = document.getElementById("meta");
+
+async function refresh() {
+  try {
+    const res = await fetch("api/board", { cache: "no-store" });
+    const b = await res.json();
+    render(depRows, b.departures || []);
+    render(arrRows, b.arrivals || []);
+    const more = (n) => n > ROWS ? ` · showing ${ROWS} of ${n}` : "";
+    document.getElementById("depCount").textContent = `${(b.departures || []).length} tracked${more((b.departures || []).length)}`;
+    document.getElementById("arrCount").textContent = `${(b.arrivals || []).length} tracked${more((b.arrivals || []).length)}`;
+    const t = b.updated ? new Date(b.updated * 1000).toLocaleTimeString() : "—";
+    meta.innerHTML = `Updated <b>${t}</b> · ${b.tracked ?? 0} aircraft within 40 nm · ${b.overhead ?? 0} overflights / other airports` +
+      (b.error ? ` · <span class="err">${b.error}</span>` : "");
+  } catch (e) {
+    meta.innerHTML = `<span class="err">Board offline (${e.message})</span>`;
+  }
+}
+
+function tickClock() {
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("en-US", { hour12: false, timeZone: "America/Los_Angeles" });
+}
+
+document.querySelectorAll("nav button").forEach((btn) => btn.addEventListener("click", () => {
+  const v = btn.dataset.view;
+  document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-pressed", b === btn));
+  document.getElementById("dep").hidden = v === "arr";
+  document.getElementById("arr").hidden = v === "dep";
+}));
+
+tickClock(); setInterval(tickClock, 1000);
+refresh(); setInterval(refresh, 15000);
+</script>
+</body>
+</html>

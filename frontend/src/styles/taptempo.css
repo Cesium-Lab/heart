@@ -1,0 +1,65 @@
+/* TAPTEMPO.EXE — builds on setlister.css tokens */
+.tt-keys { margin-left: auto; color: var(--muted); font-size: 12px; }
+kbd {
+  display: inline-block; min-width: 20px; padding: 1px 5px; margin: 0 1px;
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
+  background: #17181b; color: var(--text); font: 11px 'Roboto Mono', monospace; text-align: center;
+}
+
+.tt-workspace {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+  gap: 16px; padding: 16px; align-items: start;
+}
+.tt-column { display: grid; gap: 16px; min-width: 0; }
+.tt-body { display: grid; gap: 14px; padding: 16px; background: var(--surface); }
+.tt-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.tt-row > * { flex: 1; }
+
+.tt-pad {
+  display: flex; flex-direction: column; gap: 4px; min-height: 170px; width: 100%;
+  border: 2px dashed #5f6368; border-radius: 14px; background: #17181b; color: var(--text);
+  user-select: none; touch-action: manipulation;
+}
+.tt-pad:hover { background: #1c1e22; border-color: var(--blue); }
+.tt-pad.hit { background: rgba(138, 180, 248, .16); border-color: var(--blue); transform: scale(.99); }
+.tt-tap-bpm { font: 600 64px/1 'Roboto Mono', monospace; color: var(--blue); }
+.tt-pad small { color: var(--muted); font-size: 12px; }
+
+.tt-bpm-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.tt-step { width: 52px; min-height: 52px; padding: 0; font-size: 26px; border-radius: 50%; }
+.tt-bpm { display: flex; align-items: baseline; gap: 8px; }
+.tt-bpm input {
+  width: 150px; padding: 4px 8px; border: 0; background: transparent; text-align: center;
+  font: 600 60px/1 'Roboto Mono', monospace; color: var(--amber);
+  -moz-appearance: textfield; appearance: textfield;
+}
+.tt-bpm input::-webkit-inner-spin-button, .tt-bpm input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.tt-bpm span { color: var(--muted); font: 500 13px 'Roboto Mono', monospace; letter-spacing: .1em; }
+input[type="range"] { padding: 0; border: 0; background: transparent; accent-color: var(--amber); box-shadow: none; }
+
+.tt-lights { display: flex; justify-content: center; gap: 10px; min-height: 30px; }
+.tt-lights i {
+  width: 26px; height: 26px; border-radius: 50%; background: #3c4043;
+  transition: background .06s, box-shadow .06s;
+}
+.tt-lights i.on { background: var(--green); box-shadow: 0 0 14px rgba(129, 201, 149, .7); }
+.tt-lights i.on.accent { background: var(--amber); box-shadow: 0 0 16px rgba(249, 171, 0, .8); }
+.tt-lights.counting i.on { background: var(--red); box-shadow: 0 0 16px rgba(242, 139, 130, .8); }
+
+.tt-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.tt-controls label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.tt-controls .tt-check { display: flex; align-items: center; gap: 8px; align-self: end; min-height: 40px; }
+.tt-check input { width: auto; }
+.tt-big { min-height: 48px; font-size: 16px; }
+.tt-big.running { background: var(--red); color: #2b0f0d; }
+
+.tt-song-label { color: var(--amber); font-weight: 500; letter-spacing: .02em; }
+.tt-set-controls { grid-template-columns: 1fr auto; }
+#songList .track { grid-template-columns: 34px minmax(0, 1fr) auto; cursor: pointer; }
+#songList .track.current { border-color: var(--amber); background: #2e2a1f; }
+#songList .track.current .track-number { color: var(--text); }
+
+@media (max-width: 840px) {
+  .tt-workspace { grid-template-columns: 1fr; padding: 8px; gap: 8px; }
+  .tt-keys { display: none; }
+}

@@ -8,6 +8,7 @@ These active Python APIs support the Astro frontend. Retired services belong und
 | --- | --- | ---: | --- |
 | Rotation visualizer | Flask | 5001 | `http://127.0.0.1:5001/api/rotation/health` |
 | Telemetry visualizer | FastAPI | 5701 | `http://127.0.0.1:5701/health` |
+| Planes (SFO board, private) | stdlib | 5901 | `http://127.0.0.1:5901/health` |
 
 Telemetry buffers the latest 100 readings per sensor in memory; its data is lost on restart.
 
