@@ -10,6 +10,10 @@ export default defineConfig({
           target: 'http://127.0.0.1:5001',
           changeOrigin: true,
         },
+        '/api/setlister': {
+          target: 'http://127.0.0.1:5702',
+          changeOrigin: true,
+        },
         '/api/telemetry': {
           target: 'http://127.0.0.1:5701',
           changeOrigin: true,
