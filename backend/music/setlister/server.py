@@ -1,4 +1,5 @@
 """Server-side GetSongBPM proxy for SETLISTER.EXE."""
+
 from __future__ import annotations
 
 import json
@@ -76,7 +77,9 @@ def normalize_song(item: dict) -> dict:
         "year": album.get("year"),
         "timeSignature": item.get("time_sig"),
         "key": normalize_key(item.get("key_of")),
-        "bpm": float(item["tempo"]) if str(item.get("tempo", "")).replace(".", "", 1).isdigit() else None,
+        "bpm": float(item["tempo"])
+        if str(item.get("tempo", "")).replace(".", "", 1).isdigit()
+        else None,
         "danceability": item.get("danceability"),
         "acousticness": item.get("acousticness"),
         "tags": [str(tag) for tag in genres[:5]],
@@ -97,8 +100,17 @@ def allowed_request() -> bool:
 
 def upstream_search(title: str, artist: str) -> list[dict]:
     lookup = f"song:{title} artist:{artist}" if artist else title
-    params = urlencode({"type": "both" if artist else "song", "lookup": lookup, "limit": 10})
-    req = Request(f"{API_BASE}/search/?{params}", headers={"X-API-KEY": API_KEY, "Accept": "application/json", "User-Agent": "mr-ray-setlister/1.0"})
+    params = urlencode(
+        {"type": "both" if artist else "song", "lookup": lookup, "limit": 10}
+    )
+    req = Request(
+        f"{API_BASE}/search/?{params}",
+        headers={
+            "X-API-KEY": API_KEY,
+            "Accept": "application/json",
+            "User-Agent": "mr-ray-setlister/1.0",
+        },
+    )
     with urlopen(req, timeout=TIMEOUT) as response:
         payload = json.load(response)
     items = payload.get("search", []) if isinstance(payload, dict) else payload
@@ -134,7 +146,12 @@ def search():
         results = upstream_search(title, search_artist)
     except HTTPError as exc:
         status = 429 if exc.code == 429 else 502
-        return jsonify({"error": "The song database rejected the request.", "upstreamStatus": exc.code}), status
+        return jsonify(
+            {
+                "error": "The song database rejected the request.",
+                "upstreamStatus": exc.code,
+            }
+        ), status
     except (URLError, TimeoutError, json.JSONDecodeError):
         return jsonify({"error": "The song database is temporarily unavailable."}), 502
 

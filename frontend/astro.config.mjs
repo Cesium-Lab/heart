@@ -1,23 +1,18 @@
-import { defineConfig } from 'astro/config';
+import { defineConfig } from "astro/config";
 
 export default defineConfig({
   vite: {
     server: {
       // LAN names so the dev server works from psyche at http://mr-ray:4321
-      allowedHosts: ['cesiumlab.net', 'www.cesiumlab.net', 'mr-ray'],
+      allowedHosts: ["cesiumlab.net", "www.cesiumlab.net", "mr-ray"],
       proxy: {
-        '/api/rotation': {
-          target: 'http://127.0.0.1:5001',
+        "/api/rotation": {
+          target: "http://127.0.0.1:5001",
           changeOrigin: true,
         },
-        '/api/setlister': {
-          target: 'http://127.0.0.1:5702',
+        "/api/setlister": {
+          target: "http://127.0.0.1:5702",
           changeOrigin: true,
-        },
-        '/api/telemetry': {
-          target: 'http://127.0.0.1:5701',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/telemetry/, ''),
         },
       },
     },

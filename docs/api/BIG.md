@@ -125,12 +125,12 @@ Cloudflare  = how you securely reach it
 
 During local development:
 
-| Port | Service | Purpose |
-| ---: | --- | --- |
-| `4321` | Astro | Frontend development server |
-| `8000` | FastAPI | Backend/API |
-| `5432` | PostgreSQL | Relational database |
-| `22` | SSH | Server administration |
+|   Port | Service    | Purpose                     |
+| -----: | ---------- | --------------------------- |
+| `4321` | Astro      | Frontend development server |
+| `8000` | FastAPI    | Backend/API                 |
+| `5432` | PostgreSQL | Relational database         |
+|   `22` | SSH        | Server administration       |
 
 Astro uses port `4321` by default.
 
@@ -192,7 +192,6 @@ heart/
 ├── deploy/
 │   └── systemd/
 │       ├── rotation-viz.service
-│       ├── telemetry-viz.service
 │       └── cloudflared.service.example
 │
 ├── scripts/

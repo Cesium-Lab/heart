@@ -4,6 +4,7 @@ Polls adsb.lol for aircraft near SFO, looks up routes on adsbdb.com, and serves 
 split-flap style board. Standard library only. Binds to 127.0.0.1; view it through
 an SSH tunnel (see README).
 """
+
 from __future__ import annotations
 
 import json
@@ -58,7 +59,11 @@ def route_worker() -> None:
             fr = (data or {}).get("response", {})
             fr = fr.get("flightroute") if isinstance(fr, dict) else None
             if fr:
-                o, d, al = fr.get("origin") or {}, fr.get("destination") or {}, fr.get("airline") or {}
+                o, d, al = (
+                    fr.get("origin") or {},
+                    fr.get("destination") or {},
+                    fr.get("airline") or {},
+                )
                 route = {
                     "iata": fr.get("callsign_iata"),
                     "airline": al.get("name"),
@@ -228,7 +233,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = self.path.split("?", 1)[0].rstrip("/") or "/"
         if path in ("/", "/index.html"):
-            self._send(200, (HERE / "board.html").read_bytes(), "text/html; charset=utf-8")
+            self._send(
+                200, (HERE / "board.html").read_bytes(), "text/html; charset=utf-8"
+            )
         elif path == "/api/board":
             self._send(200, json.dumps(board()).encode(), "application/json")
         elif path == "/health":
@@ -242,7 +249,9 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     threading.Thread(target=route_worker, daemon=True).start()
-    print(f"planes board on http://{HOST}:{PORT}/ ({AIRPORT}, {RADIUS_NM} nm)", flush=True)
+    print(
+        f"planes board on http://{HOST}:{PORT}/ ({AIRPORT}, {RADIUS_NM} nm)", flush=True
+    )
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
 
 

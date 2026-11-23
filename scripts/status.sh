@@ -21,10 +21,9 @@ SERVICES=(
     "frontend-build|-|-"
     "setlister|5702|http://127.0.0.1:5702/api/setlister/health"
     "rotation-viz|5001|http://127.0.0.1:5001/api/rotation/health"
-    "telemetry-viz|5701|http://127.0.0.1:5701/health"
     "planes|5901|http://127.0.0.1:5901/health"
-    "dataviz-backend|-|-"
-    "dataviz-gui|-|-"
+    "dataviz-backend|42000|http://127.0.0.1:42000/api/v1/health"
+    "dataviz-gui|42002|http://127.0.0.1:42002/"
     "docker|-|-"
     "mysql|3306|-"
     "smbd|445|-"
@@ -32,7 +31,7 @@ SERVICES=(
     "tailscaled|-|-"
 )
 
-if [[ -t 1 ]]; then G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' D=$'\e[2m' N=$'\e[0m'; else G= Y= R= D= N=; fi
+if [[ -t 1 ]]; then G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' D=$'\e[2m' N=$'\e[0m'; else G='' Y='' R='' D='' N=''; fi
 
 # Pad plain text first, then color it, so columns line up with or without color.
 cell() { printf '%s%-*s%s' "$1" "$2" "$3" "$N"; }
@@ -63,7 +62,7 @@ for row in "${SERVICES[@]}"; do
         failed)   label=$(cell "$R" 10 FAILED) ;;
         *)        label=$(cell "$Y" 10 "$state") ;;
     esac
-    [[ "$type" == "oneshot" && "$state" == "active" ]] && label=$(cell "$G" 10 done)
+    [[ "$type" == "oneshot" && "$state" == "active" ]] && label=$(cell "$G" 10 "done")
 
     note=""
     if [[ "$url" != "-" && "$state" == "active" ]]; then
