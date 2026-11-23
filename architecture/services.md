@@ -4,8 +4,9 @@
 
 - `astro build` turns `frontend/` into static files in `frontend/dist/`. Apache serves that folder
   and proxies `/api/...` routes to the backend services. `frontend-build.service` rebuilds at boot.
-- To publish a content change: `npm --prefix frontend run build`. Apache serves the new files on
-  the next request; no reload needed.
+- To publish a content change: `./scripts/publish.sh` (no sudo). It builds into `dist.next/` and
+  swaps it in, so the live site is never half-built and a failed build changes nothing. Apache
+  serves the new files on the next request; no reload needed.
 - `cesium-frontend.service` runs `astro dev` on port 42800 for live editing on the LAN. It is not
   the public site.
 - Apache config is tracked in `deploy/apache/` (sites + `includes/api-proxies.conf`) and installed

@@ -129,4 +129,4 @@ proxies `/api/planes/` to the service).
 - Service: `./scripts/deploy-startup.sh` installs and starts `planes.service`. After code changes:
   `sudo systemctl restart planes` (this also clears everything the service remembers; routes refill
   within about a minute, shown as "looking up N routes…" on the map).
-- Page: `npm --prefix frontend run build` publishes it; Apache serves the new files immediately.
+- Page: `./scripts/publish.sh` publishes it; Apache serves the new files immediately.
