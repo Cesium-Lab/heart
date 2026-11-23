@@ -1,0 +1,9 @@
+{
+  // Remote-SSH: forward these mr-ray ports to localhost on the Mac whenever this
+  // folder is open. Open http://localhost:<port>/ in the Mac browser.
+  "remote.restoreForwardedPorts": true,
+  "remote.portsAttributes": {
+    "42901": { "label": "Planes (SFO board)", "onAutoForward": "notify" },
+    "42800": { "label": "Astro dev", "onAutoForward": "silent" }
+  }
+}

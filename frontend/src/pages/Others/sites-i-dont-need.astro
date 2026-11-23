@@ -1,0 +1,118 @@
+---
+// Domains Colin is giving away for free, with contact info.
+// The phone and email are assembled in the browser so they aren't sitting in the HTML for
+// address-harvesting bots; people see and tap them normally.
+const domains = ["colin-skinner.com", "monarchband.net", "monarchmusic.live"];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Domains I'm giving away for free" />
+    <title>free domains // cesium-lab</title>
+    <style is:inline>
+      :root {
+        --bg: #fafaf7;
+        --surface: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b66;
+        --line: #e5e3dc;
+        --accent: #c4541c;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14140f;
+          --surface: #1c1c17;
+          --ink: #f5f3ec;
+          --muted: #8a8a82;
+          --line: #2a2a23;
+          --accent: #f0997b;
+        }
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap { max-width: 640px; margin: 0 auto; padding: 64px 24px 96px; }
+      .eyebrow { font-size: 13px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase;
+        margin-bottom: 8px; font-family: "JetBrains Mono", ui-monospace, monospace; }
+      h1 { font-size: 32px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 12px; }
+      .lede { font-size: 17px; color: var(--muted); margin-bottom: 32px; }
+      ul.domains { list-style: none; border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+        margin-bottom: 40px; }
+      ul.domains li { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+      ul.domains li:last-child { border-bottom: 0; }
+      .name { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 16px; color: var(--ink);
+        text-decoration: none; border-bottom: 1px solid var(--line); }
+      .name:hover { border-color: var(--accent); }
+      .ask { font-size: 14px; color: var(--accent); text-decoration: none; }
+      .ask:hover { text-decoration: underline; }
+      h2 { font-size: 13px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px;
+        font-family: "JetBrains Mono", ui-monospace, monospace; }
+      .contact { display: grid; gap: 6px; margin-bottom: 48px; }
+      .contact a { color: var(--ink); font-size: 18px; text-decoration: none; border-bottom: 1px solid var(--line);
+        width: fit-content; }
+      .contact a:hover { border-color: var(--accent); }
+      footer { font-size: 14px; color: var(--muted); }
+      footer a { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="eyebrow">others / sites i don't need</div>
+      <h1>Free domains</h1>
+      <p class="lede">If you want any of these sites, I don't need them and want to give them away for free.</p>
+
+      <ul class="domains">
+        {
+          domains.map((d) => (
+            <li>
+              <a class="name" href={`https://${d}`}>{d}</a>
+              <a class="ask" data-domain={d} href="#contact">I want this one →</a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <section id="contact">
+        <h2>Contact</h2>
+        <div class="contact">
+          <a id="phone" href="#contact">(turn on JavaScript to see the phone number)</a>
+          <a id="email" href="#contact">(turn on JavaScript to see the email)</a>
+        </div>
+      </section>
+
+      <footer><a href="/">home</a> · <a href="/sitemap/">site map</a></footer>
+    </main>
+
+    <script is:inline>
+      // Assembled here instead of written into the HTML, to keep harvesting bots away.
+      const digits = ["650", "966", "4780"];
+      const user = ["colin", "a", "skinner"].join("");
+      const host = ["gmail", "com"].join(".");
+      const email = user + "@" + host;
+
+      const phone = document.getElementById("phone");
+      phone.textContent = `(${digits[0]}) ${digits[1]}-${digits[2]}`;
+      phone.href = "tel:+1" + digits.join("");
+
+      const mail = document.getElementById("email");
+      mail.textContent = email;
+      mail.href = "mailto:" + email;
+
+      // "I want this one" opens an email with the domain already in the subject.
+      for (const a of document.querySelectorAll(".ask")) {
+        a.href = "mailto:" + email + "?subject=" + encodeURIComponent("I'd like " + a.dataset.domain);
+      }
+    </script>
+  </body>
+</html>

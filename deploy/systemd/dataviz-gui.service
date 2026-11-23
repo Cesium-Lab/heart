@@ -1,0 +1,19 @@
+[Unit]
+Description=DataViz Dashboard
+After=network-online.target dataviz-backend.service
+Wants=network-online.target
+Requires=dataviz-backend.service
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/projects/dataviz/dashboard
+ExecStart=/home/cskin/Cesium/heart/projects/dataviz/.venv/bin/python app.py
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+# scripts/publish.sh builds here, then swaps it in
+dist.next/
+dist.old/
 .astro/
 
 __pycache__/

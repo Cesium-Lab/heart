@@ -1,0 +1,20 @@
+{
+  "uid": "planes-todo",
+  "title": "Planes (to do)",
+  "tags": ["planes", "todo"],
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "NOTE: planes traffic stats go here (later)",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "## TODO: SFO traffic stats\n\nNot built yet. Placeholder so the idea isn't lost.\n\nIdea: the planes service (`backend/services/planes/server.py`, port 42901) exposes a `/metrics` endpoint for Prometheus (port 42004, which already scrapes DataViz), and this dashboard charts it:\n\n- arrivals / departures per hour (from the takeoffs and landings the service sees)\n- aircraft tracked in the 40 nm area over time\n- busiest airline today, most common aircraft types\n- data freshness and adsb.fi errors / rate-limit backoffs\n\nCaveat: the service only fetches while someone has `/planes/` open, so counts have gaps when nobody is watching. Decide then whether that's fine or whether a light background poll is worth it.\n\nSee `architecture/ideas.md` and `backend/services/planes/README.md`."
+      }
+    }
+  ]
+}

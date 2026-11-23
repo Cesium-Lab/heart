@@ -1,0 +1,18 @@
+[Unit]
+Description=DataViz backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/projects/dataviz/backend
+ExecStart=/home/cskin/Cesium/heart/projects/dataviz/.venv/bin/python main.py
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

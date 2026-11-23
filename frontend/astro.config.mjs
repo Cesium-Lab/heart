@@ -1,18 +1,26 @@
-import { defineConfig } from 'astro/config';
+import { defineConfig } from "astro/config";
 
 export default defineConfig({
+  // Dev server port: 42800, the development range in architecture/services.md.
+  server: { port: 42800 },
+  // The map used to live at /planes/map/; the board is now a drawer on it.
+  redirects: { "/planes/map": "/planes/" },
   vite: {
     server: {
-      allowedHosts: ['cesiumlab.net', 'www.cesiumlab.net'],
+      // LAN names so the dev server works from psyche at http://mr-ray:42800
+      allowedHosts: ["cesiumlab.net", "www.cesiumlab.net", "mr-ray"],
       proxy: {
-        '/api/rotation': {
-          target: 'http://127.0.0.1:5001',
+        "/api/rotation": {
+          target: "http://127.0.0.1:42902",
           changeOrigin: true,
         },
-        '/api/telemetry': {
-          target: 'http://127.0.0.1:5701',
+        "/api/planes": {
+          target: "http://127.0.0.1:42901",
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/telemetry/, ''),
+        },
+        "/api/setlister": {
+          target: "http://127.0.0.1:42903",
+          changeOrigin: true,
         },
       },
     },

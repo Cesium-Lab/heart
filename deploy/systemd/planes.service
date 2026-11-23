@@ -1,0 +1,24 @@
+[Unit]
+Description=Planes: SFO map + board API (127.0.0.1:42901, proxied by Apache at /api/planes/)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/backend/services/planes
+# Optional settings and the AeroAPI key ("-" = fine if the file is missing).
+EnvironmentFile=-/etc/cesium/planes.env
+ExecStart=/usr/bin/python3 server.py
+# /run/planes holds a snapshot of what the service has learned (routes, tracks), saved every
+# minute and on stop, so a crash or restart picks up where it left off. /run is a RAM disk:
+# a reboot wipes it. Preserve keeps it across service restarts.
+RuntimeDirectory=planes
+RuntimeDirectoryPreserve=yes
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

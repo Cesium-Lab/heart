@@ -6,8 +6,8 @@ The Flask API converts and validates quaternion, rotation-matrix, Euler-angle, a
 
 - Application: `app.py`
 - Dependencies: `requirements.txt`
-- Port: `5001`
-- Health: `GET http://127.0.0.1:5001/api/rotation/health`
+- Port: `42902`
+- Health: `GET http://127.0.0.1:42902/api/rotation/health`
 - Unit: `deploy/systemd/rotation-viz.service`
 - Apache proxy prefix: `/api/rotation/`
 
@@ -31,14 +31,14 @@ sudo install -m 0644 deploy/systemd/rotation-viz.service /etc/systemd/system/rot
 sudo systemctl daemon-reload
 sudo systemctl enable --now rotation-viz.service
 systemctl status rotation-viz.service --no-pager
-curl --fail http://127.0.0.1:5001/api/rotation/health
+curl --fail http://127.0.0.1:42902/api/rotation/health
 ```
 
 Apache proxies the public API route:
 
 ```apache
-ProxyPass /api/rotation/ http://127.0.0.1:5001/api/rotation/
-ProxyPassReverse /api/rotation/ http://127.0.0.1:5001/api/rotation/
+ProxyPass /api/rotation/ http://127.0.0.1:42902/api/rotation/
+ProxyPassReverse /api/rotation/ http://127.0.0.1:42902/api/rotation/
 ```
 
-Keep port 5001 private rather than exposing it directly to the internet.
+Keep port 42902 private rather than exposing it directly to the internet.

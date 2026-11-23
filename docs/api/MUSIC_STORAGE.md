@@ -1,5 +1,9 @@
 # Cesium Lab Music Storage Schema
 
+> **Reference sketch, not the plan.** Kept as background for a future idea in
+> `architecture/ideas.md`. It assumes a PostgreSQL + FastAPI stack that is not the current
+> direction (files are the truth; any index must be rebuildable). See `architecture/`.
+
 ## Goal
 
 Use the mounted hard drive as the canonical store for large music files, while PostgreSQL stores searchable metadata, versioning, and relationships between songs, recordings, DAW projects, sessions, performances, people, and files.
