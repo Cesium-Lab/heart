@@ -11,6 +11,7 @@ import gzip
 import json
 import math
 import re
+import signal
 import os
 import queue
 import threading
@@ -775,7 +776,84 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+# ---------------------------------------------------------------- snapshot
+# Everything above lives in memory. A snapshot every minute (and on stop) lets the service pick
+# up where it left off after a crash or restart. It goes to /run/planes (systemd's
+# RuntimeDirectory: a RAM disk, so a reboot still wipes it). Off when run by hand.
+STATE_DIR = os.getenv("PLANES_STATE_DIR") or os.getenv("RUNTIME_DIRECTORY") or ""
+STATE_FILE = os.path.join(STATE_DIR, "state.json") if STATE_DIR else ""
+SNAPSHOT_EVERY_S = 60
+SNAPSHOT_MAX_AGE_S = 6 * 3600  # older snapshots are ignored at startup
+
+
+def save_snapshot() -> None:
+    if not STATE_FILE:
+        return
+    with _routes_lock:
+        routes = {k: list(v) for k, v in _routes.items()}
+    with _tracks_lock:
+        tracks = {k: list(v) for k, v in _tracks.items()}
+        state = {
+            "saved": time.time(),
+            "routes": routes,
+            "phase": {k: list(v) for k, v in dict(_phase).items()},  # copied in one step
+            "tracks": tracks,
+            "track_seen": dict(_track_seen),
+            "track_info": dict(_track_info),
+        }
+    tmp = STATE_FILE + ".tmp"
+    try:
+        with open(tmp, "w") as f:
+            json.dump(state, f, separators=(",", ":"))
+        os.replace(
+            tmp, STATE_FILE
+        )  # atomic: a crash mid-write never leaves a broken file
+    except OSError as e:
+        print(f"snapshot not saved: {e}", flush=True)
+
+
+def load_snapshot() -> None:
+    if not STATE_FILE or not os.path.exists(STATE_FILE):
+        return
+    try:
+        with open(STATE_FILE) as f:
+            state = json.load(f)
+    except (OSError, ValueError) as e:
+        print(f"snapshot ignored: {e}", flush=True)
+        return
+    age = time.time() - state.get("saved", 0)
+    if age > SNAPSHOT_MAX_AGE_S:
+        print(f"snapshot ignored: {age / 3600:.1f} h old", flush=True)
+        return
+    with _routes_lock:
+        _routes.update({k: (v[0], v[1]) for k, v in state.get("routes", {}).items()})
+    with _tracks_lock:
+        _phase.update({k: (v[0], v[1]) for k, v in state.get("phase", {}).items()})
+        _tracks.update(state.get("tracks", {}))
+        _track_seen.update(state.get("track_seen", {}))
+        _track_info.update(state.get("track_info", {}))
+    print(
+        f"snapshot loaded ({age:.0f}s old): {len(_routes)} routes, {len(_tracks)} tracks",
+        flush=True,
+    )
+
+
+def snapshot_worker() -> None:
+    while True:
+        time.sleep(SNAPSHOT_EVERY_S)
+        save_snapshot()
+
+
 def main() -> None:
+    load_snapshot()
+    if STATE_FILE:
+        threading.Thread(target=snapshot_worker, daemon=True).start()
+
+        def stop(signum: int, _frame: object) -> None:
+            save_snapshot()  # systemctl stop/restart sends SIGTERM: save the latest first
+            raise SystemExit(0)
+
+        signal.signal(signal.SIGTERM, stop)
     threading.Thread(target=route_worker, daemon=True).start()
     print(
         f"planes API on http://{HOST}:{PORT}/api/planes/board ({AIRPORT}, {RADIUS_NM} nm)",

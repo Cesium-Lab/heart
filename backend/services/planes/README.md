@@ -95,24 +95,60 @@ Near SFO, what the plane is doing beats the route database:
 - When the route contradicts what the plane is doing, only the known part is shown: `? → SFO` for an
   arrival, `SFO → ?` for a departure, with a note in the info panel; the board's city shows `?`.
 
-## What the service remembers (all in memory; a restart wipes it)
+## What the service remembers
+
+Everything lives in memory (Python dicts). A snapshot is saved to **`/run/planes/state.json`**
+every 60 s and when the service stops, and loaded at startup, so a crash or restart picks up where
+it left off (routes don't all need looking up again, replay keeps its history). `/run` is a RAM
+disk, so **a reboot wipes it**; snapshots older than 6 h are ignored. systemd creates the folder
+(`RuntimeDirectory=planes` in `planes.service`); run by hand, snapshots are off unless
+`PLANES_STATE_DIR` is set.
 
 | What                                         | Kept for                                                                                                                                                                             |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Routes per callsign                          | 6 h                                                                                                                                                                                  |
-| SFO weather (METAR)                          | 10 min                                                                                                                                                                               |
+| SFO weather (METAR)                          | 10 min (not in the snapshot)                                                                                                                                                         |
 | What each plane was seen doing at SFO        | 45 min                                                                                                                                                                               |
 | Track points (only from page-driven fetches) | `PLANES_TRACK_HOURS` (default 5 h); a plane's track is dropped `PLANES_REPLAY_MIN` (default 60 min) after it leaves the area, so replay can show it; parked planes add no new points |
 | Followed planes' tracks                      | Whole journey (exempt from the limits above) until nobody has followed the plane for 2 min                                                                                           |
 
-Roughly 3-6 MB on top of the ~13 MB the service uses (more of it now, since planes that left are
-kept an hour for replay).
+Roughly 3-6 MB on top of the ~13 MB the service uses; the snapshot file is ~100 KB-1 MB.
+
+## FlightAware AeroAPI (planned: accurate routes and times)
+
+adsbdb routes are often a different leg of the same flight number. FlightAware's **AeroAPI**
+(their developer API, separate from the flightaware.com website) matches live flights to airline
+schedules: real origin and destination plus scheduled, estimated, and actual times.
+
+- Sign up / manage keys and usage: **https://www.flightaware.com/aeroapi/portal** (Personal tier:
+  no monthly fee, a small free monthly usage credit; personal/non-commercial use only).
+- The key goes in **`/etc/cesium/planes.env`** as `AEROAPI_KEY=...` (template:
+  [`.env.example`](.env.example)). `planes.service` loads that file; never commit the real one.
+- Status: the key slot is ready; the lookup isn't built yet. Plan: keep adsbdb as the free
+  default, ask AeroAPI only for SFO board flights and planes you click, cache answers for the day,
+  and cap monthly usage so it stays inside the free credit.
+
+## Later: bigger range when zoomed out (not built)
+
+Fetch a larger area when the map is zoomed out, still centered on SFO. Measured 2026-11-23:
+
+| Zoom (roughly)  | Area   | Aircraft | Per update (gzip) |
+| --------------- | ------ | -------- | ----------------- |
+| ≥ 8.5 (default) | 40 nm  | ~70–120  | ~6 KB             |
+| ~7–8.5          | 100 nm | ~240     | ~32 KB            |
+| < 7             | 250 nm | ~430     | ~58 KB            |
+
+Plan: one cached fetch per tier (shared by all viewers, only while someone views it; 3 tiers =
+3 requests per 10 s, under adsb.fi's 1/s); route lookups only within 40 nm plus clicked/hovered
+planes, so adsbdb isn't flooded; board, classification, and replay stay at 40 nm; the range ring
+grows with the tier. Open question: keep it centered on SFO (simple, shared cache) or follow the
+map center like FR24 (more requests, less sharing).
 
 ## Config
 
-All optional env vars: `PLANES_PORT` (42901), `PLANES_HOST` (127.0.0.1), `PLANES_AIRPORT` (SFO),
+Set in `/etc/cesium/planes.env` (see [`.env.example`](.env.example)). All optional env vars: `PLANES_PORT` (42901), `PLANES_HOST` (127.0.0.1), `PLANES_AIRPORT` (SFO),
 `PLANES_LAT` / `PLANES_LON`, `PLANES_RADIUS_NM` (40), `PLANES_CACHE_S` (10), `PLANES_SOURCE`
-(`adsbfi` or `adsblol`), `PLANES_TRACK_HOURS` (5), `PLANES_REPLAY_MIN` (60).
+(`adsbfi` or `adsblol`), `PLANES_TRACK_HOURS` (5), `PLANES_REPLAY_MIN` (60), `PLANES_STATE_DIR` (snapshot folder).
 
 ## Run locally
 
@@ -127,6 +163,6 @@ proxies `/api/planes/` to the service).
 ## Deploy (changes the machine, so ask first)
 
 - Service: `./scripts/deploy-startup.sh` installs and starts `planes.service`. After code changes:
-  `sudo systemctl restart planes` (this also clears everything the service remembers; routes refill
-  within about a minute, shown as "looking up N routes…" on the map).
+  `sudo systemctl restart planes` (it saves a snapshot on the way down and reloads it, so little is
+  lost; only a reboot starts it from scratch).
 - Page: `./scripts/publish.sh` publishes it; Apache serves the new files immediately.

@@ -32,6 +32,11 @@ serving the site.
 - **Planes traffic stats** in Grafana (arrivals/departures per hour, busiest airlines): a `/metrics`
   endpoint on the planes service for Prometheus. Placeholder note: Grafana dashboard "Planes (to do)"
   (`projects/dataviz/telemetry_server/grafana/provisioning/dashboards/planes-todo.json`).
+- **Planes: bigger range when zoomed out.** Tiers by zoom, still centered on SFO: 40 nm (now),
+  100 nm (~240 aircraft, ~32 KB/update), 250 nm (~430 aircraft, ~58 KB; adsb.fi's max). Cache per
+  tier so viewers share fetches; look up routes only within 40 nm (plus clicked/hovered planes)
+  so adsbdb isn't flooded; board/classification/replay stay at 40 nm; range ring follows the tier.
+  Measured 2026-11-23. Details in `backend/services/planes/README.md` ("Later").
 - Drive-health alerts (smartctl exporter → Prometheus/Grafana) and ntfy push notifications.
 - restic backups of the irreplaceable files (offsite or to the new drive).
 - ESP32 room sensors feeding Prometheus; Pi ADS-B receiver (RTL-SDR) feeding FR24/adsb.lol.
