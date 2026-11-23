@@ -13,18 +13,18 @@
 
 ## Running services
 
-| Service             | Unit                        | Local endpoint    | Reached at                                 |
-| ------------------- | --------------------------- | ----------------- | ------------------------------------------ |
-| Apache              | `apache2`                   | `0.0.0.0:80`      | cesiumlab.net (tunnel), LAN                |
-| Cloudflare tunnel   | `cloudflared`               | -                 | -                                          |
-| Astro dev server    | `cesium-frontend`           | `0.0.0.0:42800`   | LAN only (development)                     |
-| Rotation visualizer | `rotation-viz`              | `127.0.0.1:42902` | `/api/rotation/`                           |
-| Setlister           | `setlister`                 | `127.0.0.1:42903` | `/api/setlister/`                          |
-| Planes (SFO board)  | `planes`                    | `127.0.0.1:42901` | `/planes/`, `/planes/map/`, `/api/planes/` |
-| DataViz API         | `dataviz-backend`           | `127.0.0.1:42000` | `/api/dataviz/`                            |
-| DataViz GUI         | `dataviz-gui`               | `127.0.0.1:42002` | `dataviz.cesiumlab.net`                    |
-| Grafana             | docker (`projects/dataviz`) | `127.0.0.1:42003` | private/admin                              |
-| Prometheus          | docker (`projects/dataviz`) | `127.0.0.1:42004` | private only                               |
+| Service             | Unit                        | Local endpoint    | Reached at                                      |
+| ------------------- | --------------------------- | ----------------- | ----------------------------------------------- |
+| Apache              | `apache2`                   | `0.0.0.0:80`      | cesiumlab.net (tunnel), LAN                     |
+| Cloudflare tunnel   | `cloudflared`               | -                 | -                                               |
+| Astro dev server    | `cesium-frontend`           | `0.0.0.0:42800`   | LAN only (development)                          |
+| Rotation visualizer | `rotation-viz`              | `127.0.0.1:42902` | `/api/rotation/`                                |
+| Setlister           | `setlister`                 | `127.0.0.1:42903` | `/api/setlister/`                               |
+| Planes (SFO board)  | `planes`                    | `127.0.0.1:42901` | `/planes/` (map + board drawer), `/api/planes/` |
+| DataViz API         | `dataviz-backend`           | `127.0.0.1:42000` | `/api/dataviz/`                                 |
+| DataViz GUI         | `dataviz-gui`               | `127.0.0.1:42002` | `dataviz.cesiumlab.net`                         |
+| Grafana             | docker (`projects/dataviz`) | `127.0.0.1:42003` | private/admin                                   |
+| Prometheus          | docker (`projects/dataviz`) | `127.0.0.1:42004` | private only                                    |
 
 Retired: Telemetry Viz (`archive/telemetry-viz/`), replaced by DataViz + Grafana/Prometheus.
 `./scripts/status.sh` shows what is actually running right now.
