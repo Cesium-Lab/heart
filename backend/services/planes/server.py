@@ -76,6 +76,8 @@ def route_worker() -> None:
                     "origin_city": o.get("municipality"),
                     "dest": d.get("iata_code"),
                     "dest_city": d.get("municipality"),
+                    "origin_pos": [o.get("latitude"), o.get("longitude")],
+                    "dest_pos": [d.get("latitude"), d.get("longitude")],
                 }
         except (URLError, HTTPError, TimeoutError, ValueError, OSError):
             route = None  # cache the miss too; retried after TTL
@@ -206,6 +208,9 @@ def map_entry(ac: dict, kind: str, data_now: float) -> dict | None:
         "origin_city": ascii_upper((route or {}).get("origin_city") or ""),
         "dest": (route or {}).get("dest") or "",
         "dest_city": ascii_upper((route or {}).get("dest_city") or ""),
+        # [lat, lon] of the airports, for the map's line to the destination.
+        "origin_pos": (route or {}).get("origin_pos"),
+        "dest_pos": (route or {}).get("dest_pos"),
         "type": ac.get("t") or "",
         "reg": ac.get("r") or "",
         "ground": alt == "ground",
@@ -252,6 +257,8 @@ def build_board() -> dict:
         "overhead": over,
         "tracked": len(acs),
         "source": SOURCE,
+        # Callsigns still waiting for a route lookup (all of them right after a restart).
+        "routes_pending": _route_q.qsize(),
         "aircraft": aircraft,
     }
 

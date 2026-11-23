@@ -95,7 +95,8 @@
       <div><i style="background:#16a34a"></i>arriving SFO</div>
       <div><i style="background:#dc2626"></i>departing SFO</div>
       <div><i style="background:#2563eb"></i>other traffic</div>
-      <div style="margin-top:4px">track altitude</div>
+      <div><svg width="18" height="6" aria-hidden="true"><line x1="0" y1="3" x2="18" y2="3" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="2 3" /></svg> to destination</div>
+      <div style="margin-top:4px">past track (since page opened), by altitude</div>
       <div class="ramp"></div>
       <div class="ramp-labels"><span>0</span><span>20k</span><span>40k ft</span></div>
     </div>
@@ -254,6 +255,43 @@
         return { type: "FeatureCollection", features };
       }
 
+      // Great-circle path between two [lon, lat] points (what a long flight roughly follows).
+      function greatCircle([lon1, lat1], [lon2, lat2], steps = 96) {
+        const r = Math.PI / 180;
+        const toVec = (lo, la) => [Math.cos(la * r) * Math.cos(lo * r), Math.cos(la * r) * Math.sin(lo * r), Math.sin(la * r)];
+        const a = toVec(lon1, lat1), b = toVec(lon2, lat2);
+        const d = Math.acos(Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
+        if (d < 1e-6) return [[lon1, lat1], [lon2, lat2]];
+        const pts = [];
+        let prevLon = null;
+        for (let i = 0; i <= steps; i++) {
+          const f = i / steps, A = Math.sin((1 - f) * d) / Math.sin(d), B = Math.sin(f * d) / Math.sin(d);
+          const x = A * a[0] + B * b[0], y = A * a[1] + B * b[1], z = A * a[2] + B * b[2];
+          let lon = Math.atan2(y, x) / r;
+          // Keep the line continuous across the 180° meridian (e.g. SFO → Singapore).
+          if (prevLon != null) while (lon - prevLon > 180) lon -= 360;
+          if (prevLon != null) while (lon - prevLon < -180) lon += 360;
+          prevLon = lon;
+          pts.push([lon, Math.atan2(z, Math.hypot(x, y)) / r]);
+        }
+        return pts;
+      }
+
+      // Selected plane's future: dashed line from where it is now to its destination airport.
+      function futureFeatures(now) {
+        const p = selected && planes.get(selected);
+        const dest = p && p.data.dest_pos;
+        if (!p || p.data.ground || !dest || dest[0] == null) return { type: "FeatureCollection", features: [] };
+        const here = displayPos(p, now);
+        return {
+          type: "FeatureCollection",
+          features: [
+            { type: "Feature", geometry: { type: "LineString", coordinates: greatCircle(here, [dest[1], dest[0]]) }, properties: {} },
+            { type: "Feature", geometry: { type: "Point", coordinates: [dest[1], dest[0]] }, properties: { label: p.data.dest || "" } },
+          ],
+        };
+      }
+
       // ------------------------------------------------------------ info panel
       const panel = document.getElementById("panel");
       const panelBody = document.getElementById("panelBody");
@@ -339,6 +377,7 @@
           const n = (k) => b.aircraft.filter((a) => a.kind === k).length;
           if (b.updated) lastUpdated = b.updated * 1000;
           status.textContent = `${b.aircraft.length} aircraft · ${n("arr")} arriving · ${n("dep")} departing` +
+            (b.routes_pending ? ` · looking up ${b.routes_pending} routes…` : "") +
             (b.error ? " · " + b.error : "");
           if (selected) renderPanel();
         } catch (e) {
@@ -362,6 +401,32 @@
             "line-color": ["interpolate", ["linear"], ["get", "alt"],
               0, "#22c55e", 4000, "#a3e635", 10000, "#facc15", 20000, "#f97316", 30000, "#ec4899", 40000, "#8b5cf6"],
           },
+        });
+
+        map.addSource("future", { type: "geojson", data: futureFeatures(Date.now()) });
+        map.addLayer({
+          id: "future-line",
+          type: "line",
+          source: "future",
+          filter: ["==", ["geometry-type"], "LineString"],
+          layout: { "line-cap": "round" },
+          paint: { "line-color": "#6b7280", "line-width": 1.5, "line-dasharray": [2, 3] },
+        });
+        map.addLayer({
+          id: "future-dest",
+          type: "circle",
+          source: "future",
+          filter: ["==", ["geometry-type"], "Point"],
+          paint: { "circle-radius": 4, "circle-color": "#fff", "circle-stroke-color": "#6b7280", "circle-stroke-width": 2 },
+        });
+        map.addLayer({
+          id: "future-dest-label",
+          type: "symbol",
+          source: "future",
+          filter: ["==", ["geometry-type"], "Point"],
+          layout: { "text-field": ["get", "label"], "text-font": ["Noto Sans Bold"], "text-size": 12,
+            "text-offset": [0, 1.1], "text-anchor": "top" },
+          paint: { "text-color": "#374151", "text-halo-color": "#fff", "text-halo-width": 1.5 },
         });
 
         map.addSource("planes", { type: "geojson", data: planeFeatures(Date.now()) });
@@ -406,6 +471,7 @@
             const now = Date.now();
             map.getSource("planes").setData(planeFeatures(now));
             map.getSource("track").setData(trackFeatures(now));
+            map.getSource("future").setData(futureFeatures(now));
             lastFrame = ts;
           }
           requestAnimationFrame(frame);
