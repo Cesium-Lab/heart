@@ -9,6 +9,9 @@
   serves the new files on the next request; no reload needed.
 - `cesium-frontend.service` runs `astro dev` on port 42800 for live editing on the LAN. It is not
   the public site.
+- Don't name a site folder `icons/`: Ubuntu's Apache aliases `/icons/` to its own
+  `/usr/share/apache2/icons/` (`mods-available/alias.conf`), so those URLs 404 on the live site
+  while working in `astro dev`. Site icons live in `frontend/public/favicons/`.
 - Apache config is tracked in `deploy/apache/` (sites + `includes/api-proxies.conf`) and installed
   by `scripts/deploy/apache.sh`. Edit it there, not in `/etc`.
 

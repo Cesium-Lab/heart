@@ -128,6 +128,35 @@ schedules: real origin and destination plus scheduled, estimated, and actual tim
   default, ask AeroAPI only for SFO board flights and planes you click, cache answers for the day,
   and cap monthly usage so it stays inside the free credit.
 
+## Later: build an ADS-B feeder (not built)
+
+A receiver of our own: a Raspberry Pi with an SDR stick picks up planes' ADS-B broadcasts directly.
+
+- **Why:** live data straight from the antenna with no rate limits or outside dependency; planes the
+  aggregators miss nearby; and feeding the networks earns perks: a free FlightAware account plus
+  extra AeroAPI credit (see above), a free Flightradar24 Business account, and MLAT positions for
+  planes that don't broadcast GPS (small private and military aircraft).
+- **Hardware (~$40-60):** the Pi 3 we already have works (a Pi 4 is better for MLAT); an RTL-SDR
+  stick with a Realtek RTL2832U chip (e.g. RTL-SDR Blog V4 or FlightAware Pro Stick Plus); a
+  **1090 MHz** antenna (the rod antennas bundled with dongles aren't tuned for it). Placement
+  matters most: as high and unobstructed as possible (attic or window facing SFO).
+- **Easiest software:** the [adsb.im feeder image](https://adsb.im/home)
+  ([GitHub](https://github.com/dirkhh/adsb-feeder-image)), also offered in Raspberry Pi Imager.
+  Flash it, open its setup page, enter the antenna's position, and tick the aggregators to feed.
+  adsb.fi and adsb.lol need no account.
+- **Other ways:**
+  - FlightAware's [PiAware build guide](https://www.flightaware.com/adsb/piaware/build) (quickest
+    map, and the FlightAware feeder perks)
+  - Flightradar24 [share your data](https://www.flightradar24.com/share-your-data) (Business account)
+  - DIY on Raspberry Pi OS: [readsb install script](https://github.com/wiedehopf/adsb-scripts/wiki/Automatic-installation-for-readsb)
+    plus the [tar1090 map](https://github.com/wiedehopf/tar1090)
+  - Feeding guides: [adsb.fi](https://github.com/adsbfi/adsb-fi-scripts),
+    [adsb.lol](https://www.adsb.lol/docs/feeders-only/introduction/)
+- **Hooking it up here:** the feeder serves readsb's `aircraft.json` (same format as adsb.fi) on the
+  LAN, so it could become a `PLANES_SOURCE=local` option in `server.py` (falling back to adsb.fi
+  for anything out of the antenna's range). Give it a port from `architecture/services.md`
+  (sensor streaming, 42700-42799) if it runs on mr-ray, or a LAN address if it runs on the Pi.
+
 ## Later: bigger range when zoomed out (not built)
 
 Fetch a larger area when the map is zoomed out, still centered on SFO. Measured 2026-11-23:
