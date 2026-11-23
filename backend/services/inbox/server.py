@@ -112,7 +112,13 @@ def add_entry(text: str, files: list[tuple[str, bytes]], source: str = "") -> st
         meta = f"UTC {utc:%Y-%m-%dT%H:%M:%SZ} · unix {int(now.timestamp())}"
         if source:
             meta += f" · from {source}"
-        block = [f"## {now:%H:%M:%S %Z}", f"_{meta}_", ""]
+        # Fixed per-day number: one past the highest ever used today (gaps stay after deletes).
+        n = max((e["n"] for e in read_day(day)), default=0) + 1
+        gone = folder / ".deleted" / "deleted.md"
+        if gone.exists():
+            used = re.findall(r"^## (\d+) ·", gone.read_text(encoding="utf-8"), re.M)
+            n = max([n] + [int(u) + 1 for u in used])
+        block = [f"## {n} · {now:%H:%M:%S %Z}", f"_{meta}_", ""]
         # Text is quoted so nothing a user types can look like an entry header.
         block += [f"> {line}" if line else ">" for line in text.strip().splitlines()]
         if text.strip() and saved:
@@ -130,7 +136,9 @@ def write_day(day: str, entries: list[dict]) -> None:
     out = [f"# Inbox {day}", ""]
     for e in entries:
         out += (
-            [f"## {e['time']}"] + ([f"_{e['meta']}_"] if e.get("meta") else []) + [""]
+            [f"## {e['n']} · {e['time']}"]
+            + ([f"_{e['meta']}_"] if e.get("meta") else [])
+            + [""]
         )
         out += [f"> {line}" if line else ">" for line in e["text"].splitlines()]
         if e["text"] and e["files"]:
@@ -153,7 +161,9 @@ def delete_entries(day: str, indexes: set[int]) -> int:
         trash.mkdir(exist_ok=True)
         with (trash / "deleted.md").open("a", encoding="utf-8") as fh:
             for e in gone:
-                fh.write(f"## {e['time']} (deleted {datetime.now():%H:%M:%S})\n\n")
+                fh.write(
+                    f"## {e['n']} · {e['time']} (deleted {datetime.now():%H:%M:%S})\n\n"
+                )
                 fh.write("".join(f"> {ln}\n" for ln in e["text"].splitlines()))
                 fh.write("".join(f"- {f}\n" for f in e["files"]) + "\n")
                 for f in e["files"]:
@@ -195,8 +205,16 @@ def read_day(day: str) -> list[dict]:
     entries: list[dict] = []
     for line in md.read_text(encoding="utf-8").splitlines():
         if line.startswith("## "):
+            head = line[3:].strip()
+            num = re.match(r"(\d+) · (.*)$", head)
             entries.append(
-                {"time": line[3:].strip(), "meta": "", "text": [], "files": []}
+                {
+                    "n": int(num[1]) if num else None,
+                    "time": num[2] if num else head,
+                    "meta": "",
+                    "text": [],
+                    "files": [],
+                }
             )
         elif (
             entries
@@ -211,6 +229,15 @@ def read_day(day: str) -> list[dict]:
             entries[-1]["files"].append(unquote(m[2]))
     for e in entries:
         e["text"] = "\n".join(e["text"])
+    # Entries saved before numbering existed: number them in order, skipping used numbers.
+    used = {e["n"] for e in entries if e["n"]}
+    nxt = 1
+    for e in entries:
+        if not e["n"]:
+            while nxt in used:
+                nxt += 1
+            e["n"] = nxt
+            used.add(nxt)
     return entries
 
 
@@ -261,7 +288,7 @@ def thumbnail(path: Path, size: int = 480) -> bytes | None:
 
 def entry_text(day: str, e: dict) -> str:
     """One entry as plain text (for Claude/ChatGPT)."""
-    lines = [f"[{e['time']}] {e['text'] or '(no note)'}"]
+    lines = [f"[{day}.{e['n']} · {e['time']}] {e['text'] or '(no note)'}"]
     if e.get("meta"):
         lines.append(f"  ({e['meta']})")
     for f in e["files"]:
@@ -283,7 +310,7 @@ def export_zip(day: str, indexes: set[int]) -> bytes:
         md = [f"# Inbox {day} (selected)", ""]
         for e in entries:
             md += (
-                [f"## {e['time']}"]
+                [f"## {e['n']} · {e['time']}"]
                 + ([f"_{e['meta']}_"] if e.get("meta") else [])
                 + [""]
             )
@@ -547,7 +574,15 @@ button{font:inherit;font-weight:600;color:#fff;background:var(--accent);border:0
 .picked .x{flex:none;width:26px;height:26px;padding:0;font-size:17px;line-height:1;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px}
 .size{font-size:13px;color:var(--muted);margin:0 2px}.size.bad{color:#dc2626;font-weight:600}
 button:disabled{opacity:.4;cursor:not-allowed}
-.pick{width:16px;height:16px;vertical-align:-3px;margin-right:4px;accent-color:var(--accent)}
+.num{color:var(--bright);font-weight:600}
+.ehead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.e{-webkit-touch-callout:none;cursor:default;border-radius:8px;padding-left:8px;padding-right:8px;transition:background .1s}
+.e.sel{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+/* round checkbox on the right */
+.pick{appearance:none;-webkit-appearance:none;flex:none;width:18px;height:18px;margin:0;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
+.pick:checked{background:var(--accent);border-color:var(--accent)}
+.pick:checked::after{content:"";width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+.pick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 label.t{cursor:pointer;user-select:none}
 /* Same size/style as the "N saved · emailed" text beside it, in white. */
 .selall{font:inherit;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--bright);background:transparent;border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-left:8px;cursor:pointer}.meta{font-size:11px}
@@ -589,6 +624,23 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .nav .today{font-weight:600;color:var(--bright);text-align:center}
 .title{font-size:28px;margin:4px 2px 12px;letter-spacing:-.01em}
 </style></head><body><main>
+<script>
+// Clipboard that also works on plain http (http://mr-ray/inbox/ at home): browsers only allow
+// navigator.clipboard on https, so fall back to the classic hidden-textarea copy.
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+  document.body.append(ta); ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch {}
+  ta.remove();
+  return ok;
+}
+</script>
 {logout}
 <h1 class="title">Drop a line.</h1>
 <div class="nav">{prev}{today}{next}</div>
@@ -600,7 +652,8 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 {entries}
 <div id="selbar" class="del" hidden>
   <b id="delcount"></b>
-  <button type="button" id="selcopy" class="plain">Copy</button>
+  <button type="button" id="selcopytext" class="plain" title="Just the notes">Copy text</button>
+  <button type="button" id="selcopy" class="plain" title="Notes with time, source, and attachment links">Copy entry</button>
   <button type="button" id="selexport" class="plain">Export .zip</button>
   <button type="button" id="seldelete">Delete…</button>
   <button type="button" id="delcancel" class="plain">Cancel</button>
@@ -616,7 +669,8 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 (() => {
   const bar = document.getElementById("selbar"), form = document.getElementById("delform");
   const picks = [...document.querySelectorAll(".pick")];
-  const ENTRIES = {entries_json};  // plain text per entry position, for Copy
+  const ENTRIES = {entries_json};  // full entry text per position, for "Copy entry"
+  const NOTES = {notes_json};      // just the note per position, for "Copy text"
   const chosen = () => picks.filter((p) => p.checked).map((p) => Number(p.value)).sort((a, b) => a - b);
   const all = document.getElementById("selectall");
   let last = null;
@@ -625,14 +679,58 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
     bar.hidden = n === 0;
     if (n === 0) form.hidden = true;
     document.getElementById("delcount").textContent = `${n} selected`;
+    document.getElementById("selcopytext").hidden = n !== 1;  // just one note: copy its text
     all.textContent = n === picks.length && n ? "Select none" : "Select all";
+    picks.forEach((p) => p.closest(".e").classList.toggle("sel", p.checked));
   };
   all.hidden = picks.length === 0;
+  // Outlook-style: click an entry to select it (Ctrl/Cmd-click adds or removes one,
+  // Shift-click selects a range). The round checkbox on the right ticks just that entry.
+  const rows = picks.map((p) => p.closest(".e"));
+  const range = (a, b, on) => { const [x, y] = a < b ? [a, b] : [b, a]; for (let k = x; k <= y; k++) picks[k].checked = on; };
+  // Phones: press and hold an entry to select it; while anything is selected, taps add or
+  // remove entries. With nothing selected a tap does nothing, so scrolling never selects.
+  const busy = (t) => t.closest("a, button, input, textarea, select, form, video, audio");
+  let touchTimer = null, held = false, lastTouch = 0;
+  rows.forEach((row, i) => {
+    row.addEventListener("touchstart", (e) => {
+      lastTouch = Date.now(); held = false;
+      if (busy(e.target)) return;
+      touchTimer = setTimeout(() => {
+        held = true; picks[i].checked = !picks[i].checked; last = i; update();
+        if (navigator.vibrate) navigator.vibrate(15);
+      }, 450);
+    }, { passive: true });
+    const cancelHold = () => clearTimeout(touchTimer);
+    row.addEventListener("touchmove", cancelHold, { passive: true });
+    row.addEventListener("touchend", cancelHold);
+    row.addEventListener("contextmenu", (e) => { if (held) e.preventDefault(); }); // no long-press menu
+    row.addEventListener("mousedown", (e) => { if (e.shiftKey) e.preventDefault(); }); // no text highlight on shift-click
+    row.addEventListener("click", (e) => {
+      if (busy(e.target)) return;
+      if (Date.now() - lastTouch < 800) {  // a tap (touch screens)
+        if (held) { held = false; return; }  // the hold already selected it
+        if (picks.some((p) => p.checked)) { picks[i].checked = !picks[i].checked; last = i; update(); }
+        return;
+      }
+      const add = e.ctrlKey || e.metaKey;
+      if (e.shiftKey && last !== null) {
+        if (!add) picks.forEach((p) => (p.checked = false));
+        range(last, i, true);
+      } else if (add) {
+        picks[i].checked = !picks[i].checked;
+        last = i;
+      } else {
+        const onlyThis = picks[i].checked && picks.filter((p) => p.checked).length === 1;
+        picks.forEach((p) => (p.checked = false));
+        picks[i].checked = !onlyThis;  // clicking the lone selected entry again unselects it
+        last = i;
+      }
+      update();
+    });
+  });
   picks.forEach((p, i) => p.addEventListener("click", (e) => {
-    if (e.shiftKey && last !== null && last !== i) {
-      const [a, b] = last < i ? [last, i] : [i, last];
-      for (let k = a; k <= b; k++) picks[k].checked = p.checked; // match the box just clicked
-    }
+    if (e.shiftKey && last !== null && last !== i) range(last, i, p.checked);
     last = i;
     update();
   }));
@@ -647,9 +745,15 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
   document.getElementById("selcopy").onclick = async (e) => {
     const ids = chosen();
     const text = [`From my inbox for {day} (${ids.length} of ${ENTRIES.length} entries):`, ...ids.map((i) => ENTRIES[i])].join("\\n\\n");
-    try { await navigator.clipboard.writeText(text); e.target.textContent = "Copied"; setTimeout(() => (e.target.textContent = "Copy"), 1500); }
-    catch { prompt("Copy:", text); }
+    copyOut(e.target, text, "Copy entry");
   };
+  document.getElementById("selcopytext").onclick = (e) => {
+    copyOut(e.target, chosen().map((i) => NOTES[i]).filter(Boolean).join("\\n"), "Copy text");
+  };
+  async function copyOut(btn, text, label) {
+    btn.textContent = (await copyText(text)) ? "Copied" : "Couldn't copy";
+    setTimeout(() => (btn.textContent = label), 1500);
+  }
   document.getElementById("selexport").onclick = () => {
     location.href = "{base}export/{day}?" + chosen().map((i) => "i=" + i).join("&");
   };
@@ -719,21 +823,21 @@ document.querySelectorAll(".copyatt").forEach((btn) => btn.onclick = async () =>
     setTimeout(() => { btn.innerHTML = icon; btn.classList.remove("ok"); btn.title = "Copy"; }, 1500); };
   try {
     if (card.dataset.kind === "text") {
-      await navigator.clipboard.writeText(await (await fetch(url)).text());
-    } else if (card.dataset.kind === "image" && window.ClipboardItem) {
+      if (!(await copyText(await (await fetch(url)).text()))) throw 0;
+    } else if (card.dataset.kind === "image" && window.ClipboardItem && window.isSecureContext) {
       const bmp = await createImageBitmap(await (await fetch(url)).blob()), c = document.createElement("canvas");
       c.width = bmp.width; c.height = bmp.height; c.getContext("2d").drawImage(bmp, 0, 0);
       const png = await new Promise((r) => c.toBlob(r, "image/png"));
       await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
     } else {
-      await navigator.clipboard.writeText(url);
-      return done("Link copied");
+      // Images can only go on the clipboard over https; on http (at home) copy the link.
+      return (await copyText(url)) ? done("Link copied") : done("Couldn't copy");
     }
     done("Copied");
-  } catch { await navigator.clipboard.writeText(url).then(() => done("Link copied"), () => prompt("Copy:", url)); }
+  } catch { done((await copyText(url)) ? "Link copied" : "Couldn't copy"); }
 });
 document.getElementById("copy").onclick = async (e) => {
-  try { await navigator.clipboard.writeText(text); e.target.textContent = "Copied"; } catch { prompt("Copy:", text); }
+  e.target.textContent = (await copyText(text)) ? "Copied" : "Couldn't copy";
 };
 </script>
 </body></html>"""
@@ -906,8 +1010,9 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         list(enumerate(entries))
     ):  # newest first; i = position in inbox.md
         body = [
-            f'<label class="t"><input type="checkbox" class="pick" name="del" value="{i}" '
-            f'form="delform"> {html.escape(e["time"])}</label>'
+            f'<div class="ehead"><span class="t"><b class="num">{day}.{e["n"]}</b> · {html.escape(e["time"])}</span>'
+            f'<input type="checkbox" class="pick" name="del" value="{i}" form="delform" '
+            f'aria-label="Select entry from {html.escape(e["time"])}"></div>'
         ]
         if e.get("meta"):
             body.append(f'<div class="t meta">{html.escape(e["meta"])}</div>')
@@ -966,6 +1071,7 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         .replace("{check_icon}", js_json(ICON_CHECK))
         .replace("{plain}", js_json(plain_text(day, entries)))
         .replace("{entries_json}", js_json([entry_text(day, e) for e in entries]))
+        .replace("{notes_json}", js_json([e["text"] for e in entries]))
     )
     return page.encode()
 
