@@ -112,6 +112,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install linters
+        # Same pin as requirements.txt (used by scripts/lint.sh locally).
         run: python -m pip install ruff==0.17.6
 
       - name: Settings

@@ -796,7 +796,9 @@ def save_snapshot() -> None:
         state = {
             "saved": time.time(),
             "routes": routes,
-            "phase": {k: list(v) for k, v in dict(_phase).items()},  # copied in one step
+            "phase": {
+                k: list(v) for k, v in dict(_phase).items()
+            },  # copied in one step
             "tracks": tracks,
             "track_seen": dict(_track_seen),
             "track_info": dict(_track_info),
