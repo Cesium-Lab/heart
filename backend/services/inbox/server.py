@@ -88,6 +88,138 @@ def safe_name(name: str) -> str:
     return name[:80]
 
 
+def _save_files(folder: Path, stamp: str, files: list[tuple[str, bytes]]) -> list[str]:
+    saved = []
+    for name, data in files:
+        fname = f"{stamp}-{safe_name(name)}"
+        k = 1
+        while (folder / fname).exists():  # same name in the same second: keep both
+            fname = f"{stamp}-{k}-{safe_name(name)}"
+            k += 1
+        (folder / fname).write_bytes(data)
+        saved.append(fname)
+    return saved
+
+
+def _meta_line(now: datetime, source: str) -> str:
+    utc = now.astimezone(timezone.utc)
+    meta = f"UTC {utc:%Y-%m-%dT%H:%M:%SZ} · unix {int(now.timestamp())}"
+    return meta + (f" · from {source}" if source else "")
+
+
+def _block(level: str, ident: str, item: dict) -> list[str]:
+    """One entry ("##", ident "5") or reply ("###", ident "5.1") as Markdown lines."""
+    out = [f"{level} {ident} · {item['time']}"]
+    out += [f"_{item['meta']}_"] if item.get("meta") else []
+    out += [f"_edited {item['edited']}_"] if item.get("edited") else []
+    out.append("")
+    # Text is quoted so nothing a user types can look like an entry header.
+    out += [f"> {line}" if line else ">" for line in item["text"].splitlines()]
+    if item["text"] and item["files"]:
+        out.append("")
+    out += [f"- [{f}]({quote(f)})" for f in item["files"]]
+    return out + [""]
+
+
+def _append(day: str, lines: list[str]) -> None:
+    md = day_dir(day) / "inbox.md"
+    with md.open("a", encoding="utf-8") as fh:
+        if fh.tell() == 0:
+            fh.write(f"# Inbox {day}\n\n")
+        fh.write("\n".join(lines) + "\n")
+
+
+def add_reply(
+    day: str, parent: int, text: str, files: list[tuple[str, bytes]], source: str = ""
+) -> str | None:
+    """Add a reply under entry `parent` of `day` (stored in that day's file, numbered parent.m,
+    fixed with gaps like entries). Returns the reply's id ("5.1"), or None if no such entry."""
+    now = datetime.now().astimezone()
+    with _write_lock:
+        entries = read_day(day)
+        target = next((e for e in entries if e["n"] == parent), None)
+        if target is None:
+            return None
+        m = max((r["m"] for r in target["replies"]), default=0) + 1
+        gone = day_dir(day) / ".deleted" / "deleted.md"
+        if gone.exists():
+            used = re.findall(
+                rf"^### {parent}\.(\d+) ·", gone.read_text(encoding="utf-8"), re.M
+            )
+            m = max([m] + [int(u) + 1 for u in used])
+        saved = _save_files(day_dir(day), now.strftime("%H%M%S"), files)
+        item = {
+            "time": f"{now:%H:%M:%S %Z}",
+            "meta": _meta_line(now, source),
+            "text": text.strip(),
+            "files": saved,
+        }
+        _append(day, _block("###", f"{parent}.{m}", item))
+        return f"{parent}.{m}"
+
+
+def find_item(entries: list[dict], ident: str) -> dict | None:
+    """Entry ("5") or reply ("5.1") by id."""
+    for e in entries:
+        if ident == str(e["n"]):
+            return e
+        for r in e["replies"]:
+            if ident == r["id"]:
+                return r
+    return None
+
+
+def edit_item(day: str, ident: str, text: str) -> bool:
+    """Replace an entry's or reply's note (no history kept) and mark it edited."""
+    with _write_lock:
+        entries = read_day(day)
+        item = find_item(entries, ident)
+        if item is None:
+            return False
+        item["text"] = text.strip()
+        item["edited"] = f"{datetime.now().astimezone():%Y-%m-%d %H:%M:%S %Z}"
+        write_day(day, entries)
+        return True
+
+
+def delete_reply(day: str, ident: str) -> bool:
+    """Remove one reply (and its files, to .deleted/)."""
+    with _write_lock:
+        entries = read_day(day)
+        for e in entries:
+            for r in e["replies"]:
+                if r["id"] == ident:
+                    trash = day_dir(day) / ".deleted"
+                    trash.mkdir(exist_ok=True)
+                    with (trash / "deleted.md").open("a", encoding="utf-8") as fh:
+                        fh.write(
+                            "\n".join(
+                                _block(
+                                    "###",
+                                    ident,
+                                    {
+                                        **r,
+                                        "time": f"{r['time']} (deleted {datetime.now():%H:%M:%S})",
+                                    },
+                                )
+                            )
+                            + "\n"
+                        )
+                    for f in r["files"]:
+                        src = day_dir(day) / safe_name(f)
+                        if src.is_file():
+                            src.rename(trash / src.name)
+                    e["replies"].remove(r)
+                    write_day(day, [x for x in entries if _alive(x)])
+                    return True
+        return False
+
+
+def _alive(e: dict) -> bool:
+    """An entry stays in the list while it has a note, files, or replies."""
+    return bool(e["text"] or e["files"] or e["replies"])
+
+
 def add_entry(text: str, files: list[tuple[str, bytes]], source: str = "") -> str:
     """Append one entry to today's inbox.md and save its files. Returns the day.
 
@@ -97,54 +229,31 @@ def add_entry(text: str, files: list[tuple[str, bytes]], source: str = "") -> st
     with _write_lock:
         folder = day_dir(day)
         folder.mkdir(parents=True, exist_ok=True)
-        saved = []
-        for i, (name, data) in enumerate(files):
-            fname = f"{stamp}-{safe_name(name)}"
-            n = 1
-            while (folder / fname).exists():  # same name in the same second: keep both
-                fname = f"{stamp}-{n}-{safe_name(name)}"
-                n += 1
-            (folder / fname).write_bytes(data)
-            saved.append(fname)
-        md = folder / "inbox.md"
-        utc = now.astimezone(timezone.utc)
-        # Header: local time + zone. Then one italic line: UTC, Unix time, where it came from.
-        meta = f"UTC {utc:%Y-%m-%dT%H:%M:%SZ} · unix {int(now.timestamp())}"
-        if source:
-            meta += f" · from {source}"
+        saved = _save_files(folder, stamp, files)
         # Fixed per-day number: one past the highest ever used today (gaps stay after deletes).
         n = max((e["n"] for e in read_day(day)), default=0) + 1
         gone = folder / ".deleted" / "deleted.md"
         if gone.exists():
             used = re.findall(r"^## (\d+) ·", gone.read_text(encoding="utf-8"), re.M)
             n = max([n] + [int(u) + 1 for u in used])
-        block = [f"## {n} · {now:%H:%M:%S %Z}", f"_{meta}_", ""]
-        # Text is quoted so nothing a user types can look like an entry header.
-        block += [f"> {line}" if line else ">" for line in text.strip().splitlines()]
-        if text.strip() and saved:
-            block.append("")
-        block += [f"- [{f}]({quote(f)})" for f in saved]
-        with md.open("a", encoding="utf-8") as fh:
-            if fh.tell() == 0:
-                fh.write(f"# Inbox {day}\n\n")
-            fh.write("\n".join(block) + "\n\n")
+        # Header: number + local time + zone; then UTC, Unix time, where it came from.
+        item = {
+            "time": f"{now:%H:%M:%S %Z}",
+            "meta": _meta_line(now, source),
+            "text": text.strip(),
+            "files": saved,
+        }
+        _append(day, _block("##", str(n), item))
     return day
 
 
 def write_day(day: str, entries: list[dict]) -> None:
-    """Rewrite a day's inbox.md from entries (used after deleting some)."""
+    """Rewrite a day's inbox.md from entries (each followed by its replies)."""
     out = [f"# Inbox {day}", ""]
     for e in entries:
-        out += (
-            [f"## {e['n']} · {e['time']}"]
-            + ([f"_{e['meta']}_"] if e.get("meta") else [])
-            + [""]
-        )
-        out += [f"> {line}" if line else ">" for line in e["text"].splitlines()]
-        if e["text"] and e["files"]:
-            out.append("")
-        out += [f"- [{f}]({quote(f)})" for f in e["files"]]
-        out.append("")
+        out += _block("##", str(e["n"]), e)
+        for r in e["replies"]:
+            out += _block("###", r["id"], r)
     (day_dir(day) / "inbox.md").write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
@@ -180,7 +289,8 @@ def delete_file(day: str, name: str) -> bool:
     name = safe_name(name)
     with _write_lock:
         entries = read_day(day)
-        hit = next((e for e in entries if name in e["files"]), None)
+        items = entries + [r for e in entries for r in e["replies"]]
+        hit = next((x for x in items if name in x["files"]), None)
         if not hit:
             return False
         hit["files"].remove(name)
@@ -193,7 +303,7 @@ def delete_file(day: str, name: str) -> bool:
         src = day_dir(day) / name
         if src.is_file():
             src.rename(trash / name)
-        write_day(day, [e for e in entries if e["text"] or e["files"]])
+        write_day(day, [e for e in entries if _alive(e)])
         return True
 
 
@@ -217,7 +327,9 @@ def delete_selection(day: str, indexes: set[int], files: set[str]) -> tuple[int,
                 gone = [f for f in e["files"] if f in files]
                 if i in indexes and set(e["files"]) <= files:
                     whole += 1
-                    gone = e["files"]
+                    gone = e["files"] + [f for r in e["replies"] for f in r["files"]]
+                    for r in e["replies"]:  # replies go with their entry
+                        fh.write("\n".join(_block("###", r["id"], r)) + "\n")
                     fh.write(
                         f"## {e['n']} · {e['time']} (deleted {datetime.now():%H:%M:%S})\n\n"
                     )
@@ -255,42 +367,63 @@ def delete_selection(day: str, indexes: set[int], files: set[str]) -> tuple[int,
                     if src.is_file():
                         src.rename(trash / src.name)
                         nfiles += 1
-        write_day(day, [e for e in keep if e["text"] or e["files"]])
+        write_day(day, [e for e in keep if _alive(e)])
         return whole, nfiles
 
 
 def read_day(day: str) -> list[dict]:
-    """Parse a day's inbox.md back into entries: [{time, text, files}]."""
+    """Parse a day's inbox.md: [{n, time, meta, edited, text, files, replies: [{id, m, ...}]}].
+
+    Entries are "## 5 · time", replies "### 5.1 · time" (grouped under entry 5 wherever they
+    appear in the file)."""
     md = day_dir(day) / "inbox.md"
     if not md.exists():
         return []
     entries: list[dict] = []
+    replies: list[dict] = []
+    cur: dict | None = None
     for line in md.read_text(encoding="utf-8").splitlines():
-        if line.startswith("## "):
+        if line.startswith("### "):
+            num = re.match(r"(\d+)\.(\d+) · (.*)$", line[4:].strip())
+            if not num:
+                cur = None
+                continue
+            cur = {
+                "id": f"{num[1]}.{num[2]}",
+                "parent": int(num[1]),
+                "m": int(num[2]),
+                "time": num[3],
+                "meta": "",
+                "edited": "",
+                "text": [],
+                "files": [],
+            }
+            replies.append(cur)
+        elif line.startswith("## "):
             head = line[3:].strip()
             num = re.match(r"(\d+) · (.*)$", head)
-            entries.append(
-                {
-                    "n": int(num[1]) if num else None,
-                    "time": num[2] if num else head,
-                    "meta": "",
-                    "text": [],
-                    "files": [],
-                }
-            )
-        elif (
-            entries
-            and line.startswith("_")
-            and line.endswith("_")
-            and not entries[-1]["text"]
-        ):
-            entries[-1]["meta"] = line[1:-1]
-        elif entries and (line.startswith("> ") or line == ">"):
-            entries[-1]["text"].append(line[2:])
-        elif entries and (m := re.match(r"- \[(.+?)\]\((.+?)\)$", line)):
-            entries[-1]["files"].append(unquote(m[2]))
-    for e in entries:
-        e["text"] = "\n".join(e["text"])
+            cur = {
+                "n": int(num[1]) if num else None,
+                "time": num[2] if num else head,
+                "meta": "",
+                "edited": "",
+                "text": [],
+                "files": [],
+                "replies": [],
+            }
+            entries.append(cur)
+        elif cur is None:
+            continue
+        elif line.startswith("_edited ") and line.endswith("_"):
+            cur["edited"] = line[8:-1]
+        elif line.startswith("_") and line.endswith("_") and not cur["text"]:
+            cur["meta"] = line[1:-1]
+        elif line.startswith("> ") or line == ">":
+            cur["text"].append(line[2:])
+        elif m := re.match(r"- \[(.+?)\]\((.+?)\)$", line):
+            cur["files"].append(unquote(m[2]))
+    for item in entries + replies:
+        item["text"] = "\n".join(item["text"])
     # Entries saved before numbering existed: number them in order, skipping used numbers.
     used = {e["n"] for e in entries if e["n"]}
     nxt = 1
@@ -300,6 +433,12 @@ def read_day(day: str) -> list[dict]:
                 nxt += 1
             e["n"] = nxt
             used.add(nxt)
+    by_n = {e["n"]: e for e in entries}
+    for r in replies:
+        if r["parent"] in by_n:  # replies to a deleted entry are dropped from view
+            by_n[r["parent"]]["replies"].append(r)
+    for e in entries:
+        e["replies"].sort(key=lambda r: r["m"])
     return entries
 
 
@@ -321,14 +460,39 @@ def days_with_entries() -> list[str]:
 URL_RE = re.compile(r"https?://[^\s<>\"]+")
 
 
-def linkify(text: str) -> str:
+# "#5" (entry 5 of the same day), "#5.2" (its 2nd reply), "2026-11-20#3" (another day).
+# Only "#" + digits counts, so hashtags like #flowers stay plain text.
+REF_RE = re.compile(r"(?<![\w/#])(\d{4}-\d{2}-\d{2})?#(\d+(?:\.\d+)?)\b")
+
+
+def _refs(text: str, day: str | None, base: str) -> str:
+    """Escape text, turning entry references into links (when a day is known)."""
+    if day is None:
+        return html.escape(text)
+    out, last = [], 0
+    for m in REF_RE.finditer(text):
+        out.append(html.escape(text[last : m.start()]))
+        ref_day = m[1] or day
+        href = (
+            f"#{m[2]}"
+            if ref_day == day and base == "/inbox/"
+            else f"{base}{ref_day}#{m[2]}"
+        )
+        out.append(f'<a class="ref" href="{html.escape(href)}">{html.escape(m[0])}</a>')
+        last = m.end()
+    out.append(html.escape(text[last:]))
+    return "".join(out)
+
+
+def linkify(text: str, day: str | None = None, base: str = "/inbox/") -> str:
+    """Escape text and link URLs, plus entry references like #5 when `day` is given."""
     out, last = [], 0
     for m in URL_RE.finditer(text):
-        out.append(html.escape(text[last : m.start()]))
+        out.append(_refs(text[last : m.start()], day, base))
         url = m.group(0)
         out.append(f'<a href="{html.escape(url)}">{html.escape(url)}</a>')
         last = m.end()
-    out.append(html.escape(text[last:]))
+    out.append(_refs(text[last:], day, base))
     return "".join(out).replace("\n", "<br>")
 
 
@@ -348,11 +512,20 @@ def thumbnail(path: Path, size: int = 480) -> bytes | None:
         return None
 
 
-def entry_head(day: str, e: dict) -> str:
-    """An entry's number, time, note, and metadata (no attachments)."""
-    lines = [f"[{day}.{e['n']} · {e['time']}] {e['text'] or '(no note)'}"]
-    if e.get("meta"):
-        lines.append(f"  ({e['meta']})")
+def _item_lines(day: str, item: dict, ident: str, indent: str = "") -> list[str]:
+    lines = [f"{indent}[{day}#{ident} · {item['time']}] {item['text'] or '(no note)'}"]
+    if item.get("meta"):
+        lines.append(f"{indent}  ({item['meta']})")
+    return lines
+
+
+def entry_head(day: str, e: dict, replies: bool = True) -> str:
+    """An entry's id, time, note, metadata, and (by default) its replies; no attachments."""
+    lines = _item_lines(day, e, str(e["n"]))
+    if replies:
+        for r in e["replies"]:
+            lines += _item_lines(day, r, r["id"], "    reply ")
+            lines += ["    " + attach_line(day, f).strip() for f in r["files"]]
     return "\n".join(lines)
 
 
@@ -361,12 +534,12 @@ def attach_line(day: str, f: str) -> str:
 
 
 def entry_text(day: str, e: dict) -> str:
-    """One entry as plain text (for Claude/ChatGPT)."""
-    lines = [f"[{day}.{e['n']} · {e['time']}] {e['text'] or '(no note)'}"]
-    if e.get("meta"):
-        lines.append(f"  ({e['meta']})")
-    for f in e["files"]:
-        lines.append(f"  attachment: {f} ({PUBLIC_URL}files/{day}/{quote(f)})")
+    """One entry as plain text (for Claude/ChatGPT), with attachments and replies."""
+    lines = _item_lines(day, e, str(e["n"]))
+    lines += [attach_line(day, f) for f in e["files"]]
+    for r in e["replies"]:
+        lines += _item_lines(day, r, r["id"], "    reply ")
+        lines += ["    " + attach_line(day, f).strip() for f in r["files"]]
     return "\n".join(lines)
 
 
@@ -452,7 +625,7 @@ def build_digest(day: str) -> EmailMessage | None:
     body = (
         '<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:640px">'
         f'<h2 style="margin:0 0 4px">Inbox {day}</h2>'
-        f'<div style="color:#6b7280">{len(entries)} saved · <a href="{PUBLIC_URL}day/{day}">open on the server</a></div>'
+        f'<div style="color:#6b7280">{len(entries)} saved · <a href="{PUBLIC_URL}{day}">open on the server</a></div>'
         + "".join(rows)
         + '<h3 style="margin-top:20px">Paste into Claude / ChatGPT</h3>'
         f'<pre style="white-space:pre-wrap;background:#f4f4f2;padding:12px;border-radius:8px;font-size:12px">{html.escape(text)}</pre>'
@@ -465,11 +638,18 @@ def build_digest(day: str) -> EmailMessage | None:
     return msg
 
 
-def send_digest(day: str) -> str:
-    """Send (or, without credentials, save) the day's digest. Returns what happened."""
+EMAIL_RE = re.compile(r"[^@\s<>,;]+@[^@\s<>,;]+\.[^@\s<>,;]+")
+
+
+def send_digest(day: str, to: str = "") -> str:
+    """Send (or, without credentials, save) the day's digest, to `to` or the default address.
+    Returns what happened."""
     msg = build_digest(day)
     if msg is None:
         return "nothing saved that day"
+    if to:
+        del msg["To"]
+        msg["To"] = to
     if not (SMTP_USER and SMTP_PASS):
         out = day_dir(day) / "digest-preview.eml"
         out.write_bytes(bytes(msg))
@@ -479,7 +659,8 @@ def send_digest(day: str) -> str:
     ) as s:
         s.login(SMTP_USER, SMTP_PASS)
         s.send_message(msg)
-    (day_dir(day) / ".digest-sent").write_text(datetime.now().isoformat())
+    if not to:  # only the nightly/default send counts as "today's digest went out"
+        (day_dir(day) / ".digest-sent").write_text(datetime.now().isoformat())
     return f"sent to {msg['To']}"
 
 
@@ -672,7 +853,22 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .details .tip::before{content:"";position:absolute;top:0;bottom:0;left:-8px;width:8px}
 .details:hover .tip,.details:focus .tip,.details:focus-within .tip{opacity:1;visibility:visible;transform:none;
   transition:opacity .15s ease,transform .15s ease,visibility 0s}
-.ehead .copynote{margin-left:auto}
+.hicons{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;margin-left:auto;flex:none}
+.ehead{flex-wrap:nowrap}.ehead .t{min-width:0;overflow-wrap:anywhere}
+.ehead a.num{text-decoration:none}
+.edited{margin-left:8px}
+.replies{margin:6px 0 0 18px;border-left:2px solid var(--line);padding-left:12px}
+.replies:empty{display:none}
+.r{padding:8px 6px;border-radius:8px}.r+.r{border-top:1px solid var(--line)}
+.r.flash{background:var(--hl)}
+.r .note{margin:4px 0}
+.replyform,.editform{display:grid;gap:6px;margin:8px 0}
+.replyform textarea,.editform textarea{width:100%;min-height:70px;font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px}
+.replyform .row,.editform .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.replyform .plain,.editform .plain,.sendform .plain{background:transparent;color:var(--muted);border:1px solid var(--line)}
+a.ref{font-weight:600}
+.sendform{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.sendform[hidden]{display:none}.sendform input{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit;min-width:200px}
 .ehead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .e{-webkit-touch-callout:none;cursor:default;border-radius:8px;padding-left:8px;padding-right:8px;transition:background .1s}
 .e.sel{background:var(--hl)}
@@ -826,7 +1022,7 @@ async function copyText(text) {
   const range = (a, b, on) => { const [x, y] = a < b ? [a, b] : [b, a]; for (let k = x; k <= y; k++) picks[k].checked = on; };
   // Phones: press and hold an entry to select it; while anything is selected, taps add or
   // remove entries. With nothing selected a tap does nothing, so scrolling never selects.
-  const busy = (t) => t.closest("a, button, input, textarea, select, form, video, audio, .details");
+  const busy = (t) => t.closest("a, button, input, textarea, select, form, video, audio, .details, .replies");
   let touchTimer = null, held = false, lastTouch = 0;
   rows.forEach((row, i) => {
     row.addEventListener("touchstart", (e) => {
@@ -882,6 +1078,22 @@ async function copyText(text) {
   };
   const clearAll = () => { picks.forEach((p) => (p.checked = false)); apicks.flat().forEach((a) => (a.checked = false)); last = null; update(); };
   document.getElementById("delcancel").onclick = clearAll;
+  // /inbox/2026-11-23#5 selects entry 5; #5.1 highlights that reply (also on #N links).
+  const goTo = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (!/^\\d+(\\.\\d+)?$/.test(id)) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    document.querySelectorAll(".r.flash").forEach((x) => x.classList.remove("flash"));
+    const k = picks.findIndex((p) => p.closest(".e") === el.closest(".e"));
+    if (el.classList.contains("e") && k >= 0) {
+      picks.forEach((p) => (p.checked = false)); apicks.flat().forEach((a) => (a.checked = false));
+      picks[k].checked = true; last = k; update();
+    } else el.classList.add("flash");
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+  window.addEventListener("hashchange", goTo);
+  setTimeout(goTo, 0);
   // Escape deselects everything; Ctrl/Cmd+A selects everything (both skipped while a preview
   // is open).
   document.addEventListener("keydown", (e) => {
@@ -900,13 +1112,6 @@ async function copyText(text) {
     clearAll();
   });
   document.getElementById("seldelete").onclick = () => { form.hidden = false; form.querySelector("input").focus(); };
-  // Copy-text icon on each entry: copies just that entry's note.
-  document.querySelectorAll(".copynote").forEach((btn) => btn.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    const icon = btn.innerHTML, ok = await copyText(NOTES[Number(btn.dataset.i)] || "");
-    btn.innerHTML = ok ? CHECK : icon; btn.classList.toggle("ok", ok); btn.title = ok ? "Copied" : "Couldn't copy";
-    setTimeout(() => { btn.innerHTML = icon; btn.classList.remove("ok"); btn.title = "Copy text"; }, 1500);
-  }));
   // What's selected, entry by entry: selected entries with only their ticked files; files
   // ticked on their own come under their entry's number marked "(files only)".
   const ticked = (i) => apicks[i].filter((a) => a.checked).map((a) => a.value);
@@ -948,6 +1153,60 @@ async function copyText(text) {
 <script>
 const text = {plain};
 const CHECK = {check_icon};
+const NOTE = {allnotes_json};  // id ("5", "5.1") -> raw note text, for edit/copy
+// Reply: the reply icon opens that entry's reply box.
+document.querySelectorAll(".replybtn").forEach((b) => b.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const f = b.closest(".e").querySelector(".replyform");
+  f.hidden = !f.hidden;
+  if (!f.hidden) f.querySelector("textarea").focus();
+}));
+document.querySelectorAll(".cancelreply").forEach((b) => b.addEventListener("click", () => (b.closest(".replyform").hidden = true)));
+// Edit: swap the note for a text box (Save overwrites it; marked "edited").
+document.querySelectorAll(".editbtn").forEach((b) => b.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const id = b.dataset.id, item = b.closest(".r") || b.closest(".e");
+  if (item.querySelector(".editform")) return;
+  const note = item.querySelector(`.note[data-id="${CSS.escape(id)}"]`);
+  const f = document.createElement("form");
+  f.method = "post"; f.action = "{base}edit/{day}"; f.className = "editform";
+  f.innerHTML = '<input type="hidden" name="id"><textarea name="text"></textarea>' +
+    '<div class="row"><button>Save</button><button type="button" class="plain">Cancel</button></div>';
+  f.elements.id.value = id; f.elements.text.value = NOTE[id] || "";
+  f.querySelector(".plain").onclick = () => { f.remove(); note.hidden = !NOTE[id]; };
+  note.hidden = true; note.after(f);
+  f.elements.text.focus();
+}));
+// Copy a note (entries and replies).
+document.querySelectorAll(".copyid").forEach((b) => b.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  const icon = b.innerHTML, ok = await copyText(NOTE[b.dataset.id] || "");
+  b.innerHTML = ok ? CHECK : icon; b.classList.toggle("ok", ok);
+  setTimeout(() => { b.innerHTML = icon; b.classList.remove("ok"); }, 1500);
+}));
+// Delete a reply: confirm under it with username + password.
+document.querySelectorAll(".delreply").forEach((b) => b.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const r = b.closest(".r");
+  if (r.querySelector(".delfile")) return;
+  const f = document.createElement("form");
+  f.method = "post"; f.action = "{base}delete/{day}"; f.className = "delfile";
+  f.innerHTML = '<input type="hidden" name="reply">' +
+    '<input name="username" placeholder="Username" autocomplete="username" autocapitalize="none" required>' +
+    '<input type="password" name="password" placeholder="Password" autocomplete="current-password" required>' +
+    '<button>Delete reply</button><button type="button" class="plain">Cancel</button>';
+  f.elements.reply.value = b.dataset.id;
+  f.querySelector(".plain").onclick = () => f.remove();
+  r.querySelector(".ehead").after(f);
+  f.elements.username.focus();
+}));
+// Email this day: open the "To" box (your address prefilled), then Send.
+const emailOpen = document.getElementById("emailopen");
+if (emailOpen) {
+  const sf = document.getElementById("sendform");
+  emailOpen.onclick = () => { sf.hidden = false; emailOpen.hidden = true; sf.querySelector("input").focus(); };
+  document.getElementById("emailcancel").onclick = () => { sf.hidden = true; emailOpen.hidden = false; };
+}
 // Trash icon on a file: confirm right under that line with username + password.
 document.querySelectorAll(".delatt").forEach((btn) => btn.onclick = () => {
   const line = btn.closest(".att");
@@ -1134,12 +1393,21 @@ ICON_COPY = _SVG.format(
 ICON_TRASH = _SVG.format(
     d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"
 )
+ICON_OPEN = _SVG.format(
+    d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z"
+)
+ICON_REPLY = _SVG.format(
+    d="M6.78 1.97a.75.75 0 0 1 0 1.06L3.81 6h6.44A4.75 4.75 0 0 1 15 10.75v2.5a.75.75 0 0 1-1.5 0v-2.5a3.25 3.25 0 0 0-3.25-3.25H3.81l2.97 2.97a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L1.47 7.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+)
+ICON_EDIT = _SVG.format(
+    d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"
+)
 ICON_CHECK = _SVG.format(
     d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"
 )
 
 
-def attachment_card(day: str, f: str) -> str:
+def attachment_card(day: str, f: str, selectable: bool = True) -> str:
     """One attachment as one line: the file name (a link that opens it) on the left, and
     Download / Copy icons right-justified. Copy copies a text file's text, an image itself, or
     otherwise the file's link."""
@@ -1157,11 +1425,63 @@ def attachment_card(day: str, f: str) -> str:
         f'<div class="att" data-kind="{kind}" data-url="{url}">'
         f'<a class="attname" href="{url}" target="_blank" rel="noopener">{name}</a>'
         f'<span class="atticons">'
+        f'<a class="attbtn" href="{url}" target="_blank" rel="noopener" title="Open in new tab" aria-label="Open {name} in a new tab">{ICON_OPEN}</a>'
         f'<a class="attbtn" href="{url}?download=1" title="Download" aria-label="Download {name}">{ICON_DOWNLOAD}</a>'
         f'<button type="button" class="attbtn copyatt" title="Copy" aria-label="Copy {name}">{ICON_COPY}</button>'
         f'<button type="button" class="attbtn delatt" data-file="{name}" title="Delete" aria-label="Delete {name}">{ICON_TRASH}</button>'
-        f'<input type="checkbox" class="apick" name="dfile" value="{name}" form="delform" aria-label="Select {name}">'
-        f"</span></div>"
+        + (
+            f'<input type="checkbox" class="apick" name="dfile" value="{name}" form="delform" aria-label="Select {name}">'
+            if selectable
+            else ""
+        )
+        + "</span></div>"
+    )
+
+
+def item_head(day: str, item: dict, ident: str, label: str, icons: str) -> str:
+    """Header line of an entry or reply: its id (a link to itself), "details" (time + metadata on
+    hover), "edited" (edit time on hover), then icons."""
+    tip = html.escape(item["time"]) + (
+        f"<br>{html.escape(item['meta'])}" if item.get("meta") else ""
+    )
+    edited = (
+        f'<span class="details edited" tabindex="0">edited<span class="tip" role="tooltip">'
+        f"{html.escape(item['edited'])}</span></span>"
+        if item.get("edited")
+        else ""
+    )
+    return (
+        f'<div class="ehead"><span class="t"><a class="num" href="#{ident}">{html.escape(label)}</a>'
+        f'<span class="details" tabindex="0">details<span class="tip" role="tooltip">{tip}</span></span>'
+        f'{edited}</span><span class="hicons">{icons}</span></div>'
+    )
+
+
+def item_icons(
+    day: str, item: dict, ident: str, reply: bool = False, delete: bool = False
+) -> str:
+    """Open-as-text, reply, edit, copy (and delete for replies) icons for an entry or reply."""
+    out = ""
+    if item["text"]:
+        out += (
+            f'<a class="attbtn" href="/inbox/{day}/{ident}.txt" target="_blank" rel="noopener" '
+            f'title="Open as text in new tab" aria-label="Open {day}#{ident} as text">{ICON_OPEN}</a>'
+        )
+    if reply:
+        out += f'<button type="button" class="attbtn replybtn" title="Reply" aria-label="Reply to {day}#{ident}">{ICON_REPLY}</button>'
+    out += f'<button type="button" class="attbtn editbtn" data-id="{ident}" title="Edit" aria-label="Edit {day}#{ident}">{ICON_EDIT}</button>'
+    if item["text"]:
+        out += f'<button type="button" class="attbtn copyid" data-id="{ident}" title="Copy text" aria-label="Copy the note of {day}#{ident}">{ICON_COPY}</button>'
+    if delete:
+        out += f'<button type="button" class="attbtn delreply" data-id="{ident}" title="Delete reply" aria-label="Delete {day}#{ident}">{ICON_TRASH}</button>'
+    return out
+
+
+def item_note(day: str, item: dict, ident: str) -> str:
+    return (
+        f'<p class="note" data-id="{ident}">{linkify(item["text"], day)}</p>'
+        if item["text"]
+        else f'<p class="note" data-id="{ident}" hidden></p>'
     )
 
 
@@ -1180,37 +1500,58 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
     for i, e in reversed(
         list(enumerate(entries))
     ):  # newest first; i = position in inbox.md
-        body = [
-            f'<div class="ehead"><span class="t"><b class="num">{day}.{e["n"]}</b>'
-            # Time + metadata live in a tooltip on "details" (hover, or tap/focus on phones).
-            f'<span class="details" tabindex="0">details<span class="tip" role="tooltip">'
-            f"{html.escape(e['time'])}"
-            + (f"<br>{html.escape(e['meta'])}" if e.get("meta") else "")
-            + "</span></span></span>"
-            + (
-                f'<button type="button" class="attbtn copynote" data-i="{i}" title="Copy text" '
-                f'aria-label="Copy the note of entry {day}.{e["n"]}">{ICON_COPY}</button>'
-                if e["text"]
-                else ""
-            )
+        ident = str(e["n"])
+        icons = (
+            item_icons(day, e, ident, reply=True)
             + f'<input type="checkbox" class="pick" name="del" value="{i}" form="delform" '
-            f'aria-label="Select entry from {html.escape(e["time"])}"></div>'
+            f'aria-label="Select entry {day}#{ident}">'
+        )
+        body = [
+            item_head(day, e, ident, f"{day}#{ident}", icons),
+            item_note(day, e, ident),
         ]
-        if e["text"]:
-            body.append(f"<p>{linkify(e['text'])}</p>")
         if e["files"]:
             cards = "".join(attachment_card(day, f) for f in e["files"])
             body.append(f'<div class="atts">{cards}</div>')
-        items.append('<div class="e">' + "".join(body) + "</div>")
+        reps = []
+        for r in e["replies"]:
+            rb = [
+                item_head(
+                    day,
+                    r,
+                    r["id"],
+                    f"#{r['id']}",
+                    item_icons(day, r, r["id"], delete=True),
+                ),
+                item_note(day, r, r["id"]),
+            ]
+            if r["files"]:
+                cards = "".join(
+                    attachment_card(day, f, selectable=False) for f in r["files"]
+                )
+                rb.append(f'<div class="atts">{cards}</div>')
+            reps.append(f'<div class="r" id="{r["id"]}">' + "".join(rb) + "</div>")
+        reply_form = (
+            f'<form class="replyform" method="post" action="{base}reply/{day}/{ident}" '
+            f'enctype="multipart/form-data" hidden>'
+            f'<textarea name="text" placeholder="Reply to #{ident}… (use #N to reference)"></textarea>'
+            f'<div class="row"><input type="file" name="file" multiple><button>Reply</button>'
+            f'<button type="button" class="plain cancelreply">Cancel</button></div></form>'
+        )
+        body.append('<div class="replies">' + "".join(reps) + reply_form + "</div>")
+        items.append(f'<div class="e" id="{ident}">' + "".join(body) + "</div>")
     d = date.fromisoformat(day)
     prev_day, next_day = (
         (d - timedelta(days=1)).isoformat(),
         (d + timedelta(days=1)).isoformat(),
     )
     sent = (day_dir(day) / ".digest-sent").exists()
+    # "Email this day" opens a small box with the address (yours prefilled); Send sends.
     send = (
-        f'<form method="post" action="{base}send/{day}" style="display:contents"><button>'
-        f"{'Email again' if sent else 'Email this day now'}</button></form>"
+        f'<button type="button" id="emailopen">{"Email again…" if sent else "Email this day…"}</button>'
+        f'<form class="sendform" id="sendform" method="post" action="{base}send/{day}" hidden>'
+        f'<label>To <input type="email" name="to" value="{html.escape(MAIL_TO)}" required></label>'
+        f'<button>Send</button><button type="button" class="plain" id="emailcancel">Cancel</button></form>'
         if entries
         else ""
     )
@@ -1235,7 +1576,7 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         .replace("{count}", f"{len(entries)} saved" + (" · emailed" if sent else ""))
         .replace("{entries}", "".join(items) or '<div class="e t">Nothing yet.</div>')
         .replace("{send}", send)
-        .replace("{prev}", f'<a href="{base}day/{prev_day}">← {prev_day}</a>')
+        .replace("{prev}", f'<a href="{base}{prev_day}">← {prev_day}</a>')
         .replace(
             "{today}",
             f'<a class="today" href="{base}">Go to today ({date.today():%a %b %-d})</a>'
@@ -1244,11 +1585,20 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         )
         .replace(
             "{next}",
-            f'<a href="{base}day/{next_day}">{next_day} →</a>'
+            f'<a href="{base}{next_day}">{next_day} →</a>'
             if day < today
             else "<span></span>",
         )
         .replace("{check_icon}", js_json(ICON_CHECK))
+        .replace(
+            "{allnotes_json}",
+            js_json(
+                {
+                    **{str(e["n"]): e["text"] for e in entries},
+                    **{r["id"]: r["text"] for e in entries for r in e["replies"]},
+                }
+            ),
+        )
         .replace("{plain}", js_json(plain_text(day, entries)))
         .replace("{entries_json}", js_json([entry_head(day, e) for e in entries]))
         .replace(
@@ -1261,6 +1611,24 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
 
 
 # ------------------------------------------------------------------- http
+
+
+def note_and_files(ctype: str, body: bytes) -> tuple[str, list[tuple[str, bytes]]]:
+    """The "text" field and uploaded "file" parts of the entry/reply form."""
+    text, files = "", []
+    if ctype.startswith("multipart/form-data"):
+        msg = BytesParser(policy=email_policy).parsebytes(
+            f"Content-Type: {ctype}\r\nMIME-Version: 1.0\r\n\r\n".encode() + body
+        )
+        for part in msg.iter_parts():
+            name = part.get_param("name", header="content-disposition")
+            if name == "text":
+                text = (part.get_payload(decode=True) or b"").decode("utf-8", "replace")
+            elif name == "file" and part.get_filename():
+                data = part.get_payload(decode=True) or b""
+                if data:
+                    files.append((part.get_filename(), data))
+    return text, files
 
 
 def form_fields(ctype: str, body: bytes) -> dict[str, list[str]]:
@@ -1324,7 +1692,17 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/inbox", "/inbox/"):
             page = render(date.today().isoformat(), flash, session)
             self._send(200, page, "text/html; charset=utf-8")
-        elif m := re.fullmatch(r"/inbox/day/(\d{4}-\d{2}-\d{2})", path):
+        elif m := re.fullmatch(
+            r"/inbox/(\d{4}-\d{2}-\d{2})/(\d+(?:\.\d+)?)\.txt", path
+        ):
+            item = find_item(
+                read_day(m[1]), m[2]
+            )  # a note as plain text (open-in-new-tab icon)
+            if item is None:
+                self._send(404, b"not found", "text/plain")
+            else:
+                self._send(200, item["text"].encode(), "text/plain; charset=utf-8")
+        elif m := re.fullmatch(r"/inbox/(?:day/)?(\d{4}-\d{2}-\d{2})", path):
             self._send(200, render(m[1], flash, session), "text/html; charset=utf-8")
         elif m := re.fullmatch(r"/inbox/day/(\d{4}-\d{2}-\d{2})\.md", path):
             md = day_dir(m[1]) / "inbox.md"
@@ -1462,13 +1840,18 @@ class Handler(BaseHTTPRequestHandler):
                 with _auth_lock:
                     _fails.setdefault(ip, []).append(time.time())
                 self._redirect(
-                    f"/inbox/day/{m[1]}?sent={quote('Not deleted: wrong username or password.')}"
+                    f"/inbox/{m[1]}?sent={quote('Not deleted: wrong username or password.')}"
                 )
+                return
+            if f.get("reply"):  # one reply (trash icon on its line)
+                ok = delete_reply(m[1], f["reply"][0])
+                msg = "Deleted the reply." if ok else "That reply wasn't found."
+                self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
                 return
             if f.get("file"):  # one attachment (trash icon on its line)
                 ok = delete_file(m[1], f["file"][0])
                 msg = "Deleted the file." if ok else "That file wasn't found."
-                self._redirect(f"/inbox/day/{m[1]}?sent={quote(msg)}")
+                self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
                 return
             picks = {int(v) for v in f.get("del", []) if v.isdigit()}
             whole, nfiles = delete_selection(m[1], picks, set(f.get("dfile", [])))
@@ -1477,40 +1860,49 @@ class Handler(BaseHTTPRequestHandler):
                 + (f" and {nfiles} file{'' if nfiles == 1 else 's'}" if nfiles else "")
                 + "."
             )
-            self._redirect(f"/inbox/day/{m[1]}?sent={quote(msg)}")
+            self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
             return
         if path == "/inbox/add":
-            text, files = "", []
-            if ctype.startswith("multipart/form-data"):
-                msg = BytesParser(policy=email_policy).parsebytes(
-                    f"Content-Type: {ctype}\r\nMIME-Version: 1.0\r\n\r\n".encode()
-                    + body
-                )
-                for part in msg.iter_parts():
-                    name = part.get_param("name", header="content-disposition")
-                    if name == "text":
-                        text = (
-                            part.get_content()
-                            if part.get_content_maintype() == "text"
-                            else part.get_payload(decode=True).decode(
-                                "utf-8", "replace"
-                            )
-                        )
-                    elif name == "file" and part.get_filename():
-                        data = part.get_payload(decode=True) or b""
-                        if data:
-                            files.append((part.get_filename(), data))
+            text, files = note_and_files(ctype, body)
             if not text.strip() and not files:
                 self._redirect("/inbox/")
                 return
             add_entry(text, files, describe_source(self.headers))
             self._redirect("/inbox/?saved")
+        elif m := re.fullmatch(r"/inbox/reply/(\d{4}-\d{2}-\d{2})/(\d+)", path):
+            text, files = note_and_files(ctype, body)
+            if not text.strip() and not files:
+                self._redirect(f"/inbox/{m[1]}#{m[2]}")
+                return
+            rid = add_reply(m[1], int(m[2]), text, files, describe_source(self.headers))
+            self._redirect(
+                f"/inbox/{m[1]}#{rid}"
+                if rid
+                else f"/inbox/{m[1]}?sent={quote('That entry no longer exists.')}"
+            )
+        elif m := re.fullmatch(r"/inbox/edit/(\d{4}-\d{2}-\d{2})", path):
+            f = form_fields(ctype, body)
+            ident = (f.get("id") or [""])[0]
+            ok = re.fullmatch(r"\d+(\.\d+)?", ident) and edit_item(
+                m[1], ident, (f.get("text") or [""])[0]
+            )
+            self._redirect(
+                f"/inbox/{m[1]}#{ident}"
+                if ok
+                else f"/inbox/{m[1]}?sent={quote('Not found.')}"
+            )
         elif m := re.fullmatch(r"/inbox/send/(\d{4}-\d{2}-\d{2})", path):
+            to = (form_fields(ctype, body).get("to") or [""])[0].strip()
+            if to and not EMAIL_RE.fullmatch(to):
+                self._redirect(
+                    f"/inbox/{m[1]}?sent={quote('Not sent: that email address looks wrong.')}"
+                )
+                return
             try:
-                result = send_digest(m[1])
+                result = send_digest(m[1], to)
             except Exception as e:
                 result = f"email failed: {e.__class__.__name__}: {e}"
-            self._redirect(f"/inbox/day/{m[1]}?sent={quote(result)}")
+            self._redirect(f"/inbox/{m[1]}?sent={quote(result)}")
         else:
             self._send(404, b"not found", "text/plain")
 

@@ -20,6 +20,18 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
 - **Each entry records** its local time with zone (`14:54:32 PST`), UTC, Unix time, and where it
   was sent from: `home network 192.168.0.42`, `Tailscale 100.120.196.52`, or
   `internet 203.0.113.5 (via cesiumlab.net)`.
+- **IDs, Jira-style:** each entry is `2026-11-23#5`, its replies `#5.1`, `#5.2` (fixed numbers, never
+  reused after deletes). `/inbox/2026-11-23#5` opens that day and selects entry 5; `#5.1` highlights
+  that reply.
+- **References:** type `#5` (same day), `#5.2` (a reply), or `2026-11-20#3` (another day) in a note
+  and it becomes a link. `#` + digits only, so `#flowers` stays plain text.
+- **Reply** (arrow icon on an entry): a note and/or files, shown indented under the entry, with
+  its own copy/edit/delete icons (delete asks for the password). Stored in the entry's day file as
+  `### 5.1 · time`. Deleting an entry whole takes its replies with it.
+- **Edit** (pencil icon): change an entry's or reply's note in place (overwrites; no history). It
+  then shows "edited"; hover for the time.
+- **Open as text** (box-arrow icon): the note alone as plain text in a new tab
+  (`/inbox/2026-11-23/5.1.txt`).
 - **Select entries** with their checkboxes: shift-click ticks a range, **Select all** (top of the
   list) ticks everything. A bar then offers:
   - **Copy**: the selected entries as text, ready to paste into Claude/ChatGPT.
@@ -35,7 +47,7 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
 - **Adding files:** each pick adds to a list under the box, each with an × to remove it, plus
   **Remove all files**. Over 95 MB in total, Save turns off until you remove some.
 - **Days:** `← yesterday` / `→` links browse past days; each day has **Copy for Claude** (the whole
-  day as text), its raw `inbox.md`, and **Email this day now** (to test or resend).
+  day as text), its raw `inbox.md`, and **Email this day…** (opens a To box with your address filled in; Send sends it, to anyone).
 - **Tip:** add it to your iPhone home screen (Share → Add to Home Screen) so it opens like an app.
 
 ## Files are the truth
