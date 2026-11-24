@@ -28,6 +28,10 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
   that reply.
 - **References:** type `#5` (same day), `#5.2` (a reply), or `2026-11-20#3` (another day) in a note
   and it becomes a link. `#` + digits only, so `#flowers` stays plain text.
+- **Status page** (`/inbox/status`): runs `scripts/status.sh` (read-only, ~2 s) and shows its
+  output with its colors: services, APIs, upstream, docker, disks, hashcheck progress. Checks when
+  opened; **Refresh** checks again. Same access as the inbox (open at home / on Tailscale, login
+  elsewhere).
 - **Day buttons** (← · Today · →) switch days in place, without a full reload, so fast clicks
   all register (Chrome ignores clicks during a reload).
 - **Pin**: click the 📌 at an entry's top right (entries only, not replies or files) to pin or

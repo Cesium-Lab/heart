@@ -33,7 +33,9 @@
 | Prometheus          | docker (`projects/dataviz`) | `127.0.0.1:42004` | private only                                                 |
 
 Retired: Telemetry Viz (`archive/telemetry-viz/`), replaced by DataViz + Grafana/Prometheus.
-`./scripts/status.sh` shows what is actually running right now.
+`./scripts/status.sh` shows what is actually running right now; the same output is on the
+site: `/status/` (public API checks, plus a "Run status.sh" button that asks for the inbox login
+off-LAN) and `/inbox/status` (inbox access rules). Old `/api-check/` links redirect to `/status/`.
 
 ## Port allocation
 

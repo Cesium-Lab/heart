@@ -37,7 +37,8 @@ SERVICES=(
     "tailscaled|-|-"
 )
 
-if [[ -t 1 ]]; then G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' D=$'\e[2m' N=$'\e[0m'; else G='' Y='' R='' D='' N=''; fi
+# Colors in a terminal, or when asked (STATUS_COLOR=1: the inbox status page turns them into HTML).
+if [[ -t 1 || -n "${STATUS_COLOR:-}" ]]; then G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' D=$'\e[2m' N=$'\e[0m'; else G='' Y='' R='' D='' N=''; fi
 
 # Pad plain text first, then color it, so columns line up with or without color.
 cell() { printf '%s%-*s%s' "$1" "$2" "$3" "$N"; }

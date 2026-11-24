@@ -52,7 +52,7 @@ an optional external API or production service is currently reachable.
 | Planes (SFO board)          | `/planes/` plus `backend/services/planes/`                                         | Working  | Live map of aircraft around SFO: split-flap board drawer, hover/click tracks, follow mode; page in the Astro build, data from the planes API                                |
 | Piano                       | `/music/piano`                                                                     | Partial  | Standalone experimental music page                                                                                                                                          |
 | DataViz POC                 | `projects/dataviz/` and `https://dataviz.cesiumlab.net`                            | Partial  | Backend, NiceGUI command UI, Prometheus, and Grafana are implemented and are the canonical telemetry UI; state is in-memory and access control/real hardware are unfinished |
-| API checker                 | `/api-check`                                                                       | Working  | Reports health for deployed backend services                                                                                                                                |
+| Status                      | `/status` (old `/api-check` redirects)                                             | Working  | Health of each public API; "Run status.sh" shows the full server status (login like the inbox)                                                                            |
 
 DataViz-specific design, limitations, and startup instructions live in
 `projects/dataviz/ARCHITECTURE.md` and `projects/dataviz/QUICKSTART.md`.

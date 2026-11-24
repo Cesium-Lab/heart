@@ -21,6 +21,7 @@ import io
 import ipaddress
 import secrets
 import shutil
+import subprocess
 import tempfile
 import sys
 import json
@@ -2029,6 +2030,80 @@ document.querySelectorAll(".pcard.flash .replies").forEach((b) => setReplies(b, 
 </script>"""
 
 
+# Status page (/inbox/status): runs scripts/status.sh (read-only, no sudo, ~2 s) and shows its
+# output with its colors. Same access as the inbox: open at home / on Tailscale, login elsewhere.
+STATUS_SCRIPT = Path(
+    os.getenv(
+        "INBOX_STATUS_SCRIPT",
+        str(Path(__file__).resolve().parents[3] / "scripts" / "status.sh"),
+    )
+)
+_status_lock = threading.Lock()
+ANSI = {"32": "g", "33": "y", "31": "r", "2": "d"}
+
+
+def run_status() -> str:
+    """status.sh's output as HTML (ANSI colors -> spans). One run at a time."""
+    with _status_lock:
+        try:
+            out = subprocess.run(
+                [str(STATUS_SCRIPT)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env={**os.environ, "STATUS_COLOR": "1"},
+            )
+            text = out.stdout + (out.stderr if out.returncode else "")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            text = f"\x1b[31mcouldn't run {STATUS_SCRIPT}: {e}\x1b[0m\n"
+
+    def span(m: re.Match) -> str:
+        code = m[1]
+        return (
+            "</span>" if code in ("0", "") else f'<span class="{ANSI.get(code, "")}">'
+        )
+
+    body = re.sub(r"\x1b\[([0-9]*)m", span, html.escape(text))
+    return f'<div class="when">Checked {datetime.now():%a %b %-d, %H:%M:%S}</div><pre>{body}</pre>'
+
+
+STATUS_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Status · mr-ray</title>
+<meta name="robots" content="noindex"><link rel="icon" href="/favicon.svg?v=5" type="image/svg+xml">
+<style>
+:root{--bg:#fafaf7;--ink:#111;--muted:#4a4a45;--line:#e5e3dc;--card:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#14140f;--ink:#fff;--muted:#c4c4bc;--line:#3a3a32;--card:#1c1c17}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,Helvetica,Arial,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:20px 16px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:28px;margin:0 auto 0 0}
+a.btn,button{font:inherit;font-size:13px;font-weight:500;color:var(--ink);background:transparent;border:1px solid var(--line);
+  border-radius:6px;padding:5px 10px;text-decoration:none;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+.when{font-size:13px;color:var(--muted);margin:14px 2px 6px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto;
+  font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+.g{color:#16a34a}.y{color:#ca8a04}.r{color:#dc2626;font-weight:700}.d{opacity:.6}
+</style></head><body><main>
+<div class="top"><h1>Status</h1><button id="refresh">Refresh</button><a class="btn" href="/inbox/">Inbox</a></div>
+<div id="out"><div class="when">Checking…</div></div>
+</main>
+<script>
+const out = document.getElementById("out"), btn = document.getElementById("refresh");
+async function load() {
+  btn.disabled = true; btn.textContent = "Checking…";
+  try {
+    const r = await fetch("/inbox/status.html", { cache: "no-store" });
+    if (r.status === 401) { location.reload(); return; }  // logged out: show the login page
+    out.innerHTML = await r.text();
+  } catch { out.innerHTML = '<div class="when">Could not reach the server.</div>'; }
+  btn.disabled = false; btn.textContent = "Refresh";
+}
+btn.onclick = load;
+load();
+</script></body></html>"""
+
+
 def pins_link() -> str:
     n = len(pinned_entries())
     return f'<div class="pinsnav"><a href="/inbox/pins">Pinned ({n})</a></div>'
@@ -2442,7 +2517,7 @@ class Handler(BaseHTTPRequestHandler):
         allowed, session = self._gate(path)
         if not allowed:
             self._send(
-                200 if path in ("/inbox", "/inbox/") else 401,
+                200 if path in ("/inbox", "/inbox/", "/inbox/status") else 401,
                 login_page(),
                 "text/html; charset=utf-8",
             )
@@ -2535,6 +2610,10 @@ class Handler(BaseHTTPRequestHandler):
                 "application/zip",
                 {"Content-Disposition": f'attachment; filename="{name}"'},
             )
+        elif path in ("/inbox/status", "/inbox/status/"):
+            self._send(200, STATUS_PAGE.encode(), "text/html; charset=utf-8")
+        elif path == "/inbox/status.html":
+            self._send(200, run_status().encode(), "text/html; charset=utf-8")
         elif path == "/inbox/health":
             ok = DIR.parent.exists()
             self._send(
