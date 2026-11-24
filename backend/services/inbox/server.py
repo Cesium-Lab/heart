@@ -20,6 +20,8 @@ import html
 import io
 import ipaddress
 import secrets
+import shutil
+import tempfile
 import sys
 import json
 import os
@@ -51,11 +53,14 @@ SMTP_USER = os.getenv("INBOX_SMTP_USER", "")
 SMTP_PASS = os.getenv("INBOX_SMTP_PASS", "")
 MAIL_TO = os.getenv("INBOX_TO", SMTP_USER)
 PUBLIC_URL = os.getenv("INBOX_PUBLIC_URL", "https://cesiumlab.net/inbox/")
-# Per entry. Cloudflare's free plan rejects requests over 100 MB before they reach us (a
-# "413 Payload Too Large" page), so stay under it with room for the form's own overhead. The
-# page checks this before uploading; the server enforces it too.
+# Upload limit per entry/reply (all its files together). From the web (Cloudflare) it's 95 MB:
+# Cloudflare's free plan rejects requests over 100 MB before they reach us (a "413 Payload Too
+# Large" page), so stay under it with room for the form's own overhead. At home / on Tailscale
+# there's no Cloudflare in the way: 1 GB (tentative). Uploads stream to disk, so a big one
+# doesn't sit in RAM. The page shows and checks the limit before uploading; the server
+# enforces it too.
 MAX_UPLOAD_MB = 95
-MAX_UPLOAD = MAX_UPLOAD_MB * 1024 * 1024
+HOME_UPLOAD_MB = int(os.getenv("INBOX_HOME_UPLOAD_MB", "1024"))
 DAY_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 # Login for visitors outside the home network (see "auth" below). The hash comes from
@@ -88,7 +93,9 @@ def safe_name(name: str) -> str:
     return name[:80]
 
 
-def _save_files(folder: Path, stamp: str, files: list[tuple[str, bytes]]) -> list[str]:
+def _save_files(
+    folder: Path, stamp: str, files: list[tuple[str, bytes | Path]]
+) -> list[str]:
     saved = []
     for name, data in files:
         fname = f"{stamp}-{safe_name(name)}"
@@ -96,7 +103,10 @@ def _save_files(folder: Path, stamp: str, files: list[tuple[str, bytes]]) -> lis
         while (folder / fname).exists():  # same name in the same second: keep both
             fname = f"{stamp}-{k}-{safe_name(name)}"
             k += 1
-        (folder / fname).write_bytes(data)
+        if isinstance(data, Path):  # an upload already streamed to disk: move it in
+            shutil.move(data, folder / fname)
+        else:
+            (folder / fname).write_bytes(data)
         saved.append(fname)
     return saved
 
@@ -943,7 +953,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system
 form{max-width:320px;margin:18vh auto 0;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:12px;display:grid;gap:12px}
 h1{font-size:18px;margin:0}input{font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit}
 button{font:inherit;font-weight:600;color:#fff;background:var(--accent);border:0;border-radius:8px;padding:10px;cursor:pointer}
-.msg{color:#dc2626;font-size:14px;min-height:1em}
+.msg{color:#dc2626;font-size:13px;min-height:1em}
 </style></head><body>
 <form method="post" action="/inbox/login">
   <h1>Inbox</h1>
@@ -987,23 +997,23 @@ textarea{width:100%;min-height:96px;font:inherit;color:inherit;background:transp
 /* Typing boxes (pencil, reply, edit) use exactly the notes' font: 16px, same family/line height. */
 textarea,.replyform textarea,.editform textarea{font:16px/1.45 -apple-system,Helvetica,Arial,sans-serif}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-label.file{flex:1;color:var(--muted);font-size:14px;cursor:pointer}
-input[type=file]{font-size:14px;max-width:100%}
+label.file{flex:1;color:var(--muted);font-size:13px;cursor:pointer}
+input[type=file]{font-size:13px;max-width:100%}
 button{font:inherit;font-weight:600;color:#fff;background:var(--accent);border:0;border-radius:8px;padding:9px 18px;cursor:pointer}
-.ok{color:#16a34a;font-size:14px;margin:8px 2px}
+.ok{color:#16a34a;font-size:13px;margin:8px 2px}
 .sizerow{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 2px}
-.clear{font-size:12px;font-weight:500;color:var(--ink);background:transparent;border:1px solid var(--line);padding:4px 10px}
+.clear{font-size:13px;font-weight:500;color:var(--ink);background:transparent;border:1px solid var(--line);padding:4px 10px}
 .picked{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .picked li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;overflow-wrap:anywhere}
-.picked .x{flex:none;width:26px;height:26px;padding:0;font-size:17px;line-height:1;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px}
+.picked .x{flex:none;width:26px;height:26px;padding:0;font-size:18px;line-height:1;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px}
 .size{font-size:13px;color:var(--muted);margin:0 2px}.size.bad{color:#dc2626;font-weight:600}
 button:disabled{opacity:.4;cursor:not-allowed}
-.num{color:var(--bright);font-weight:600}
+.num{color:var(--bright);font-weight:600;font-size:16px}
 .details{position:relative;margin-left:10px;text-decoration:underline;text-underline-offset:2px;cursor:default;outline:0}
 /* The card fades in, stays open while the mouse moves onto it (so its text can be selected and
    copied), and waits 0.05 s before fading out so tiny slips don't close it. */
 .details .tip{position:absolute;left:calc(100% + 8px);top:-7px;z-index:20;width:max-content;max-width:min(360px,80vw);
-  padding:8px 10px;border-radius:8px;background:var(--bright);color:var(--bg);font-size:12px;line-height:1.5;
+  padding:8px 10px;border-radius:8px;background:var(--bright);color:var(--bg);font-size:13px;line-height:1.5;
   text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25);overflow-wrap:anywhere;cursor:text;user-select:text;
   opacity:0;visibility:hidden;transform:translateX(-3px);
   transition:opacity .15s ease .05s,transform .15s ease .05s,visibility 0s linear .2s}
@@ -1062,7 +1072,7 @@ body.selecting .pick,body.selecting .apick,body.selecting .rpick{visibility:visi
 .rpick:checked{background:var(--accent);border-color:var(--accent)}
 .rpick:checked::after{content:"";width:3px;height:6px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:translateY(-1px) rotate(45deg)}
 .del .brk{flex-basis:100%;height:0}  /* count + Copy text on line 1; the other actions below */
-.delwhy{flex-basis:100%;font-size:12px;color:#dc2626}
+.delwhy{flex-basis:100%;font-size:13px;color:#dc2626}
 #seldelete:disabled{opacity:.45;cursor:not-allowed}
 .r .note{margin:4px 0}
 .replyform,.editform{display:grid;gap:6px;margin:8px 0}
@@ -1082,7 +1092,7 @@ a.ref{font-weight:600}
 .pick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 label.t{cursor:pointer;user-select:none}
 /* Same size/style as the "N saved · emailed" text beside it, in white. */
-.selall{font:inherit;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--bright);background:transparent;border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-left:8px;cursor:pointer}.meta{font-size:11px}
+.selall{font:inherit;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--bright);background:transparent;border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-left:8px;cursor:pointer}.meta{font-size:13px}
 @media(max-width:899px){.del{position:fixed;left:12px;right:12px;bottom:12px;z-index:30}}
 .del{position:sticky;bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;
   background:var(--card);border:1px solid #dc2626;border-radius:12px;padding:10px;box-shadow:0 6px 20px rgba(0,0,0,.15)}
@@ -1097,7 +1107,7 @@ h2 .dtitle{font-size:18px;font-style:italic;color:#b8860b}
 h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
 .e{padding:12px 2px}
 /* Between entries: a thicker divider in a small gap, so neighbouring highlights stay separate. */
-.esep{border:0;height:2px;background:var(--line);margin:5px 0}.t{color:var(--muted);font-size:12px}
+.esep{border:0;height:2px;background:var(--line);margin:5px 0}.t{color:var(--muted);font-size:13px}
 .e p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}.e a{color:var(--accent)}
 .atts{border:1px solid var(--line);border-radius:10px;margin-top:8px;padding:0}
 .att:first-child{border-radius:9px 9px 0 0}.att:last-child{border-radius:0 0 9px 9px}.att:only-child{border-radius:9px}
@@ -1127,16 +1137,16 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .pv[hidden]{display:none}
 .pvbox{position:relative;max-width:min(1000px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--card);border-radius:12px;overflow:hidden}
 .pvhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;font-size:13px;border-bottom:1px solid var(--line)}
-.pvhead span{overflow-wrap:anywhere}.pvclose{font-size:20px;line-height:1;color:var(--bright);background:transparent;border:0;padding:0 4px;cursor:pointer}
+.pvhead span{overflow-wrap:anywhere}.pvclose{font-size:18px;line-height:1;color:var(--bright);background:transparent;border:0;padding:0 4px;cursor:pointer}
 .pvbody{overflow:auto;min-height:0}.pvbody img,.pvbody video{display:block;max-width:100%;max-height:80vh;margin:auto}
 .pvbody pre{margin:0;padding:12px;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:80vh}
 .pvbody iframe{display:block;width:min(1000px,92vw);height:80vh;border:0;background:#fff}.pvbody audio{display:block;margin:20px}
 .e img{max-width:100%;max-height:320px;border-radius:8px;margin-top:6px;display:block}
 .tools{display:flex;gap:8px;margin:14px 2px;flex-wrap:wrap}.tools button,.tools a{font-size:13px;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none;font-weight:500}
 /* three columns: equal sides keep the middle link centered whatever the dates say */
-.nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:0 2px 12px;font-size:14px}
+.nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:0 2px 12px;font-size:13px}
 .nav>:first-child{justify-self:end}.nav>:last-child{justify-self:start}
-.nav a,.nav .today{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.nav a,.nav .today{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
 
 .nav .today{font-weight:600;color:var(--bright);text-align:center}
 .title{font-size:28px;margin:4px 2px 12px;letter-spacing:-.01em}
@@ -1145,11 +1155,11 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 @media(prefers-color-scheme:dark){.pencil{color:#f5c518}}
 .pinsnav{float:right;margin-top:4px}.pinsnav a,.nav a{display:inline-block;font-size:13px;font-weight:500;color:var(--bright);border:1px solid var(--line);border-radius:6px;padding:5px 10px;text-decoration:none}.pinsnav a:hover,.nav a:hover{border-color:var(--bright)}
 .pinbox{display:inline-flex;flex-direction:row-reverse;align-items:center;gap:8px}
-.pinbtn{background:none;border:0;padding:0;font:inherit;font-family:ui-monospace,monospace;font-size:.85em;color:var(--muted);cursor:pointer}
+.pinbtn{background:none;border:0;padding:0;font:inherit;font-family:ui-monospace,monospace;font-size:13px;color:var(--muted);cursor:pointer}
 .pinbtn{filter:grayscale(1);opacity:.35}
 .pinbtn:hover{opacity:.8}
 .pinbox.on .pinbtn{filter:none;opacity:1}
-.pingo{display:none;font-size:.85em;color:var(--accent)}
+.pingo{display:none;font-size:13px;color:var(--accent)}
 .pinbox:hover .pingo,.pinbox:focus-within .pingo{display:inline}
 form.inline{display:contents}
 </style></head><body><main>
@@ -1604,9 +1614,10 @@ document.querySelector("#addform textarea").addEventListener("keydown", (e) => {
 });
 // Picked files build up in a list (each with an x to remove it); the input is kept in sync so
 // a normal form post sends exactly the listed files. Total is checked against MAX_MB before
-// uploading: Cloudflare rejects anything over 100 MB with an error page.
+// uploading (95 MB from the web, where Cloudflare rejects anything over 100 MB; more at home).
 (() => {
   const MAX_MB = {max_mb};
+  const LIMIT = MAX_MB >= 1024 && MAX_MB % 1024 === 0 ? MAX_MB / 1024 + " GB" : MAX_MB + " MB";
   const input = document.getElementById("file"), save = document.getElementById("save");
   const out = document.getElementById("size"), list = document.getElementById("picked");
   const clearAll = document.getElementById("clearall");
@@ -1641,8 +1652,8 @@ document.querySelector("#addform textarea").addEventListener("keydown", (e) => {
     list.hidden = !files.length;
     clearAll.hidden = !files.length;
     out.className = "size" + (tooBig ? " bad" : "");
-    out.textContent = !files.length ? "" : tooBig
-      ? `${mb(total)} MB is over the ${MAX_MB} MB limit. Remove some files (your text stays), or save a link instead.`
+    out.textContent = !files.length ? `Files up to ${LIMIT}` : tooBig
+      ? `${mb(total)} MB is over the ${LIMIT} limit. Remove some files (your text stays), or save a link instead.`
       : `${files.length} file${files.length > 1 ? "s" : ""}, ${mb(total)} MB`;
   };
   // Clearing the input's value un-picks everything (works even without DataTransfer).
@@ -1651,6 +1662,7 @@ document.querySelector("#addform textarea").addEventListener("keydown", (e) => {
     if (canEdit) { picked = picked.concat([...input.files]); sync(); }
     render();
   });
+  render();
   input.form.addEventListener("submit", (e) => { render(); if (save.disabled) e.preventDefault(); else save.textContent = "Saving\u2026"; });
 })();
 </script>"""
@@ -1827,7 +1839,10 @@ const target = document.querySelector(".pcard.flash"); if (target) target.scroll
 
 
 def render_pins(
-    focus: tuple[str, int] | None = None, flash: str = "", session: dict | None = None
+    focus: tuple[str, int] | None = None,
+    flash: str = "",
+    session: dict | None = None,
+    max_mb: int = MAX_UPLOAD_MB,
 ) -> bytes:
     """All pinned entries (newest day first), with the same actions as a day page (📌, Reply,
     Edit, Copy, Raw, replies with their own Edit/Copy/Raw) plus Delete… per entry. The add box
@@ -1912,7 +1927,7 @@ def render_pins(
         )
     form = (
         FORM.replace("{base}", "/inbox/")
-        .replace("{max_mb}", str(MAX_UPLOAD_MB))
+        .replace("{max_mb}", str(max_mb))
         .replace(
             'enctype="multipart/form-data">',
             'enctype="multipart/form-data"><input type="hidden" name="pin" value="1">',
@@ -1993,6 +2008,22 @@ document.querySelectorAll(".replies").forEach((box) => {
   box.addEventListener("click", (e) => { if (onBar(e)) { e.stopPropagation(); setReplies(box, false); box.classList.remove("barhover"); } });
 });
 { const id = decodeURIComponent(location.hash.slice(1)); if (id.includes(".")) openRepliesFor(document.getElementById(id)); }
+// 📌 on a day page toggles in place (no reload, so the page doesn't jump or select the entry).
+// On the Pinned page it still reloads, so an unpinned card drops off the list.
+if (!document.body.classList.contains("pins")) document.querySelectorAll(".pinbox form").forEach((f) => f.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const box = f.closest(".pinbox"), on = f.elements.on.value === "1";
+  try { await fetch(f.action, { method: "POST", body: new URLSearchParams(new FormData(f)), redirect: "manual" }); }
+  catch { f.submit(); return; }
+  box.classList.toggle("on", on);
+  f.elements.on.value = on ? "0" : "1";
+  const btn = f.querySelector(".pinbtn"); btn.title = btn.ariaLabel = on ? "Unpin" : "Pin";
+  let go = box.querySelector(".pingo");
+  if (on && !go) { go = document.createElement("a"); go.className = "pingo"; go.href = "/inbox/pins/" + f.action.split("/").pop() + "/" + f.elements.n.value; go.textContent = "go to pinned"; box.append(go); }
+  if (!on && go) go.remove();
+  const link = document.querySelector('.pinsnav a[href="/inbox/pins"]');
+  if (link) link.textContent = link.textContent.replace(/\\d+/, (k) => String(Number(k) + (on ? 1 : -1)));
+}));
 // Pinned page: the card you just came back to (after a reply or edit) shows its replies.
 document.querySelectorAll(".pcard.flash .replies").forEach((b) => setReplies(b, true));
 </script>"""
@@ -2113,7 +2144,9 @@ def js_json(value) -> str:
     return re.sub(r"\{([A-Za-z_]+)\}", r"\\u007b\1\\u007d", out)
 
 
-def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
+def render(
+    day: str, flash: str = "", session: dict | None = None, max_mb: int = MAX_UPLOAD_MB
+) -> bytes:
     base = "/inbox/"
     entries = read_day(day)
     today = date.today().isoformat()
@@ -2202,7 +2235,7 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         .replace("{day}", day)
         .replace(
             "{form}",
-            FORM.replace("{base}", base).replace("{max_mb}", str(MAX_UPLOAD_MB))
+            FORM.replace("{base}", base).replace("{max_mb}", str(max_mb))
             if day == today
             else "",
         )
@@ -2272,22 +2305,96 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
 # ------------------------------------------------------------------- http
 
 
-def note_and_files(ctype: str, body: bytes) -> tuple[str, list[tuple[str, bytes]]]:
-    """The "text" field and uploaded "file" parts of the entry/reply form."""
-    text, files = "", []
-    if ctype.startswith("multipart/form-data"):
-        msg = BytesParser(policy=email_policy).parsebytes(
-            f"Content-Type: {ctype}\r\nMIME-Version: 1.0\r\n\r\n".encode() + body
-        )
-        for part in msg.iter_parts():
-            name = part.get_param("name", header="content-disposition")
-            if name == "text":
-                text = (part.get_payload(decode=True) or b"").decode("utf-8", "replace")
-            elif name == "file" and part.get_filename():
-                data = part.get_payload(decode=True) or b""
-                if data:
-                    files.append((part.get_filename(), data))
-    return text, files
+def mb_label(mb: int) -> str:
+    return f"{mb // 1024} GB" if mb >= 1024 and mb % 1024 == 0 else f"{mb} MB"
+
+
+def upload_mb(headers) -> int:
+    """This visitor's upload limit in MB: bigger at home / on Tailscale (no Cloudflare)."""
+    return HOME_UPLOAD_MB if is_home(headers) else MAX_UPLOAD_MB
+
+
+def stream_form(rfile, length: int, ctype: str):
+    """Read a multipart form straight off the socket: text fields into memory, file parts into
+    temp files (in DIR/.uploading, same drive, so saving is just a rename). Returns
+    (fields, files) with files = [(filename, Path)]. Raises ValueError on a broken form."""
+    m = re.search(r'boundary="?([^";]+)"?', ctype)
+    if not m:
+        raise ValueError("no boundary")
+    delim = b"\r\n--" + m[1].encode()
+    tmpdir = DIR / ".uploading"
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    fields: dict[str, list[str]] = {}
+    files: list[tuple[str, Path]] = []
+    buf, left = b"\r\n", length
+    tmp: Path | None = None
+
+    def more() -> bool:
+        nonlocal buf, left
+        if left <= 0:
+            return False
+        chunk = rfile.read(min(1 << 20, left))
+        if not chunk:
+            left = 0
+            return False
+        left -= len(chunk)
+        buf += chunk
+        return True
+
+    try:
+        while (i := buf.find(delim)) < 0:
+            buf = buf[-len(delim) :]
+            if not more():
+                raise ValueError("no parts")
+        buf = buf[i + len(delim) :]
+        while True:
+            while len(buf) < 2 and more():
+                pass
+            if buf[:2] == b"--":
+                break
+            while (j := buf.find(b"\r\n\r\n")) < 0:
+                if len(buf) > 16384 or not more():
+                    raise ValueError("bad part header")
+            head = buf[2:j].decode("utf-8", "replace")
+            buf = buf[j + 4 :]
+            nm = re.search(r'\bname="([^"]*)"', head)
+            fn = re.search(r'filename="([^"]*)"', head)
+            tmp = None
+            if fn and fn[1]:
+                fd, tmp_name = tempfile.mkstemp(dir=tmpdir)
+                tmp = Path(tmp_name)
+                out = os.fdopen(fd, "wb")
+            else:
+                out = io.BytesIO()
+            with out:
+                while (k := buf.find(delim)) < 0:
+                    if len(buf) > len(delim):
+                        out.write(buf[: -len(delim)])
+                        buf = buf[-len(delim) :]
+                    if not more():
+                        raise ValueError("form cut off")
+                out.write(buf[:k])
+                if tmp is None:
+                    fields.setdefault(nm[1] if nm else "", []).append(
+                        out.getvalue().decode("utf-8", "replace")
+                    )
+            buf = buf[k + len(delim) :]
+            if tmp is not None:
+                if tmp.stat().st_size:
+                    tmp.chmod(
+                        0o664
+                    )  # mkstemp makes it owner-only; match the other files
+                    # Browsers send a quote in a file name as %22.
+                    files.append((fn[1].replace("%22", '"'), tmp))
+                else:
+                    tmp.unlink()
+    except BaseException:
+        for _, t in files:
+            t.unlink(missing_ok=True)
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+        raise
+    return fields, files
 
 
 def form_fields(ctype: str, body: bytes) -> dict[str, list[str]]:
@@ -2349,7 +2456,9 @@ class Handler(BaseHTTPRequestHandler):
             self._redirect("/inbox/")  # no day given: today
             return
         if path in ("/inbox", "/inbox/"):
-            page = render(date.today().isoformat(), flash, session)
+            page = render(
+                date.today().isoformat(), flash, session, upload_mb(self.headers)
+            )
             self._send(200, page, "text/html; charset=utf-8")
         elif m := re.fullmatch(
             r"/inbox/(\d{4}-\d{2}-\d{2})/(\d+(?:\.\d+)?)\.txt", path
@@ -2363,16 +2472,22 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, item["text"].encode(), "text/plain; charset=utf-8")
         elif path in ("/inbox/pins", "/inbox/pins/"):
             self._send(
-                200, render_pins(None, flash, session), "text/html; charset=utf-8"
+                200,
+                render_pins(None, flash, session, upload_mb(self.headers)),
+                "text/html; charset=utf-8",
             )
         elif m := re.fullmatch(r"/inbox/pins/(\d{4}-\d{2}-\d{2})/(\d+)", path):
             self._send(
                 200,
-                render_pins((m[1], int(m[2])), flash, session),
+                render_pins((m[1], int(m[2])), flash, session, upload_mb(self.headers)),
                 "text/html; charset=utf-8",
             )
         elif m := re.fullmatch(r"/inbox/(?:day/)?(\d{4}-\d{2}-\d{2})", path):
-            self._send(200, render(m[1], flash, session), "text/html; charset=utf-8")
+            self._send(
+                200,
+                render(m[1], flash, session, upload_mb(self.headers)),
+                "text/html; charset=utf-8",
+            )
         elif m := re.fullmatch(r"/inbox/day/(\d{4}-\d{2}-\d{2})\.md", path):
             md = day_dir(m[1]) / "inbox.md"
             body = (
@@ -2433,15 +2548,39 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         path = self.path.split("?", 1)[0]
         length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_UPLOAD:
-            self._send(
-                413,
-                f"too big ({MAX_UPLOAD_MB} MB max per entry)".encode(),
-                "text/plain",
-            )
-            return
-        body = self.rfile.read(length)
         ctype = self.headers.get("Content-Type", "")
+        upload = path == "/inbox/add" or re.fullmatch(
+            r"/inbox/reply/\d{4}-\d{2}-\d{2}/\d+", path
+        )
+        limit = upload_mb(self.headers) if upload else MAX_UPLOAD_MB
+        if length > limit * 1024 * 1024:
+            self._send(413, f"too big ({mb_label(limit)} max)".encode(), "text/plain")
+            return
+        fields: dict[str, list[str]] = {}
+        files: list[tuple[str, Path]] = []
+        if upload and ctype.startswith("multipart/form-data"):
+            # Check the login before taking in a big upload, then stream it to disk.
+            if not self._gate(path)[0]:
+                self.close_connection = True
+                self._send(
+                    401, login_page("Please log in again."), "text/html; charset=utf-8"
+                )
+                return
+            try:
+                fields, files = stream_form(self.rfile, length, ctype)
+            except ValueError:
+                self._send(400, b"upload was cut off or malformed", "text/plain")
+                return
+            body = b""
+        else:
+            body = self.rfile.read(length)
+        try:
+            self._post(path, ctype, body, fields, files)
+        finally:  # anything not saved (an error, an empty note) doesn't linger
+            for _, t in files:
+                t.unlink(missing_ok=True)
+
+    def _post(self, path, ctype, body, fields, files) -> None:
         if path == "/inbox/login":
             ip = visitor_ip(self.headers) or "?"
             if too_many_fails(ip):
@@ -2549,24 +2688,24 @@ class Handler(BaseHTTPRequestHandler):
             self._redirect(f"{home}?sent={quote(msg)}")
             return
         if path == "/inbox/add":
-            text, files = note_and_files(ctype, body)
+            text = (fields.get("text") or [""])[0]
             if not text.strip() and not files:
                 self._redirect("/inbox/")
                 return
             day = add_entry(text, files, describe_source(self.headers))
-            if (form_fields(ctype, body).get("pin") or [""])[0] == "1":
+            if (fields.get("pin") or [""])[0] == "1":
                 n = read_day(day)[-1]["n"]
                 set_pinned(day, n, True)
                 self._redirect(f"/inbox/pins/{day}/{n}")
                 return
             self._redirect("/inbox/?saved")
         elif m := re.fullmatch(r"/inbox/reply/(\d{4}-\d{2}-\d{2})/(\d+)", path):
-            text, files = note_and_files(ctype, body)
+            text = (fields.get("text") or [""])[0]
             if not text.strip() and not files:
                 self._redirect(f"/inbox/{m[1]}#{m[2]}")
                 return
             rid = add_reply(m[1], int(m[2]), text, files, describe_source(self.headers))
-            back = (form_fields(ctype, body).get("back") or [""])[0]
+            back = (fields.get("back") or [""])[0]
             self._redirect(
                 (back if back.startswith("/inbox/pins") else f"/inbox/{m[1]}#{rid}")
                 if rid

@@ -15,8 +15,11 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
 ## Using it
 
 - **Save:** one text box plus an optional file picker (on a phone it offers the camera). Save,
-  and the entry shows under "Today". Text-only and file-only entries are both fine. Files over
-  95 MB in total are refused before uploading (Cloudflare's limit is 100 MB): save a link instead.
+  and the entry shows under "Today". Text-only and file-only entries are both fine. The upload
+  limit per entry or reply (all its files together) shows under the box ("Files up to …"):
+  **95 MB from the web** (Cloudflare's free plan refuses anything over 100 MB) and **1 GB at home
+  or on Tailscale** (tentative; `INBOX_HOME_UPLOAD_MB`). Uploads stream straight to disk
+  (`.uploading/` in the inbox folder, then renamed into the day), so big files don't sit in RAM.
 - **Each entry records** its local time with zone (`14:54:32 PST`), UTC, Unix time, and where it
   was sent from: `home network 192.168.0.42`, `Tailscale 100.120.196.52`, or
   `internet 203.0.113.5 (via cesiumlab.net)`.
@@ -61,7 +64,7 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
       isn't reused). Everything deleted moves to the day's `.deleted/` folder (`deleted.md` plus
       the files), so a mistake can be undone by hand.
 - **Adding files:** each pick adds to a list under the box, each with an × to remove it, plus
-  **Remove all files**. Over 95 MB in total, Save turns off until you remove some.
+  **Remove all files**. Over the limit, Save (and ⌘/Ctrl+Enter) turns off until you remove some.
 - **Days:** `← yesterday` / `→` links browse past days; each day has **Copy for Claude** (the whole
   day as text), its raw `inbox.md`, and **Email this day…** (opens a To box with your address filled in; Send sends it, to anyone).
 - **Tip:** add it to your iPhone home screen (Share → Add to Home Screen) so it opens like an app.
