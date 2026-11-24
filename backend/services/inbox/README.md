@@ -41,6 +41,10 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
     - An entry selected with some files unticked loses its note and the ticked files; the
       unticked files stay, as an entry without text.
     - Files ticked on their own are deleted alone; their entry's note stays.
+    - Replies have selection circles too (click anywhere on a reply). Ticked replies are deleted
+      alone. An entry is never deleted without all of its replies: if a selected entry has an
+      unticked reply, Delete is blocked until you tick them all (or untick the entry). When an
+      entry's note is deleted (even if some of its files are kept), all its replies go too.
     - Once an entry has no note and no files left, it disappears from the list (its number
       isn't reused). Everything deleted moves to the day's `.deleted/` folder (`deleted.md` plus
       the files), so a mistake can be undone by hand.

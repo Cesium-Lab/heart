@@ -307,68 +307,118 @@ def delete_file(day: str, name: str) -> bool:
         return True
 
 
-def delete_selection(day: str, indexes: set[int], files: set[str]) -> tuple[int, int]:
+def delete_selection(
+    day: str, indexes: set[int], files: set[str], replies: set[str] = frozenset()
+) -> tuple[int, int, int]:
     """Delete what's selected. Everything moves to <day>/.deleted/.
 
-    - Selected entry, all its files ticked (or none): deleted whole.
-    - Selected entry with some files unticked: its note is deleted along with the ticked files;
-      the unticked files stay, as an entry without text.
-    - Files ticked on their own (entry not selected): just those files; the note stays.
-    An entry left with no note and no files disappears from the list.
-    Returns (entries deleted, files deleted)."""
+    - Selected entry: always takes ALL its replies (the page only allows this when they're all
+      ticked). All its files ticked (or none): deleted whole. Some files unticked: the note and
+      ticked files go, the unticked files stay as an entry without text.
+    - Files or replies ticked on their own (entry not selected): just those.
+    An entry left with no note, files, or replies disappears from the list.
+    Returns (entries deleted, files deleted, replies deleted)."""
     files = {safe_name(f) for f in files}
+    stamp = lambda: datetime.now().strftime("%H:%M:%S")  # noqa: E731
     with _write_lock:
         entries = read_day(day)
         trash = day_dir(day) / ".deleted"
         trash.mkdir(exist_ok=True)
-        whole, nfiles, keep = 0, 0, []
+        n_entries = n_files = n_replies = 0
+        keep: list[dict] = []
+        moving: list[str] = []
         with (trash / "deleted.md").open("a", encoding="utf-8") as fh:
             for i, e in enumerate(entries):
+                if i in indexes:
+                    n_entries += 1
+                    for r in e["replies"]:  # an entry never goes without its replies
+                        fh.write(
+                            "\n".join(
+                                _block(
+                                    "###",
+                                    r["id"],
+                                    {**r, "time": f"{r['time']} (deleted {stamp()})"},
+                                )
+                            )
+                            + "\n"
+                        )
+                        moving += r["files"]
+                        n_replies += 1
+                    if set(e["files"]) <= files:
+                        fh.write(
+                            "\n".join(
+                                _block(
+                                    "##",
+                                    str(e["n"]),
+                                    {**e, "time": f"{e['time']} (deleted {stamp()})"},
+                                )
+                            )
+                            + "\n"
+                        )
+                        moving += e["files"]
+                    else:  # note + ticked files go; unticked files stay, without text or replies
+                        gone = [f for f in e["files"] if f in files]
+                        fh.write(
+                            "\n".join(
+                                _block(
+                                    "##",
+                                    str(e["n"]),
+                                    {
+                                        **e,
+                                        "files": gone,
+                                        "time": f"{e['time']}: note (deleted {stamp()}; other files kept)",
+                                    },
+                                )
+                            )
+                            + "\n"
+                        )
+                        moving += gone
+                        keep.append(
+                            {
+                                **e,
+                                "text": "",
+                                "replies": [],
+                                "files": [f for f in e["files"] if f not in files],
+                            }
+                        )
+                    continue
                 gone = [f for f in e["files"] if f in files]
-                if i in indexes and set(e["files"]) <= files:
-                    whole += 1
-                    gone = e["files"] + [f for r in e["replies"] for f in r["files"]]
-                    for r in e["replies"]:  # replies go with their entry
-                        fh.write("\n".join(_block("###", r["id"], r)) + "\n")
+                if gone:
                     fh.write(
-                        f"## {e['n']} · {e['time']} (deleted {datetime.now():%H:%M:%S})\n\n"
+                        f"## {e['n']} · {e['time']}: files {', '.join(gone)} (deleted {stamp()})\n\n"
                     )
-                    fh.write("".join(f"> {ln}\n" for ln in e["text"].splitlines()))
-                    fh.write("".join(f"- {f}\n" for f in gone) + "\n")
-                elif (
-                    i in indexes
-                ):  # selected, but some files kept: drop the note + ticked files
-                    whole += 1
-                    fh.write(
-                        f"## {e['n']} · {e['time']}: note"
-                        + (f" and files {', '.join(gone)}" if gone else "")
-                        + f" (deleted {datetime.now():%H:%M:%S}; other files kept)\n\n"
-                    )
-                    fh.write(
-                        "".join(f"> {ln}\n" for ln in e["text"].splitlines()) + "\n"
-                    )
-                    keep.append(
-                        {
-                            **e,
-                            "text": "",
-                            "files": [f for f in e["files"] if f not in files],
-                        }
-                    )
-                elif gone:
-                    fh.write(
-                        f"## {e['n']} · {e['time']}: files {', '.join(gone)} (deleted {datetime.now():%H:%M:%S})\n\n"
-                    )
-                    e = {**e, "files": [f for f in e["files"] if f not in files]}
-                    keep.append(e)
-                else:
-                    keep.append(e)
-                for f in gone:
-                    src = day_dir(day) / safe_name(f)
-                    if src.is_file():
-                        src.rename(trash / src.name)
-                        nfiles += 1
+                    moving += gone
+                kept_replies = []
+                for r in e["replies"]:
+                    if r["id"] in replies:
+                        fh.write(
+                            "\n".join(
+                                _block(
+                                    "###",
+                                    r["id"],
+                                    {**r, "time": f"{r['time']} (deleted {stamp()})"},
+                                )
+                            )
+                            + "\n"
+                        )
+                        moving += r["files"]
+                        n_replies += 1
+                    else:
+                        kept_replies.append(r)
+                keep.append(
+                    {
+                        **e,
+                        "files": [f for f in e["files"] if f not in files],
+                        "replies": kept_replies,
+                    }
+                )
+        for f in moving:
+            src = day_dir(day) / safe_name(f)
+            if src.is_file():
+                src.rename(trash / src.name)
+                n_files += 1
         write_day(day, [e for e in keep if _alive(e)])
-        return whole, nfiles
+        return n_entries, n_files, n_replies
 
 
 def read_day(day: str) -> list[dict]:
@@ -549,31 +599,44 @@ def plain_text(day: str, entries: list[dict]) -> str:
     return "\n\n".join([head] + [entry_text(day, e) for e in entries])
 
 
-def export_zip(day: str, indexes: set[int], files: set[str] | None = None) -> bytes:
+def export_zip(
+    day: str,
+    indexes: set[int],
+    files: set[str] | None = None,
+    replies: set[str] | None = None,
+) -> bytes:
     """Exactly what's selected, as a zip: selected.md (same format as inbox.md) plus files.
 
-    indexes: selected entries (their notes). files: ticked attachments; for a selected entry
-    only its ticked files are included, and files ticked on their own come with their entry's
-    number/time but not its note. files=None means "all files of the selected entries"."""
+    indexes: selected entries (their notes). files / replies: ticked attachments and replies;
+    a selected entry brings only its ticked files and replies, and ones ticked on their own
+    come under their entry's id without its note. None means "all of the selected entries'"."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         md = [f"# Inbox {day} (selected)", ""]
         for i, e in enumerate(read_day(day)):
+            sel = i in indexes
             keep = [
                 f
                 for f in e["files"]
-                if (files is None and i in indexes) or (files and f in files)
+                if (files is None and sel) or (files and f in files)
             ]
-            if i not in indexes and not keep:
+            reps = [
+                r
+                for r in e["replies"]
+                if (replies is None and sel) or (replies and r["id"] in replies)
+            ]
+            if not (sel or keep or reps):
                 continue
-            md += [
-                f"## {e['n']} · {e['time']}" + ("" if i in indexes else " (files only)")
-            ]
-            md += ([f"_{e['meta']}_"] if e.get("meta") else []) + [""]
-            if i in indexes:
-                md += [f"> {ln}" if ln else ">" for ln in e["text"].splitlines()]
-            md += [f"- [{f}]({quote(f)})" for f in keep] + [""]
-            for f in keep:
+            head = {
+                **e,
+                "text": e["text"] if sel else "",
+                "files": keep,
+                "time": e["time"] + ("" if sel else " (only parts selected)"),
+            }
+            md += _block("##", str(e["n"]), head)
+            for r in reps:
+                md += _block("###", r["id"], r)
+            for f in keep + [f for r in reps for f in r["files"]]:
                 src = day_dir(day) / safe_name(f)
                 if src.is_file():
                     z.write(src, src.name)
@@ -857,10 +920,19 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .ehead{flex-wrap:nowrap}.ehead .t{min-width:0;overflow-wrap:anywhere}
 .ehead a.num{text-decoration:none}
 .edited{margin-left:8px}
+.replyline{display:block;margin:8px 0 0;padding:0;font:inherit;font-size:13px;font-weight:500;color:var(--muted);background:none;border:0;cursor:pointer}
+.replyline:hover{color:var(--bright);text-decoration:underline}
+.replyform[hidden],.replyline[hidden]{display:none}
 .replies{margin:6px 0 0 18px;border-left:2px solid var(--line);padding-left:12px}
 .replies:empty{display:none}
 .r{padding:8px 6px;border-radius:8px}.r+.r{border-top:1px solid var(--line)}
-.r.flash{background:var(--hl)}
+.r.flash,.r.rsel{background:var(--hl)}
+.r{cursor:default}
+.rpick{appearance:none;-webkit-appearance:none;flex:none;width:14px;height:14px;margin:0 0 0 2px;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
+.rpick:checked{background:var(--accent);border-color:var(--accent)}
+.rpick:checked::after{content:"";width:3px;height:6px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:translateY(-1px) rotate(45deg)}
+.delwhy{flex-basis:100%;font-size:12px;color:#dc2626}
+#seldelete:disabled{opacity:.45;cursor:not-allowed}
 .r .note{margin:4px 0}
 .replyform,.editform{display:grid;gap:6px;margin:8px 0}
 .replyform textarea,.editform textarea{width:100%;min-height:70px;font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px}
@@ -960,6 +1032,7 @@ async function copyText(text) {
   <button type="button" id="selcopy" class="plain" title="Notes with time, source, and attachment links">Copy entry</button>
   <button type="button" id="selexport" class="plain">Export .zip</button>
   <button type="button" id="seldelete">Delete…</button>
+  <span class="delwhy" id="delwhy" hidden></span>
   <button type="button" id="delcancel" class="plain">Cancel</button>
   <form id="delform" method="post" action="{base}delete/{day}" hidden>
     <input name="username" placeholder="Username" autocomplete="username" autocapitalize="none" required>
@@ -975,6 +1048,7 @@ async function copyText(text) {
   const picks = [...document.querySelectorAll(".pick")];
   const ENTRIES = {entries_json};  // entry head (number, time, note, source) per position
   const FILES = {files_json};      // per position: file name -> its attachment line
+  const RTEXT = {replies_json};    // reply id -> its text block (with its attachments)
   const NOTES = {notes_json};      // just the note per position, for "Copy text"
   const chosen = () => picks.filter((p) => p.checked).map((p) => Number(p.value)).sort((a, b) => a - b);
   const all = document.getElementById("selectall");
@@ -989,10 +1063,24 @@ async function copyText(text) {
     all.textContent = n === picks.length && n ? "Select none" : "Select all";
     picks.forEach((p) => p.closest(".e").classList.toggle("sel", p.checked));
     apicks.flat().forEach((a) => a.closest(".att") && a.closest(".att").classList.toggle("asel", a.checked));
+    rpicks.flat().forEach((a) => a.closest(".r") && a.closest(".r").classList.toggle("rsel", a.checked));
     const files = apicks.flat().filter((a) => a.checked).length;
-    bar.hidden = n === 0 && files === 0;
+    const reps = rpicks.flat().filter((a) => a.checked).length;
+    bar.hidden = n === 0 && files === 0 && reps === 0;
+    // An entry can't be deleted without all its replies: block Delete and say why.
+    const blocked = picks.map((p, i) => (p.checked && rpicks[i].some((a) => !a.checked) ? i : -1)).filter((i) => i >= 0);
+    const why = document.getElementById("delwhy"), sd = document.getElementById("seldelete");
+    if (sd) sd.disabled = blocked.length > 0;
+    if (why) {
+      why.hidden = !blocked.length;
+      why.textContent = blocked.length
+        ? `Deleting ${blocked.map((i) => "#" + rows[i].id).join(", ")} also deletes all ${blocked.length > 1 ? "their" : "its"} replies: tick them all, or untick the entry.`
+        : "";
+    }
+    if (blocked.length && form) form.hidden = true;
     document.getElementById("delcount").textContent =
-      `${n} entr${n === 1 ? "y" : "ies"}` + (files ? `, ${files} file${files === 1 ? "" : "s"}` : "") + " selected";
+      `${n} entr${n === 1 ? "y" : "ies"}` + (reps ? `, ${reps} repl${reps === 1 ? "y" : "ies"}` : "") +
+      (files ? `, ${files} file${files === 1 ? "" : "s"}` : "") + " selected";
   };
   all.hidden = picks.length === 0;
   // Outlook-style: click an entry to select it (Ctrl/Cmd-click adds or removes one,
@@ -1001,13 +1089,27 @@ async function copyText(text) {
   // Attachment circles: independent, except that changing an entry's selection sets all of its
   // attachments to match (select entry -> all its files; deselect entry -> none of them).
   const apicks = rows.map((r) => (r && r.querySelectorAll ? [...r.querySelectorAll(".apick")] : []));
+  // Reply circles work like file circles: independent, but follow their entry's selection.
+  const rpicks = rows.map((r) => (r && r.querySelectorAll ? [...r.querySelectorAll(".rpick")] : []));
+  const subs = (i) => [...apicks[i], ...rpicks[i]];
+  const allSubs = () => [...apicks.flat(), ...rpicks.flat()];
   let before = picks.map((p) => p.checked);
   var syncFiles = () => {  // entries whose selection changed: their files follow
     picks.forEach((p, i) => {
-      if (p.checked !== before[i]) apicks[i].forEach((a) => (a.checked = p.checked));
+      if (p.checked !== before[i]) subs(i).forEach((a) => (a.checked = p.checked));
     });
     before = picks.map((p) => p.checked);
   };
+  rpicks.forEach((list) => list.forEach((a) => {
+    a.addEventListener("click", (e) => { e.stopPropagation(); update(true); });
+    const box = a.closest(".r");
+    if (box && box.addEventListener) box.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.closest("a, button, input, textarea, form, .details")) return;
+      a.checked = !a.checked;
+      update(true);
+    });
+  }));
   apicks.forEach((list) => list.forEach((a) => {
     a.addEventListener("click", (e) => { e.stopPropagation(); update(true); });
     // Click anywhere on the file's line (not its name link or icons) to toggle it, like entries.
@@ -1046,8 +1148,8 @@ async function copyText(text) {
         return;
       }
       // Selected entry with a deselected file: clicking it deselects the entry and its files.
-      if (picks[i].checked && apicks[i].some((a) => !a.checked) && !e.shiftKey) {
-        picks[i].checked = false; apicks[i].forEach((a) => (a.checked = false)); last = i; update(); return;
+      if (picks[i].checked && subs(i).some((a) => !a.checked) && !e.shiftKey) {
+        picks[i].checked = false; subs(i).forEach((a) => (a.checked = false)); last = i; update(); return;
       }
       const add = e.ctrlKey || e.metaKey;
       if (e.shiftKey && last !== null) {
@@ -1076,7 +1178,7 @@ async function copyText(text) {
     last = null;
     update();
   };
-  const clearAll = () => { picks.forEach((p) => (p.checked = false)); apicks.flat().forEach((a) => (a.checked = false)); last = null; update(); };
+  const clearAll = () => { picks.forEach((p) => (p.checked = false)); allSubs().forEach((a) => (a.checked = false)); last = null; update(); };
   document.getElementById("delcancel").onclick = clearAll;
   // /inbox/2026-11-23#5 selects entry 5; #5.1 highlights that reply (also on #N links).
   const goTo = () => {
@@ -1087,7 +1189,7 @@ async function copyText(text) {
     document.querySelectorAll(".r.flash").forEach((x) => x.classList.remove("flash"));
     const k = picks.findIndex((p) => p.closest(".e") === el.closest(".e"));
     if (el.classList.contains("e") && k >= 0) {
-      picks.forEach((p) => (p.checked = false)); apicks.flat().forEach((a) => (a.checked = false));
+      picks.forEach((p) => (p.checked = false)); allSubs().forEach((a) => (a.checked = false));
       picks[k].checked = true; last = k; update();
     } else el.classList.add("flash");
     el.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -1108,19 +1210,21 @@ async function copyText(text) {
       return;
     }
     if (e.key !== "Escape") return;
-    if (!picks.some((p) => p.checked) && !apicks.flat().some((a) => a.checked)) return;
+    if (!picks.some((p) => p.checked) && !allSubs().some((a) => a.checked)) return;
     clearAll();
   });
   document.getElementById("seldelete").onclick = () => { form.hidden = false; form.querySelector("input").focus(); };
   // What's selected, entry by entry: selected entries with only their ticked files; files
   // ticked on their own come under their entry's number marked "(files only)".
   const ticked = (i) => apicks[i].filter((a) => a.checked).map((a) => a.value);
+  const tickedReplies = (i) => rpicks[i].filter((a) => a.checked).map((a) => RTEXT[a.value]).filter(Boolean);
   document.getElementById("selcopy").onclick = async (e) => {
     const blocks = [];
     picks.forEach((p, k) => {
       const i = Number(p.value), files = ticked(k).map((f) => FILES[i][f]).filter(Boolean);
-      if (p.checked) blocks.push([ENTRIES[i], ...files].join("\\n"));
-      else if (files.length) blocks.push([(ENTRIES[i].match(/^\\[[^\\]]*\\]/) || [""])[0] + " (files only)", ...files].join("\\n"));
+      const reps = tickedReplies(k);
+      if (p.checked) blocks.push([ENTRIES[i], ...files, ...reps].join("\\n"));
+      else if (files.length || reps.length) blocks.push([(ENTRIES[i].match(/^\\[[^\\]]*\\]/) || [""])[0] + " (only parts selected)", ...files, ...reps].join("\\n"));
     });
     const text = [`From my inbox for {day}:`, ...blocks.reverse()].join("\\n\\n");  // oldest first
     copyOut(e.target, text, "Copy entry");
@@ -1134,7 +1238,8 @@ async function copyText(text) {
   }
   document.getElementById("selexport").onclick = () => {
     const files = apicks.flat().filter((a) => a.checked).map((a) => "f=" + encodeURIComponent(a.value));
-    location.href = "{base}export/{day}?" + [...chosen().map((i) => "i=" + i), ...(files.length ? files : ["f="])].join("&");
+    const reps = rpicks.flat().filter((a) => a.checked).map((a) => "r=" + encodeURIComponent(a.value));
+    location.href = "{base}export/{day}?" + [...chosen().map((i) => "i=" + i), ...(files.length ? files : ["f="]), ...(reps.length ? reps : ["r="])].join("&");
   };
 })();
 </script>
@@ -1154,14 +1259,18 @@ async function copyText(text) {
 const text = {plain};
 const CHECK = {check_icon};
 const NOTE = {allnotes_json};  // id ("5", "5.1") -> raw note text, for edit/copy
-// Reply: the reply icon opens that entry's reply box.
-document.querySelectorAll(".replybtn").forEach((b) => b.addEventListener("click", (e) => {
+// Reply: clicking the "Reply" line under an entry opens its reply box (in place of the line).
+document.querySelectorAll(".replyline").forEach((b) => b.addEventListener("click", (e) => {
   e.stopPropagation();
-  const f = b.closest(".e").querySelector(".replyform");
-  f.hidden = !f.hidden;
-  if (!f.hidden) f.querySelector("textarea").focus();
+  const f = b.nextElementSibling;
+  f.hidden = false; b.hidden = true; b.setAttribute("aria-expanded", "true");
+  f.querySelector("textarea").focus();
 }));
-document.querySelectorAll(".cancelreply").forEach((b) => b.addEventListener("click", () => (b.closest(".replyform").hidden = true)));
+document.querySelectorAll(".cancelreply").forEach((b) => b.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const f = b.closest(".replyform"), line = f.previousElementSibling;
+  f.hidden = true; line.hidden = false; line.setAttribute("aria-expanded", "false");
+}));
 // Edit: swap the note for a text box (Save overwrites it; marked "edited").
 document.querySelectorAll(".editbtn").forEach((b) => b.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -1469,7 +1578,6 @@ def item_icons(
         )
     if reply:
         out += f'<button type="button" class="attbtn replybtn" title="Reply" aria-label="Reply to {day}#{ident}">{ICON_REPLY}</button>'
-    out += f'<button type="button" class="attbtn editbtn" data-id="{ident}" title="Edit" aria-label="Edit {day}#{ident}">{ICON_EDIT}</button>'
     if item["text"]:
         out += f'<button type="button" class="attbtn copyid" data-id="{ident}" title="Copy text" aria-label="Copy the note of {day}#{ident}">{ICON_COPY}</button>'
     if delete:
@@ -1502,12 +1610,14 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
     ):  # newest first; i = position in inbox.md
         ident = str(e["n"])
         icons = (
-            item_icons(day, e, ident, reply=True)
+            item_icons(day, e, ident)
             + f'<input type="checkbox" class="pick" name="del" value="{i}" form="delform" '
             f'aria-label="Select entry {day}#{ident}">'
         )
         body = [
-            item_head(day, e, ident, f"{day}#{ident}", icons),
+            # The day is already on the page, so the label is just "#5"; the full
+            # "2026-11-23#5" stays in links, copies, exports, and the email.
+            item_head(day, e, ident, f"#{ident}", icons),
             item_note(day, e, ident),
         ]
         if e["files"]:
@@ -1521,9 +1631,12 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
                     r,
                     r["id"],
                     f"#{r['id']}",
-                    item_icons(day, r, r["id"], delete=True),
+                    item_icons(day, r, r["id"], delete=True)
+                    + f'<input type="checkbox" class="rpick" name="dreply" value="{r["id"]}" '
+                    f'form="delform" aria-label="Select reply #{r["id"]}">',
                 ),
                 item_note(day, r, r["id"]),
+                f'<div class="actions"><button type="button" class="editline editbtn" data-id="{r["id"]}">Edit</button></div>',
             ]
             if r["files"]:
                 cards = "".join(
@@ -1538,7 +1651,13 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
             f'<div class="row"><input type="file" name="file" multiple><button>Reply</button>'
             f'<button type="button" class="plain cancelreply">Cancel</button></div></form>'
         )
-        body.append('<div class="replies">' + "".join(reps) + reply_form + "</div>")
+        # "Reply · Edit" right under the note and attachments; the reply box opens only on click.
+        body.append(
+            '<div class="actions"><button type="button" class="replyline" aria-expanded="false">Reply</button>'
+            f'<span aria-hidden="true">·</span><button type="button" class="editline editbtn" data-id="{ident}">Edit</button></div>'
+            f"{reply_form}"
+        )
+        body.append('<div class="replies">' + "".join(reps) + "</div>")
         items.append(f'<div class="e" id="{ident}">' + "".join(body) + "</div>")
     d = date.fromisoformat(day)
     prev_day, next_day = (
@@ -1600,7 +1719,23 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
             ),
         )
         .replace("{plain}", js_json(plain_text(day, entries)))
-        .replace("{entries_json}", js_json([entry_head(day, e) for e in entries]))
+        .replace(
+            "{entries_json}",
+            js_json([entry_head(day, e, replies=False) for e in entries]),
+        )
+        .replace(
+            "{replies_json}",
+            js_json(
+                {
+                    r["id"]: "\n".join(
+                        _item_lines(day, r, r["id"], "    reply ")
+                        + ["    " + attach_line(day, f).strip() for f in r["files"]]
+                    )
+                    for e in entries
+                    for r in e["replies"]
+                }
+            ),
+        )
         .replace(
             "{files_json}",
             js_json([{f: attach_line(day, f) for f in e["files"]} for e in entries]),
@@ -1743,10 +1878,11 @@ class Handler(BaseHTTPRequestHandler):
             q = parse_qs(query, keep_blank_values=True)
             picks = {int(v) for v in q.get("i", []) if v.isdigit()}
             files = {f for f in q["f"] if f} if "f" in q else None
+            reps = {r for r in q["r"] if r} if "r" in q else None
             name = f"inbox-{m[1]}-selected.zip"
             self._send(
                 200,
-                export_zip(m[1], picks, files),
+                export_zip(m[1], picks, files, reps),
                 "application/zip",
                 {"Content-Disposition": f'attachment; filename="{name}"'},
             )
@@ -1854,12 +1990,26 @@ class Handler(BaseHTTPRequestHandler):
                 self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
                 return
             picks = {int(v) for v in f.get("del", []) if v.isdigit()}
-            whole, nfiles = delete_selection(m[1], picks, set(f.get("dfile", [])))
-            msg = (
-                f"Deleted {whole} entr{'y' if whole == 1 else 'ies'}"
-                + (f" and {nfiles} file{'' if nfiles == 1 else 's'}" if nfiles else "")
-                + "."
+            rsel = set(f.get("dreply", []))
+            # An entry can't be deleted without all of its replies (the page blocks this too).
+            day_entries = read_day(m[1])
+            partial = [
+                f"#{e['n']}"
+                for i, e in enumerate(day_entries)
+                if i in picks and any(r["id"] not in rsel for r in e["replies"])
+            ]
+            if partial:
+                msg = f"Not deleted: deleting {', '.join(partial)} also deletes all {'their' if len(partial) > 1 else 'its'} replies, so tick them all first."
+                self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
+                return
+            whole, nfiles, nreplies = delete_selection(
+                m[1], picks, set(f.get("dfile", [])), rsel
             )
+            plural = lambda n, one, many: f"{n} {one if n == 1 else many}"  # noqa: E731
+            parts = [plural(whole, "entry", "entries")] if whole else []
+            parts += [plural(nreplies, "reply", "replies")] if nreplies else []
+            parts += [plural(nfiles, "file", "files")] if nfiles else []
+            msg = "Deleted " + (", ".join(parts) if parts else "nothing") + "."
             self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
             return
         if path == "/inbox/add":
