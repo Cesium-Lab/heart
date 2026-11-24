@@ -984,6 +984,8 @@ main{max-width:640px;margin:0 auto;padding:20px 16px 60px}
 }
 form{display:grid;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
 textarea{width:100%;min-height:96px;font:inherit;color:inherit;background:transparent;border:0;outline:0;resize:vertical}
+/* Typing boxes (pencil, reply, edit) use exactly the notes' font: 16px, same family/line height. */
+textarea,.replyform textarea,.editform textarea{font:16px/1.45 -apple-system,Helvetica,Arial,sans-serif}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 label.file{flex:1;color:var(--muted);font-size:14px;cursor:pointer}
 input[type=file]{font-size:14px;max-width:100%}
@@ -1033,6 +1035,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .ehead a.num{text-decoration:none}
 .edited{margin-left:8px}
 .actions{display:flex;align-items:center;gap:6px;margin:8px 0 0;font-size:13px;color:var(--muted)}
+/* TEST (may be undone): Reply · Edit stay left; Copy · Raw ↗ (· Delete…) go right. */
+.actions .copyid{margin-left:auto}.actions span[aria-hidden]:has(+ .copyid){display:none}
 .actions[hidden],.replyform[hidden]{display:none}
 .replyline,.editline{padding:0;font:inherit;font-size:13px;font-weight:500;color:var(--bright);background:none;border:0;cursor:pointer}
 .actions{color:var(--bright)}
@@ -1062,7 +1066,7 @@ body.selecting .pick,body.selecting .apick,body.selecting .rpick{visibility:visi
 #seldelete:disabled{opacity:.45;cursor:not-allowed}
 .r .note{margin:4px 0}
 .replyform,.editform{display:grid;gap:6px;margin:8px 0}
-.replyform textarea,.editform textarea{width:100%;min-height:70px;font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px}
+.replyform textarea,.editform textarea{width:100%;min-height:70px;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px}
 .replyform .row,.editform .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .replyform .plain,.editform .plain,.sendform .plain{background:transparent;color:var(--muted);border:1px solid var(--line)}
 a.ref{font-weight:600}
@@ -1460,6 +1464,7 @@ document.querySelectorAll(".replyline").forEach((b) => b.addEventListener("click
   e.stopPropagation();
   const f = b.closest(".e").querySelector(".replyform");
   f.hidden = false; b.closest(".actions").hidden = true; b.setAttribute("aria-expanded", "true");
+  const box = b.closest(".e").querySelector(".replies"); if (box) setReplies(box, true);  // box stays above them
   f.querySelector("textarea").focus();
 }));
 document.querySelectorAll(".cancelreply").forEach((b) => b.addEventListener("click", (e) => {
@@ -1785,7 +1790,9 @@ const key = (el, id) => cardOf(el).dataset.day + "#" + id;
 const back = (el) => `/inbox/pins/${cardOf(el).dataset.day}/${cardOf(el).dataset.n}`;
 document.querySelectorAll(".replyline").forEach((b) => b.onclick = () => {
   const f = cardOf(b).querySelector(".replyform");
-  f.hidden = false; b.closest(".actions").hidden = true; f.querySelector("textarea").focus();
+  f.hidden = false; b.closest(".actions").hidden = true;
+  const box = cardOf(b).querySelector(".replies"); if (box) setReplies(box, true);
+  f.querySelector("textarea").focus();
 });
 document.querySelectorAll(".cancelreply").forEach((b) => b.onclick = () => {
   const f = b.closest(".replyform"); f.hidden = true; cardOf(b).querySelector(".actions").hidden = false;
