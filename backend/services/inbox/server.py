@@ -878,9 +878,9 @@ PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 main{max-width:640px;margin:0 auto;padding:20px 16px 60px}
 /* Desktop: entries on the left, the entry box on the right (stays in view while scrolling). */
 @media(min-width:900px){
-  main{max-width:1100px}
+  main{max-width:1280px}
   /* about 65/35: entries get most of the width; the divider line sits at the split */
-  .cols{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(0,1fr);gap:0;align-items:start}
+  .cols{display:grid;grid-template-columns:minmax(0,2.3fr) minmax(0,1fr);gap:0;align-items:start}
   .list{padding-right:28px}
   .compose{padding-left:28px;border-left:1px solid var(--line);min-height:calc(100vh - 140px)}
   .compose{grid-column:2;grid-row:1;position:sticky;top:20px}
@@ -916,19 +916,44 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .details .tip::before{content:"";position:absolute;top:0;bottom:0;left:-8px;width:8px}
 .details:hover .tip,.details:focus .tip,.details:focus-within .tip{opacity:1;visibility:visible;transform:none;
   transition:opacity .15s ease,transform .15s ease,visibility 0s}
+/* Entries list: a vertical divider near the left. Notes, attachments, and replies start at it.
+   Left of it (the gutter) each line gets: its select circle in its own column at the far left,
+   then its icons right next to the divider, all on the same line as what they act on. */
+.elist{--gut:170px;position:relative}
+.gut{display:inline-flex;align-items:center;gap:6px;flex:none}
+.gicons,.gcircle{display:flex;align-items:center;gap:6px}
+.micons{display:none;gap:6px;margin-left:auto}
+@media(min-width:900px){
+  .elist{padding-left:var(--gut)}
+  .elist::before{content:"";position:absolute;top:0;bottom:0;left:calc(var(--gut) - 10px);border-left:1px solid var(--line)}
+  /* No positioned elements inside .elist, so left:0 is the list's left edge while each group
+     keeps its own line's height. */
+  .gut{position:absolute;left:0;width:calc(var(--gut) - 20px);justify-content:space-between}
+  .gcircle{width:18px;justify-content:center}
+  .att .atticons{display:none}
+}
+@media(max-width:899px){.gicons{display:none}.micons{display:flex}}
 .hicons{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;margin-left:auto;flex:none}
 .ehead{flex-wrap:nowrap}.ehead .t{min-width:0;overflow-wrap:anywhere}
 .ehead a.num{text-decoration:none}
 .edited{margin-left:8px}
-.replyline{display:block;margin:8px 0 0;padding:0;font:inherit;font-size:13px;font-weight:500;color:var(--muted);background:none;border:0;cursor:pointer}
-.replyline:hover{color:var(--bright);text-decoration:underline}
-.replyform[hidden],.replyline[hidden]{display:none}
+.actions{display:flex;align-items:center;gap:6px;margin:8px 0 0;font-size:13px;color:var(--muted)}
+.actions[hidden],.replyform[hidden]{display:none}
+.replyline,.editline{padding:0;font:inherit;font-size:13px;font-weight:500;color:var(--muted);background:none;border:0;cursor:pointer}
+.replyline:hover,.editline:hover{color:var(--bright);text-decoration:underline}
 .replies{margin:6px 0 0 18px;border-left:2px solid var(--line);padding-left:12px}
 .replies:empty{display:none}
 .r{padding:8px 6px;border-radius:8px}.r+.r{border-top:1px solid var(--line)}
 .r.flash,.r.rsel{background:var(--hl)}
 .r{cursor:default}
-.rpick{appearance:none;-webkit-appearance:none;flex:none;width:14px;height:14px;margin:0 0 0 2px;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
+/* Select circles: hidden (but keeping their space, so nothing shifts) until something is
+   selected, or on the row under the mouse on devices that can hover. */
+.pick,.apick,.rpick{visibility:hidden}
+body.selecting .pick,body.selecting .apick,body.selecting .rpick{visibility:visible}
+@media(hover:hover){
+  .e:hover>.ehead .pick,.att:hover .apick,.r:hover .rpick,.pick:focus-visible,.apick:focus-visible,.rpick:focus-visible{visibility:visible}
+}
+.rpick{appearance:none;-webkit-appearance:none;flex:none;width:14px;height:14px;margin:0 2px 0 0;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
 .rpick:checked{background:var(--accent);border-color:var(--accent)}
 .rpick:checked::after{content:"";width:3px;height:6px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:translateY(-1px) rotate(45deg)}
 .delwhy{flex-basis:100%;font-size:12px;color:#dc2626}
@@ -963,7 +988,8 @@ h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute
 h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
 .e{padding:12px 2px;border-bottom:1px solid var(--line)}.t{color:var(--muted);font-size:12px}
 .e p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}.e a{color:var(--accent)}
-.atts{border:1px solid var(--line);border-radius:10px;margin-top:8px;padding:0;overflow:hidden}
+.atts{border:1px solid var(--line);border-radius:10px;margin-top:8px;padding:0}
+.att:first-child{border-radius:9px 9px 0 0}.att:last-child{border-radius:0 0 9px 9px}.att:only-child{border-radius:9px}
 .att{cursor:default;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;font-size:13px}
 .att+.att{border-top:1px solid var(--line)}
 .delfile{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 8px}
@@ -971,7 +997,7 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .delfile button{font-size:13px;padding:6px 12px;background:#dc2626}.delfile .plain{background:transparent;color:var(--muted);border:1px solid var(--line)}
 .delatt:hover{color:#dc2626;border-color:#dc2626}
 .atticons{align-items:center}
-.apick{appearance:none;-webkit-appearance:none;flex:none;width:14px;height:14px;margin:0 0 0 2px;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
+.apick{appearance:none;-webkit-appearance:none;flex:none;width:14px;height:14px;margin:0 2px 0 0;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
 .apick:checked{background:var(--accent);border-color:var(--accent)}
 .apick:checked::after{content:"";width:3px;height:6px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:translateY(-1px) rotate(45deg)}
 /* Files box keeps the page background even inside a selected (tinted) entry, so only the
@@ -980,6 +1006,8 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 :root{--hl:color-mix(in srgb,var(--accent) 14%,var(--bg))}  /* one solid highlight shade, never layered */
 /* rows fill the box edge to edge, so a highlight reaches all sides (corners clipped by .atts) */
 .att.asel{background:var(--hl)}
+.att>.attname{flex:1}
+.ehead>.pick,.ehead>.rpick{margin-right:2px}
 .attname{min-width:0;overflow-wrap:anywhere}.atticons{display:flex;gap:6px;flex:none}
 .attbtn{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;padding:0;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px;text-decoration:none;cursor:pointer}
 .attbtn:hover{color:var(--bright);border-color:var(--muted)}.attbtn.ok{color:#16a34a;border-color:#16a34a}
@@ -1066,6 +1094,8 @@ async function copyText(text) {
     rpicks.flat().forEach((a) => a.closest(".r") && a.closest(".r").classList.toggle("rsel", a.checked));
     const files = apicks.flat().filter((a) => a.checked).length;
     const reps = rpicks.flat().filter((a) => a.checked).length;
+    // Circles show everywhere while anything is selected (see .selecting in the CSS).
+    if (document.body) document.body.classList.toggle("selecting", n + files + reps > 0);
     bar.hidden = n === 0 && files === 0 && reps === 0;
     // An entry can't be deleted without all its replies: block Delete and say why.
     const blocked = picks.map((p, i) => (p.checked && rpicks[i].some((a) => !a.checked) ? i : -1)).filter((i) => i >= 0);
@@ -1262,14 +1292,14 @@ const NOTE = {allnotes_json};  // id ("5", "5.1") -> raw note text, for edit/cop
 // Reply: clicking the "Reply" line under an entry opens its reply box (in place of the line).
 document.querySelectorAll(".replyline").forEach((b) => b.addEventListener("click", (e) => {
   e.stopPropagation();
-  const f = b.nextElementSibling;
-  f.hidden = false; b.hidden = true; b.setAttribute("aria-expanded", "true");
+  const f = b.closest(".e").querySelector(".replyform");
+  f.hidden = false; b.closest(".actions").hidden = true; b.setAttribute("aria-expanded", "true");
   f.querySelector("textarea").focus();
 }));
 document.querySelectorAll(".cancelreply").forEach((b) => b.addEventListener("click", (e) => {
   e.stopPropagation();
-  const f = b.closest(".replyform"), line = f.previousElementSibling;
-  f.hidden = true; line.hidden = false; line.setAttribute("aria-expanded", "false");
+  const f = b.closest(".replyform"), acts = f.closest(".e").querySelector(".actions");
+  f.hidden = true; acts.hidden = false; acts.querySelector(".replyline").setAttribute("aria-expanded", "false");
 }));
 // Edit: swap the note for a text box (Save overwrites it; marked "edited").
 document.querySelectorAll(".editbtn").forEach((b) => b.addEventListener("click", (e) => {
@@ -1530,24 +1560,36 @@ def attachment_card(day: str, f: str, selectable: bool = True) -> str:
         else "link"
     )
     name = html.escape(f)
-    return (
-        f'<div class="att" data-kind="{kind}" data-url="{url}">'
-        f'<a class="attname" href="{url}" target="_blank" rel="noopener">{name}</a>'
-        f'<span class="atticons">'
+    icons = (
         f'<a class="attbtn" href="{url}" target="_blank" rel="noopener" title="Open in new tab" aria-label="Open {name} in a new tab">{ICON_OPEN}</a>'
         f'<a class="attbtn" href="{url}?download=1" title="Download" aria-label="Download {name}">{ICON_DOWNLOAD}</a>'
         f'<button type="button" class="attbtn copyatt" title="Copy" aria-label="Copy {name}">{ICON_COPY}</button>'
         f'<button type="button" class="attbtn delatt" data-file="{name}" title="Delete" aria-label="Delete {name}">{ICON_TRASH}</button>'
-        + (
-            f'<input type="checkbox" class="apick" name="dfile" value="{name}" form="delform" aria-label="Select {name}">'
-            if selectable
-            else ""
-        )
-        + "</span></div>"
+    )
+    circle = (
+        f'<input type="checkbox" class="apick" name="dfile" value="{name}" form="delform" aria-label="Select {name}">'
+        if selectable
+        else ""
+    )
+    return (
+        f'<div class="att" data-kind="{kind}" data-url="{url}">'
+        + gutter(icons, circle)
+        + f'<a class="attname" href="{url}" target="_blank" rel="noopener">{name}</a>'
+        + f'<span class="atticons">{icons}</span></div>'
     )
 
 
-def item_head(day: str, item: dict, ident: str, label: str, icons: str) -> str:
+def gutter(icons: str, circle: str) -> str:
+    """Select circle + icons for one line. On desktop they sit left of the entries' divider,
+    beside their line: the circle in its own column at the far left, the icons right next to
+    the divider. On phones the circle stays at the line's start and the icons show in the
+    bottom row instead."""
+    return f'<span class="gut"><span class="gcircle">{circle}</span><span class="gicons">{icons}</span></span>'
+
+
+def item_head(
+    day: str, item: dict, ident: str, label: str, icons: str, lead: str = ""
+) -> str:
     """Header line of an entry or reply: its id (a link to itself), "details" (time + metadata on
     hover), "edited" (edit time on hover), then icons."""
     tip = html.escape(item["time"]) + (
@@ -1560,7 +1602,7 @@ def item_head(day: str, item: dict, ident: str, label: str, icons: str) -> str:
         else ""
     )
     return (
-        f'<div class="ehead"><span class="t"><a class="num" href="#{ident}">{html.escape(label)}</a>'
+        f'<div class="ehead">{lead}<span class="t"><a class="num" href="#{ident}">{html.escape(label)}</a>'
         f'<span class="details" tabindex="0">details<span class="tip" role="tooltip">{tip}</span></span>'
         f'{edited}</span><span class="hicons">{icons}</span></div>'
     )
@@ -1609,15 +1651,15 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         list(enumerate(entries))
     ):  # newest first; i = position in inbox.md
         ident = str(e["n"])
-        icons = (
-            item_icons(day, e, ident)
-            + f'<input type="checkbox" class="pick" name="del" value="{i}" form="delform" '
+        icons = item_icons(day, e, ident)
+        circle = (
+            f'<input type="checkbox" class="pick" name="del" value="{i}" form="delform" '
             f'aria-label="Select entry {day}#{ident}">'
         )
         body = [
             # The day is already on the page, so the label is just "#5"; the full
             # "2026-11-23#5" stays in links, copies, exports, and the email.
-            item_head(day, e, ident, f"#{ident}", icons),
+            item_head(day, e, ident, f"#{ident}", "", lead=gutter(icons, circle)),
             item_note(day, e, ident),
         ]
         if e["files"]:
@@ -1631,18 +1673,25 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
                     r,
                     r["id"],
                     f"#{r['id']}",
-                    item_icons(day, r, r["id"], delete=True)
-                    + f'<input type="checkbox" class="rpick" name="dreply" value="{r["id"]}" '
-                    f'form="delform" aria-label="Select reply #{r["id"]}">',
+                    "",
+                    lead=gutter(
+                        item_icons(day, r, r["id"], delete=True),
+                        f'<input type="checkbox" class="rpick" name="dreply" value="{r["id"]}" '
+                        f'form="delform" aria-label="Select reply #{r["id"]}">',
+                    ),
                 ),
                 item_note(day, r, r["id"]),
-                f'<div class="actions"><button type="button" class="editline editbtn" data-id="{r["id"]}">Edit</button></div>',
             ]
             if r["files"]:
                 cards = "".join(
                     attachment_card(day, f, selectable=False) for f in r["files"]
                 )
                 rb.append(f'<div class="atts">{cards}</div>')
+            ricons = item_icons(day, r, r["id"], delete=True)
+            rb.append(
+                f'<div class="actions"><button type="button" class="editline editbtn" data-id="{r["id"]}">Edit</button>'
+                f'<span class="micons">{ricons}</span></div>'
+            )
             reps.append(f'<div class="r" id="{r["id"]}">' + "".join(rb) + "</div>")
         reply_form = (
             f'<form class="replyform" method="post" action="{base}reply/{day}/{ident}" '
@@ -1654,10 +1703,12 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         # "Reply · Edit" right under the note and attachments; the reply box opens only on click.
         body.append(
             '<div class="actions"><button type="button" class="replyline" aria-expanded="false">Reply</button>'
-            f'<span aria-hidden="true">·</span><button type="button" class="editline editbtn" data-id="{ident}">Edit</button></div>'
+            f'<span aria-hidden="true">·</span><button type="button" class="editline editbtn" data-id="{ident}">Edit</button>'
+            f'<span class="micons">{icons}</span></div>'
             f"{reply_form}"
         )
         body.append('<div class="replies">' + "".join(reps) + "</div>")
+        # Icons twice: a left column (desktop) and in the bottom row (phones); CSS shows one.
         items.append(f'<div class="e" id="{ident}">' + "".join(body) + "</div>")
     d = date.fromisoformat(day)
     prev_day, next_day = (
@@ -1693,7 +1744,12 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         )
         .replace("{title}", "Today" if day == today else day)
         .replace("{count}", f"{len(entries)} saved" + (" · emailed" if sent else ""))
-        .replace("{entries}", "".join(items) or '<div class="e t">Nothing yet.</div>')
+        .replace(
+            "{entries}",
+            '<div class="elist">'
+            + ("".join(items) or '<div class="e t">Nothing yet.</div>')
+            + "</div>",
+        )
         .replace("{send}", send)
         .replace("{prev}", f'<a href="{base}{prev_day}">← {prev_day}</a>')
         .replace(
