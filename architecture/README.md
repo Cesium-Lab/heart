@@ -31,6 +31,7 @@ LAN / SSH ───────────────────────�
                                      └─ /api/rotation  → rotation-viz   :42902
                                         /api/setlister → setlister      :42903
                                         /api/planes    → planes         :42901
+                                        /inbox/        → inbox          :42904  (password off-LAN)
                                         /api/dataviz   → dataviz API    :42000
                                         dataviz.cesiumlab.net → NiceGUI :42002
 Private (SSH tunnel): Grafana :42003 · Prometheus :42004

@@ -7,11 +7,12 @@ Checked 2026-11-22.
 - **mr-ray**: Nimo mini PC, Intel N100, 8 GB RAM, Ubuntu 24.04. The repo lives at `~/Cesium/heart`.
 - **psyche**: Colin's Mac. Both are on Tailscale and the home LAN (mr-ray is `192.168.0.13`;
   local DNS may also call it `mr.ray`).
-- **Domain**: [cesiumlab.net](https://cesiumlab.net), registered and routed through Cloudflare.
+- **Domain**: [cesiumlab.net](https://cesiumlab.net), registered and routed through Cloudflare
+  (about $12/year).
   The `cloudflared` tunnel sends `cesiumlab.net` and `dataviz.cesiumlab.net` to Apache on
   `127.0.0.1:80`; everything else gets a 404.
 - **Tailscale**: private remote access only. `tailscale serve`/`funnel` are not used.
-- `dnsmasq` provides local DNS.
+- `dnsmasq` provides local DNS (config: `/etc/dnsmasq.conf`).
 - Other system services: mysql, samba, ssh.
 
 ## Disks

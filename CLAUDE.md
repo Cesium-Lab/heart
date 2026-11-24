@@ -8,6 +8,10 @@ and are imported below. When something changes, update the matching `architectur
 
 ## Rules
 
+- **Ask questions; err on the side of asking.** When a request is ambiguous, or a choice changes
+  how something behaves or looks (what a button does, what a selection affects, naming, layout),
+  ask short questions with options before building instead of guessing. Building the parts that
+  are clear while asking about the rest is fine.
 - Editing files in this repo is fine. **Ask first** before anything that changes the machine:
   installing packages, disks/mounts, deleting data, restarting services, network/exposure changes, git push.
 - Never commit or print secrets. Secrets go in `/etc/cesium/<name>.env`; commit only `.env.example`.

@@ -14,6 +14,10 @@ export default defineConfig({
           target: "http://127.0.0.1:42902",
           changeOrigin: true,
         },
+        "/inbox": {
+          target: "http://127.0.0.1:42904",
+          changeOrigin: true,
+        },
         "/api/planes": {
           target: "http://127.0.0.1:42901",
           changeOrigin: true,

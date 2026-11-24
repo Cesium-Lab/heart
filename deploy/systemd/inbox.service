@@ -1,0 +1,21 @@
+[Unit]
+Description=Inbox: drop notes/links/photos, nightly email digest (127.0.0.1:42904, Apache at /inbox/)
+After=network-online.target
+Wants=network-online.target
+# Entries live on the data drive; if it's unplugged, the inbox just stays off.
+RequiresMountsFor=/srv/data
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/backend/services/inbox
+# Gmail app password and settings ("-" = fine if missing: digests are then saved, not sent).
+EnvironmentFile=-/etc/cesium/inbox.env
+ExecStart=/home/cskin/Cesium/heart/backend/services/inbox/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

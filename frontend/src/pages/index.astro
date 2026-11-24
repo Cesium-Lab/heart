@@ -77,6 +77,16 @@
     font-size: 14px;
     animation: rainbow 6s linear infinite;
   }
+  /* Win95-style button to the private inbox, under the marquee. */
+  .inbox-link { text-align: center; margin: 12px 0 20px; }
+  .inbox-link a {
+    display: inline-block; padding: 6px 16px;
+    background: #c0c0c0; color: #000; text-decoration: none;
+    border: 2px solid; border-color: #fff #000 #000 #fff;
+    font-family: 'Press Start 2P', monospace; font-size: 11px;
+  }
+  .inbox-link a:active { border-color: #000 #fff #fff #000; }
+  .inbox-link small { display: block; margin-top: 6px; font-size: 11px; color: #555; }
   @keyframes rainbow {
     0% { color: #ff00ff; }
     25% { color: #00ffff; }
@@ -176,6 +186,8 @@
     <p class="center">you have <span class="blink">stumbled</span> upon a <a href="https://windows93.net/">computer</a> on colin's network.<br>pull up a chair and stay a while <a href="/junk/barry-b-benson" style="color: inherit; text-decoration: none;">☺</a></p>
 
     <div class="marquee"><span>★ ★ ★  this site best viewed in 800x600 ░ no animals were harmed in the making of this homepage ░ flight computers go brrrr ░ thanks for visiting!!  ★ ★ ★</span></div>
+
+    <div class="inbox-link"><a href="/inbox/">INBOX ▸</a><small>(colin only: login outside home)</small></div>
 
     <h2>★ ABOUT THIS BOX ★</h2>
     <table>
