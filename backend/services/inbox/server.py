@@ -112,6 +112,7 @@ def _block(level: str, ident: str, item: dict) -> list[str]:
     out = [f"{level} {ident} · {item['time']}"]
     out += [f"_{item['meta']}_"] if item.get("meta") else []
     out += [f"_edited {item['edited']}_"] if item.get("edited") else []
+    out += ["_pinned_"] if item.get("pinned") else []
     out.append("")
     # Text is quoted so nothing a user types can look like an entry header.
     out += [f"> {line}" if line else ">" for line in item["text"].splitlines()]
@@ -180,6 +181,28 @@ def edit_item(day: str, ident: str, text: str) -> bool:
         item["edited"] = f"{datetime.now().astimezone():%Y-%m-%d %H:%M:%S %Z}"
         write_day(day, entries)
         return True
+
+
+def set_pinned(day: str, n: int, on: bool) -> bool:
+    """Pin or unpin entry n of a day (stored as a `_pinned_` line in its block)."""
+    with _write_lock:
+        entries = read_day(day)
+        e = next((x for x in entries if x["n"] == n), None)
+        if e is None:
+            return False
+        e["pinned"] = on
+        write_day(day, entries)
+        return True
+
+
+def pinned_entries() -> list[tuple[str, dict]]:
+    """Every pinned entry, newest day first: [(day, entry)]. Built from the day files."""
+    out = []
+    for day in days_with_entries():  # newest first
+        for e in reversed(read_day(day)):
+            if e.get("pinned"):
+                out.append((day, e))
+    return out
 
 
 def delete_reply(day: str, ident: str) -> bool:
@@ -464,6 +487,8 @@ def read_day(day: str) -> list[dict]:
             entries.append(cur)
         elif cur is None:
             continue
+        elif line == "_pinned_":
+            cur["pinned"] = True
         elif line.startswith("_edited ") and line.endswith("_"):
             cur["edited"] = line[8:-1]
         elif line.startswith("_") and line.endswith("_") and not cur["text"]:
@@ -653,7 +678,12 @@ def build_digest(day: str) -> EmailMessage | None:
     msg["From"] = SMTP_USER or "inbox@mr-ray"
     msg["To"] = MAIL_TO or SMTP_USER
     text = plain_text(day, entries)
-    msg.set_content(text)
+    pins = pinned_entries()
+    pin_lines = [
+        f"{d}#{e['n']}: {(e['text'].splitlines() or ['(no note)'])[0][:120]}"
+        for d, e in pins
+    ]
+    msg.set_content(text + ("\n\nPinned:\n" + "\n".join(pin_lines) if pins else ""))
 
     thumbs: list[tuple[str, bytes]] = []
     rows = []
@@ -690,6 +720,17 @@ def build_digest(day: str) -> EmailMessage | None:
         f'<h2 style="margin:0 0 4px">Inbox {day}</h2>'
         f'<div style="color:#6b7280">{len(entries)} saved · <a href="{PUBLIC_URL}{day}">open on the server</a></div>'
         + "".join(rows)
+        + (
+            '<h3 style="margin-top:20px">Pinned</h3><ul style="padding-left:18px">'
+            + "".join(
+                f'<li><a href="{PUBLIC_URL}pins/{d}/{e["n"]}">{d}#{e["n"]}</a> '
+                f"{html.escape((e['text'].splitlines() or ['(no note)'])[0][:120])}</li>"
+                for d, e in pins
+            )
+            + "</ul>"
+            if pins
+            else ""
+        )
         + '<h3 style="margin-top:20px">Paste into Claude / ChatGPT</h3>'
         f'<pre style="white-space:pre-wrap;background:#f4f4f2;padding:12px;border-radius:8px;font-size:12px">{html.escape(text)}</pre>'
         "</div>"
@@ -887,7 +928,7 @@ main{max-width:640px;margin:0 auto;padding:20px 16px 60px}
   .compose textarea{min-height:45vh}  /* desktop: a tall writing box */
   .list{grid-column:1;grid-row:1}
   .list h2{margin-top:0}
-  .compose:empty{display:none}
+  .compose .del{position:static;margin-top:12px}
 }
 form{display:grid;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
 textarea{width:100%;min-height:96px;font:inherit;color:inherit;background:transparent;border:0;outline:0;resize:vertical}
@@ -961,6 +1002,7 @@ body.selecting .pick,body.selecting .apick,body.selecting .rpick{visibility:visi
 .rpick{appearance:none;-webkit-appearance:none;flex:none;width:14px;height:14px;margin:0 2px 0 0;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
 .rpick:checked{background:var(--accent);border-color:var(--accent)}
 .rpick:checked::after{content:"";width:3px;height:6px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:translateY(-1px) rotate(45deg)}
+.del .brk{flex-basis:100%;height:0}  /* count + Copy text on line 1; the other actions below */
 .delwhy{flex-basis:100%;font-size:12px;color:#dc2626}
 #seldelete:disabled{opacity:.45;cursor:not-allowed}
 .r .note{margin:4px 0}
@@ -982,6 +1024,7 @@ a.ref{font-weight:600}
 label.t{cursor:pointer;user-select:none}
 /* Same size/style as the "N saved · emailed" text beside it, in white. */
 .selall{font:inherit;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--bright);background:transparent;border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-left:8px;cursor:pointer}.meta{font-size:11px}
+@media(max-width:899px){.del{position:fixed;left:12px;right:12px;bottom:12px;z-index:30}}
 .del{position:sticky;bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;
   background:var(--card);border:1px solid #dc2626;border-radius:12px;padding:10px;box-shadow:0 6px 20px rgba(0,0,0,.15)}
 .del[hidden]{display:none}.del input{flex:1;min-width:110px;font:inherit;padding:7px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit}
@@ -1031,10 +1074,19 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .tools{display:flex;gap:8px;margin:14px 2px;flex-wrap:wrap}.tools button,.tools a{font-size:13px;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none;font-weight:500}
 /* three columns: equal sides keep the middle link centered whatever the dates say */
 .nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:0 2px 12px;font-size:14px}
-.nav>:last-child{justify-self:end}
+.nav>*{justify-self:start}.nav>.today{justify-self:center}.nav>:last-child{justify-self:end}
 .nav .today{font-weight:600;color:var(--bright);text-align:center}
 .title{font-size:28px;margin:4px 2px 12px;letter-spacing:-.01em}
 .title a{color:inherit;text-decoration:none}
+.pinsnav{float:right;margin-top:4px}.pinsnav a,.nav a{display:inline-block;font-size:13px;font-weight:500;color:var(--bright);border:1px solid var(--line);border-radius:6px;padding:5px 10px;text-decoration:none}.pinsnav a:hover,.nav a:hover{border-color:var(--bright)}
+.pinbox{display:inline-flex;flex-direction:row-reverse;align-items:center;gap:8px}
+.pinbtn{background:none;border:0;padding:0;font:inherit;font-family:ui-monospace,monospace;font-size:.85em;color:var(--muted);cursor:pointer}
+.pinbtn{filter:grayscale(1);opacity:.35}
+.pinbtn:hover{opacity:.8}
+.pinbox.on .pinbtn{filter:none;opacity:1}
+.pingo{display:none;font-size:.85em;color:var(--accent)}
+.pinbox:hover .pingo,.pinbox:focus-within .pingo{display:inline}
+form.inline{display:contents}
 </style></head><body><main>
 <script>
 // Clipboard that also works on plain http (http://mr-ray/inbox/ at home): browsers only allow
@@ -1054,18 +1106,16 @@ async function copyText(text) {
 }
 </script>
 {logout}
+{pins_link}
 <h1 class="title"><a href="/inbox/" title="Today">Drop a line.</a></h1>
 <div class="nav">{prev}{today}{next}</div>
 <div class="cols">
 <aside class="compose">{form}
-{flash}</aside>
-<section class="list">
-<h2><span>{title}</span><span>{count} <button type="button" id="selectall" class="selall" hidden>Select all</button></span></h2>
-{entries}
+{flash}
 <div id="selbar" class="del" hidden>
   <b id="delcount"></b>
-  <button type="button" id="selcopytext" class="plain" title="Just the notes">Copy text</button>
-  <button type="button" id="selcopy" class="plain" title="Notes with time, source, and attachment links">Copy entry</button>
+  <span class="brk" aria-hidden="true"></span>
+  <button type="button" id="selcopy" class="plain" title="Notes with time, source, and attachment links">Copy data</button>
   <button type="button" id="selexport" class="plain">Export .zip</button>
   <button type="button" id="seldelete">Delete…</button>
   <span class="delwhy" id="delwhy" hidden></span>
@@ -1075,7 +1125,10 @@ async function copyText(text) {
     <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
     <button>Delete</button>
   </form>
-</div>
+</div></aside>
+<section class="list">
+<h2><span>{title}</span><span>{count} <button type="button" id="selectall" class="selall" hidden>Select all</button></span></h2>
+{entries}
 <script>
 // Multi-select delete: tick entries (shift-click ticks a range, "Select all" ticks
 // everything), then confirm with username + password.
@@ -1095,7 +1148,6 @@ async function copyText(text) {
     bar.hidden = n === 0;
     if (n === 0) form.hidden = true;
     document.getElementById("delcount").textContent = `${n} selected`;
-    document.getElementById("selcopytext").hidden = n !== 1;  // just one note: copy its text
     all.textContent = n === picks.length && n ? "Select none" : "Select all";
     picks.forEach((p) => p.closest(".e").classList.toggle("sel", p.checked));
     apicks.flat().forEach((a) => a.closest(".att") && a.closest(".att").classList.toggle("asel", a.checked));
@@ -1265,10 +1317,7 @@ async function copyText(text) {
       else if (files.length || reps.length) blocks.push([(ENTRIES[i].match(/^\\[[^\\]]*\\]/) || [""])[0] + " (only parts selected)", ...files, ...reps].join("\\n"));
     });
     const text = [`From my inbox for {day}:`, ...blocks.reverse()].join("\\n\\n");  // oldest first
-    copyOut(e.target, text, "Copy entry");
-  };
-  document.getElementById("selcopytext").onclick = (e) => {
-    copyOut(e.target, chosen().map((i) => NOTES[i]).filter(Boolean).join("\\n"), "Copy text");
+    copyOut(e.target, text, "Copy data");
   };
   async function copyOut(btn, text, label) {
     btn.textContent = (await copyText(text)) ? "Copied" : "Couldn't copy";
@@ -1587,6 +1636,119 @@ def attachment_card(day: str, f: str, selectable: bool = True) -> str:
     )
 
 
+PINS_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Pinned</title>
+<meta name="robots" content="noindex"><link rel="icon" href="/favicon.svg?v=5" type="image/svg+xml">
+{style}
+<style>.pcard{padding:12px 8px;border-radius:8px}.pcard.flash{background:var(--hl)}.pcard .atts .apick{display:none}
+.pcard .delfile[hidden]{display:none}.pcard .rnote{margin:4px 0 4px 18px;padding-left:12px;border-left:2px solid var(--line)}
+.copyatt{display:none}</style></head><body><main>
+<div class="pinsnav"><a href="/inbox/">Today</a></div>
+<h1 class="title"><a href="/inbox/" title="Today">Drop a line.</a></h1>
+<h2><span>Pinned</span><span>{count}</span></h2>
+{flash}
+<div class="elist">{cards}</div>
+</main>
+<script>
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) { try { await navigator.clipboard.writeText(text); return true; } catch {} }
+  const ta = document.createElement("textarea"); ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+  document.body.append(ta); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch {} ta.remove(); return ok;
+}
+const NOTE = {notes};
+document.querySelectorAll(".pcopy").forEach((b) => b.onclick = async () => {
+  const label = b.textContent; b.textContent = (await copyText(NOTE[b.dataset.key] || "")) ? "Copied" : "Couldn't copy";
+  setTimeout(() => (b.textContent = label), 1500);
+});
+document.querySelectorAll(".pdel").forEach((b) => b.onclick = () => {
+  const f = b.closest(".pcard").querySelector(".delfile"); f.hidden = !f.hidden; if (!f.hidden) f.querySelector("input[name=username]").focus();
+});
+const target = document.querySelector(".pcard.flash"); if (target) target.scrollIntoView({ block: "center" });
+</script></body></html>"""
+
+
+def render_pins(focus: tuple[str, int] | None = None, flash: str = "") -> bytes:
+    """All pinned entries (newest day first). Each: its full id (links to its day), details,
+    note, files, replies, and Unpin · Open day · Copy · Delete… (same real delete as the day page)."""
+    style = PAGE[PAGE.index("<style>") : PAGE.index("</style>") + len("</style>")]
+    cards, notes = [], {}
+    for day, e in pinned_entries():
+        n = e["n"]
+        pos = next(i for i, x in enumerate(read_day(day)) if x["n"] == n)
+        key = f"{day}#{n}"
+        notes[key] = e["text"]
+        tip = html.escape(e["time"]) + (
+            f"<br>{html.escape(e['meta'])}" if e.get("meta") else ""
+        )
+        parts = [
+            f'<div class="ehead"><span class="t"><a class="num" href="/inbox/{day}#{n}">{day}#{n}</a>'
+            f'<span class="details" tabindex="0">details<span class="tip" role="tooltip">{tip}</span></span></span></div>'
+        ]
+        if e["text"]:
+            parts.append(f'<p class="note">{linkify(e["text"], day, "/inbox/")}</p>')
+        if e["files"]:
+            parts.append(
+                '<div class="atts">'
+                + "".join(attachment_card(day, f, selectable=False) for f in e["files"])
+                + "</div>"
+            )
+        for r in e["replies"]:
+            parts.append(
+                f'<p class="rnote"><b>#{r["id"]}</b> {linkify(r["text"], day, "/inbox/")}</p>'
+            )
+        # Delete: the whole entry, with all its files and replies (password, like the day page).
+        hidden = f'<input type="hidden" name="del" value="{pos}"><input type="hidden" name="back" value="/inbox/pins">'
+        hidden += "".join(
+            f'<input type="hidden" name="dfile" value="{html.escape(f)}">'
+            for f in e["files"]
+        )
+        hidden += "".join(
+            f'<input type="hidden" name="dreply" value="{r["id"]}">'
+            for r in e["replies"]
+        )
+        sep = '<span aria-hidden="true">·</span>'
+        parts.append(
+            '<div class="actions">'
+            f'<form method="post" action="/inbox/pin/{day}" class="inline"><input type="hidden" name="n" value="{n}">'
+            '<input type="hidden" name="on" value="0"><input type="hidden" name="back" value="/inbox/pins">'
+            f'<button class="editline">Unpin</button></form>{sep}'
+            f'<a class="editline" href="/inbox/{day}#{n}">Open day</a>{sep}'
+            + (
+                f'<button type="button" class="editline pcopy" data-key="{key}">Copy</button>{sep}'
+                if e["text"]
+                else ""
+            )
+            + '<button type="button" class="editline pdel">Delete…</button></div>'
+            f'<form class="delfile" method="post" action="/inbox/delete/{day}" hidden>{hidden}'
+            '<input name="username" placeholder="Username" autocomplete="username" autocapitalize="none" required>'
+            '<input type="password" name="password" placeholder="Password" autocomplete="current-password" required>'
+            "<button>Delete entry</button></form>"
+        )
+        cls = "e pcard" + (" flash" if focus == (day, n) else "")
+        cards.append(
+            f'<div class="{cls}" id="p-{day}-{n}">' + "".join(parts) + "</div>"
+        )
+    page = (
+        PINS_PAGE.replace("{style}", style)
+        .replace("{count}", f"{len(cards)} pinned")
+        .replace(
+            "{flash}", f'<div class="ok">{html.escape(flash)}</div>' if flash else ""
+        )
+        .replace(
+            "{cards}",
+            '<hr class="esep">'.join(cards)
+            or '<div class="e t">Nothing pinned. Use "Pin" under an entry.</div>',
+        )
+        .replace("{notes}", js_json(notes))
+    )
+    return page.encode()
+
+
+def pins_link() -> str:
+    n = len(pinned_entries())
+    return f'<div class="pinsnav"><a href="/inbox/pins">Pinned ({n})</a></div>'
+
+
 def text_actions(day: str, item: dict, ident: str, reply: bool) -> str:
     """The row under an entry/reply: Reply (entries) · Edit · Copy · Raw ↗ (the note as plain
     text in a new tab). Copy and Raw only when there's a note."""
@@ -1616,6 +1778,24 @@ def gutter(icons: str, circle: str) -> str:
     the divider. On phones the circle stays at the line's start and the icons show in the
     bottom row instead."""
     return f'<span class="gut"><span class="gcircle">{circle}</span><span class="gicons">{icons}</span></span>'
+
+
+def pin_toggle(day: str, item: dict, ident: str) -> str:
+    """[pin] at an entry's top right: click toggles the pin. When pinned, hovering shows a
+    "go to pinned" link beside it."""
+    on = bool(item.get("pinned"))
+    go = (
+        f'<a class="pingo" href="/inbox/pins/{day}/{ident}">go to pinned</a>'
+        if on
+        else ""
+    )
+    return (
+        f'<span class="pinbox{" on" if on else ""}">'
+        f'<form method="post" action="/inbox/pin/{day}" class="inline">'
+        f'<input type="hidden" name="n" value="{ident}"><input type="hidden" name="on" value="{int(not on)}">'
+        f'<input type="hidden" name="back" value="/inbox/{day}#{ident}">'
+        f'<button class="pinbtn" title="{"Unpin" if on else "Pin"}" aria-label="{"Unpin" if on else "Pin"}">📌</button></form>{go}</span>'
+    )
 
 
 def item_head(
@@ -1689,7 +1869,14 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         body = [
             # The day is already on the page, so the label is just "#5"; the full
             # "2026-11-23#5" stays in links, copies, exports, and the email.
-            item_head(day, e, ident, f"#{ident}", "", lead=gutter("", circle)),
+            item_head(
+                day,
+                e,
+                ident,
+                f"#{ident}",
+                pin_toggle(day, e, ident),
+                lead=gutter("", circle),
+            ),
             item_note(day, e, ident),
         ]
         if e["files"]:
@@ -1786,6 +1973,7 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
             else "<span></span>",
         )
         .replace("{check_icon}", js_json(ICON_CHECK))
+        .replace("{pins_link}", pins_link())
         .replace(
             "{allnotes_json}",
             js_json(
@@ -1914,6 +2102,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(404, b"not found", "text/plain")
             else:
                 self._send(200, item["text"].encode(), "text/plain; charset=utf-8")
+        elif path in ("/inbox/pins", "/inbox/pins/"):
+            self._send(200, render_pins(None, flash), "text/html; charset=utf-8")
+        elif m := re.fullmatch(r"/inbox/pins/(\d{4}-\d{2}-\d{2})/(\d+)", path):
+            self._send(
+                200, render_pins((m[1], int(m[2])), flash), "text/html; charset=utf-8"
+            )
         elif m := re.fullmatch(r"/inbox/(?:day/)?(\d{4}-\d{2}-\d{2})", path):
             self._send(200, render(m[1], flash, session), "text/html; charset=utf-8")
         elif m := re.fullmatch(r"/inbox/day/(\d{4}-\d{2}-\d{2})\.md", path):
@@ -2048,23 +2242,25 @@ class Handler(BaseHTTPRequestHandler):
             # Always confirmed with username + password, even at home.
             f = form_fields(ctype, body)
             ip = visitor_ip(self.headers) or "?"
+            back = (f.get("back") or [""])[0]
+            home = back if back.startswith("/inbox/pins") else f"/inbox/{m[1]}"
             user, pw = (f.get("username") or [""])[0], (f.get("password") or [""])[0]
             if too_many_fails(ip) or not (PASSWORD_HASH and check_login(user, pw)):
                 with _auth_lock:
                     _fails.setdefault(ip, []).append(time.time())
                 self._redirect(
-                    f"/inbox/{m[1]}?sent={quote('Not deleted: wrong username or password.')}"
+                    f"{home}?sent={quote('Not deleted: wrong username or password.')}"
                 )
                 return
             if f.get("reply"):  # one reply (trash icon on its line)
                 ok = delete_reply(m[1], f["reply"][0])
                 msg = "Deleted the reply." if ok else "That reply wasn't found."
-                self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
+                self._redirect(f"{home}?sent={quote(msg)}")
                 return
             if f.get("file"):  # one attachment (trash icon on its line)
                 ok = delete_file(m[1], f["file"][0])
                 msg = "Deleted the file." if ok else "That file wasn't found."
-                self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
+                self._redirect(f"{home}?sent={quote(msg)}")
                 return
             picks = {int(v) for v in f.get("del", []) if v.isdigit()}
             rsel = set(f.get("dreply", []))
@@ -2077,7 +2273,7 @@ class Handler(BaseHTTPRequestHandler):
             ]
             if partial:
                 msg = f"Not deleted: deleting {', '.join(partial)} also deletes all {'their' if len(partial) > 1 else 'its'} replies, so tick them all first."
-                self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
+                self._redirect(f"{home}?sent={quote(msg)}")
                 return
             whole, nfiles, nreplies = delete_selection(
                 m[1], picks, set(f.get("dfile", [])), rsel
@@ -2087,7 +2283,7 @@ class Handler(BaseHTTPRequestHandler):
             parts += [plural(nreplies, "reply", "replies")] if nreplies else []
             parts += [plural(nfiles, "file", "files")] if nfiles else []
             msg = "Deleted " + (", ".join(parts) if parts else "nothing") + "."
-            self._redirect(f"/inbox/{m[1]}?sent={quote(msg)}")
+            self._redirect(f"{home}?sent={quote(msg)}")
             return
         if path == "/inbox/add":
             text, files = note_and_files(ctype, body)
@@ -2107,6 +2303,15 @@ class Handler(BaseHTTPRequestHandler):
                 if rid
                 else f"/inbox/{m[1]}?sent={quote('That entry no longer exists.')}"
             )
+        elif m := re.fullmatch(r"/inbox/pin/(\d{4}-\d{2}-\d{2})", path):
+            f = form_fields(ctype, body)
+            n = (f.get("n") or [""])[0]
+            back = (f.get("back") or [""])[0]
+            if not back.startswith("/inbox/"):  # only ever go back inside the inbox
+                back = f"/inbox/{m[1]}"
+            if n.isdigit():
+                set_pinned(m[1], int(n), (f.get("on") or ["1"])[0] == "1")
+            self._redirect(back)
         elif m := re.fullmatch(r"/inbox/edit/(\d{4}-\d{2}-\d{2})", path):
             f = form_fields(ctype, body)
             ident = (f.get("id") or [""])[0]

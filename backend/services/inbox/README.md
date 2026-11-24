@@ -25,6 +25,13 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
   that reply.
 - **References:** type `#5` (same day), `#5.2` (a reply), or `2026-11-20#3` (another day) in a note
   and it becomes a link. `#` + digits only, so `#flowers` stays plain text.
+- **Pin**: click the 📌 at an entry's top right (entries only, not replies or files) to pin or
+  unpin it; gray and faint when unpinned, full color when pinned. Pinned entries show on the **Pinned page**
+  (`/inbox/pins`, linked as "Pinned (N)" under the title), which lists them from every day.
+  Hovering a pinned 📌 shows "go to pinned", to its left, linking to `/inbox/pins/<day>/<n>` (that
+  card highlighted). Unpin from either page. Delete… on the Pinned
+  page is the same real delete (password; the entry with all its files and replies). Stored as a
+  `_pinned_` line in the entry's block; the 9pm email ends with the list of pinned entries.
 - **Reply** (arrow icon on an entry): a note and/or files, shown indented under the entry, with
   its own copy/edit/delete icons (delete asks for the password). Stored in the entry's day file as
   `### 5.1 · time`. Deleting an entry whole takes its replies with it.

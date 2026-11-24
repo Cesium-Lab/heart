@@ -60,6 +60,15 @@ Self-hosted apps, all optional, each one small and in docker or a unit like the 
 - **Jellyfin** (or Plex): your own Netflix for movies/shows you own (`/srv/data/movies`).
 - **Photo gallery** for the photos on `/srv/data`.
 - **RSS reader** (Miniflux or FreshRSS): your own Feedly; more polished than a homemade feed.
+- **File sharing, Google Drive style**: browse `/srv/data` from any device, upload, and share a
+  file or folder by link (optionally with a password or expiry). Lightest options: File Browser
+  (one binary, a web file manager with share links) or Seafile; Nextcloud does everything (sync
+  clients, calendar, contacts) but is much heavier for an 8 GB box. Keep files as plain files on
+  `/srv/data` so it stays "files are the truth"; private by default, public links opt-in.
+- **Notion-style workspace**: pages with nested blocks, simple databases/tables, and links between
+  pages. Self-hosted options: AppFlowy or AFFiNE (closest to Notion), Outline or Docmost (team
+  wiki feel). Would also be the natural home for **Contacts** (above) and a Notion import.
+  Prefer one that stores Markdown or can export it, so the content isn't locked in.
 - **Wiki** (Wiki.js or BookStack) for notes and docs.
 - **Homepage / Homarr**: a landing page with service status, weather, and system stats (could
   replace the hand-made dashboards).
