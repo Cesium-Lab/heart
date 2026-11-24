@@ -146,7 +146,9 @@ jobs:
           python3 hashcheck.py
           t=$(stat -c %y "$HASHCHECK_DATA_DIR/photos/a.jpg")
           echo z > "$HASHCHECK_DATA_DIR/photos/a.jpg" && touch -d "$t" "$HASHCHECK_DATA_DIR/photos/a.jpg"
-          if python3 hashcheck.py | tee out.txt; then exit 1; fi
+          # No pipe here: without pipefail a pipe would report tee's exit code, not hashcheck's.
+          if python3 hashcheck.py > out.txt; then cat out.txt; exit 1; fi
+          cat out.txt
           grep -q 'CORRUPT (same size and time, different contents): 1' out.txt
           if HASHCHECK_DATA_DIR="$RUNNER_TEMP/nope" python3 hashcheck.py; then exit 1; fi
 
