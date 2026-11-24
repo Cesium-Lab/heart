@@ -34,7 +34,7 @@ serving the site.
 
 - **Planes traffic stats** in Grafana (arrivals/departures per hour, busiest airlines): a `/metrics`
   endpoint on the planes service for Prometheus. Placeholder note: Grafana dashboard "Planes (to do)"
-  (`projects/dataviz/telemetry_server/grafana/provisioning/dashboards/planes-todo.json`).
+  (`monitoring/grafana/provisioning/dashboards/planes-todo.json`).
 - **Planes: bigger range when zoomed out.** Tiers by zoom, still centered on SFO: 40 nm (now),
   100 nm (~240 aircraft, ~32 KB/update), 250 nm (~430 aircraft, ~58 KB; adsb.fi's max). Cache per
   tier so viewers share fetches; look up routes only within 40 nm (plus clicked/hovered planes)

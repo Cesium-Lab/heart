@@ -29,8 +29,8 @@
 | Hashcheck (weekly)  | `hashcheck.timer`           | -                 | emails on problems (`backend/services/hashcheck/`)           |
 | DataViz API         | `dataviz-backend`           | `127.0.0.1:42000` | `/api/dataviz/`                                              |
 | DataViz GUI         | `dataviz-gui`               | `127.0.0.1:42002` | `dataviz.cesiumlab.net`                                      |
-| Grafana             | docker (`projects/dataviz`) | `127.0.0.1:42003` | private/admin                                                |
-| Prometheus          | docker (`projects/dataviz`) | `127.0.0.1:42004` | private only                                                 |
+| Grafana             | docker (`monitoring/`)      | `127.0.0.1:42003` | private/admin                                                |
+| Prometheus          | docker (`monitoring/`)      | `127.0.0.1:42004` | private only                                                 |
 
 Retired: Telemetry Viz (`archive/telemetry-viz/`), replaced by DataViz + Grafana/Prometheus.
 `./scripts/status.sh` shows what is actually running right now; the same output is on the

@@ -11,6 +11,7 @@ FRONTEND_DIR="${REPO_ROOT}/frontend"
 SETLISTER_DIR="${REPO_ROOT}/backend/music/setlister"
 INBOX_DIR="${REPO_ROOT}/backend/services/inbox"
 DATAVIZ_DIR="${REPO_ROOT}/projects/dataviz"
+MONITORING_DIR="${REPO_ROOT}/monitoring"
 SYSTEMD_DIR="${REPO_ROOT}/deploy/systemd"
 APACHE_DEPLOY_DIR="${REPO_ROOT}/deploy/apache"
 

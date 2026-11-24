@@ -7,7 +7,8 @@ Cesium Heart contains the Astro frontend and backend services used by the site.
 - `architecture/` — **source of truth**: machine, storage, services and ports, deploy, ideas.
 - `frontend/` — Astro source; builds to `frontend/dist/`.
 - `backend/services/` — Python APIs managed by systemd.
-- `projects/dataviz/` — DataViz backend, GUI, and monitoring stack.
+- `projects/dataviz/` — DataViz backend and GUI.
+- `monitoring/` — Prometheus + Grafana (docker) for the whole machine.
 - `backend/music/setlister/` — Setlister backend and private configuration.
 - `deploy/systemd/`, `deploy/apache/` — version-controlled systemd units and Apache config.
 - `scripts/deploy-startup.sh` — full deploy; runs the stages in `scripts/deploy/`.
