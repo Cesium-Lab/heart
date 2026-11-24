@@ -1033,6 +1033,8 @@ label.t{cursor:pointer;user-select:none}
 .top{display:flex;justify-content:flex-end;margin:-8px 0 8px}
 .top button{font-size:13px;font-weight:500;color:var(--muted);background:transparent;border:1px solid var(--line);padding:5px 10px}
 h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:28px 2px 8px;display:flex;justify-content:space-between;align-items:baseline}
+h2 .dtitle{font-size:18px;font-style:italic;color:#b8860b}
+@media(prefers-color-scheme:dark){h2 .dtitle{color:#f5c518}}
 h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
 .e{padding:12px 2px}
 /* Between entries: a thicker divider in a small gap, so neighbouring highlights stay separate. */
@@ -1074,7 +1076,9 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .tools{display:flex;gap:8px;margin:14px 2px;flex-wrap:wrap}.tools button,.tools a{font-size:13px;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none;font-weight:500}
 /* three columns: equal sides keep the middle link centered whatever the dates say */
 .nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:0 2px 12px;font-size:14px}
-.nav>*{justify-self:start}.nav>.today{justify-self:center}.nav>:last-child{justify-self:end}
+.nav>:first-child{justify-self:end}.nav>:last-child{justify-self:start}
+.nav a,.nav .today{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+
 .nav .today{font-weight:600;color:var(--bright);text-align:center}
 .title{font-size:28px;margin:4px 2px 12px;letter-spacing:-.01em}
 .title a{color:inherit;text-decoration:none}
@@ -1127,7 +1131,7 @@ async function copyText(text) {
   </form>
 </div></aside>
 <section class="list">
-<h2><span>{title}</span><span>{count} <button type="button" id="selectall" class="selall" hidden>Select all</button></span></h2>
+<h2><span class="dtitle">{title}</span><span>{count} <button type="button" id="selectall" class="selall" hidden>Select all</button></span></h2>
 {entries}
 <script>
 // Multi-select delete: tick entries (shift-click ticks a range, "Select all" ticks
@@ -1962,9 +1966,9 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         .replace("{prev}", f'<a href="{base}{prev_day}">← {prev_day}</a>')
         .replace(
             "{today}",
-            f'<a class="today" href="{base}">Go to today ({date.today():%a %b %-d})</a>'
+            f'<a class="today" href="{base}">Today · {date.today():%a %b %-d}</a>'
             if day != today
-            else f'<span class="today">Today · {date.today():%a %b %-d}</span>',
+            else f'<a class="today" href="{base}" aria-current="page">Today · {date.today():%a %b %-d}</a>',
         )
         .replace(
             "{next}",
