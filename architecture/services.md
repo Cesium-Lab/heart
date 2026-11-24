@@ -26,6 +26,7 @@
 | Setlister           | `setlister`                 | `127.0.0.1:42903` | `/api/setlister/`                                            |
 | Planes (SFO map)    | `planes`                    | `127.0.0.1:42901` | `/planes/` (map + board drawer), `/api/planes/`              |
 | Inbox               | `inbox`                     | `127.0.0.1:42904` | `/inbox/` (no password on LAN/Tailscale; password elsewhere) |
+| Hashcheck (weekly)  | `hashcheck.timer`           | -                 | emails on problems (`backend/services/hashcheck/`)           |
 | DataViz API         | `dataviz-backend`           | `127.0.0.1:42000` | `/api/dataviz/`                                              |
 | DataViz GUI         | `dataviz-gui`               | `127.0.0.1:42002` | `dataviz.cesiumlab.net`                                      |
 | Grafana             | docker (`projects/dataviz`) | `127.0.0.1:42003` | private/admin                                                |

@@ -40,6 +40,11 @@ if [[ -f "${INBOX_DIR}/server.py" ]]; then
     install -d -m 0755 /srv/data/inbox 2>/dev/null || true
 fi
 
+# hashcheck (weekly file check of /srv/data) keeps its list on the internal drive.
+if [[ -f "${REPO_ROOT}/backend/services/hashcheck/hashcheck.py" ]]; then
+    sudo install -d -m 0755 -o cskin -g cskin /srv/state/hashcheck
+fi
+
 # Prepare the DataViz API and dashboard when the project is present.
 if [[ -f "${DATAVIZ_DIR}/backend/main.py" ]]; then
     log "Preparing DataViz"
@@ -49,7 +54,7 @@ fi
 
 # Copy each available unit definition into systemd.
 log "Installing backend service definitions"
-for unit in rotation-viz.service setlister.service planes.service inbox.service dataviz-backend.service dataviz-gui.service; do
+for unit in rotation-viz.service setlister.service planes.service inbox.service dataviz-backend.service dataviz-gui.service hashcheck.service hashcheck.timer; do
     if [[ -f "${SYSTEMD_DIR}/${unit}" ]]; then
         sudo install -m 0644 "${SYSTEMD_DIR}/${unit}" "/etc/systemd/system/${unit}"
     fi
@@ -62,3 +67,6 @@ log "Enabling backend services"
 for unit in rotation-viz.service setlister.service planes.service inbox.service dataviz-backend.service dataviz-gui.service; do
     enable_installed_unit "${unit}"
 done
+# hashcheck runs from its timer only (enabling the service itself would start a full,
+# hours-long check right now).
+enable_installed_unit hashcheck.timer

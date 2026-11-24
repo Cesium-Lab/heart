@@ -27,6 +27,7 @@ SERVICES=(
     "rotation-viz|42902|http://127.0.0.1:42902/api/rotation/health"
     "planes|42901|http://127.0.0.1:42901/api/planes/health"
     "inbox|42904|http://127.0.0.1:42904/inbox/health"
+    "hashcheck|-|-"
     "dataviz-backend|42000|http://127.0.0.1:42000/api/v1/health"
     "dataviz-gui|42002|http://127.0.0.1:42002/"
     "docker|-|-"
@@ -74,6 +75,15 @@ for row in "${SERVICES[@]}"; do
         if curl -fsS -m 3 -o /dev/null "$url" 2>/dev/null; then note="${G}ok${N}"; else note="${R}no response${N}"; fi
     elif [[ "$port" != "-" && "$state" == "active" ]] && ! listening "$port"; then
         note="${Y}port not listening${N}"
+    fi
+    # hashcheck is a weekly job: show its progress while running, else its last result.
+    if [[ "$unit" == "hashcheck" && -r /srv/state/hashcheck/status.txt ]]; then
+        hc=$(head -n1 /srv/state/hashcheck/status.txt)
+        if [[ "$state" == "activating" ]]; then
+            label=$(cell "$Y" 10 running); note="${Y}${hc}${N}"
+        elif [[ "$hc" == *PROBLEM* ]]; then note="${R}${hc}${N}"
+        else note="${D}${hc}${N}"
+        fi
     fi
     printf '%-18s %s %-6s %s\n' "$unit" "$label" "$port" "$note"
 done

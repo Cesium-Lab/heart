@@ -129,6 +129,27 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' -F 'text=x' http://127.0.0.1:42904/inbox/add)" = 401
           ls "$RUNNER_TEMP"/inbox/*/digest-preview.eml
 
+  hashcheck-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Baseline, then silently change a file (same size and time): it must be flagged CORRUPT
+      # (exit 1), and a missing drive must be refused rather than recorded as "all deleted".
+      - name: Catch a silent change
+        working-directory: backend/services/hashcheck
+        run: |
+          export HASHCHECK_DATA_DIR="$RUNNER_TEMP/data" HASHCHECK_STATE_DIR="$RUNNER_TEMP/state"
+          mkdir -p "$HASHCHECK_DATA_DIR/photos" && echo a > "$HASHCHECK_DATA_DIR/photos/a.jpg"
+          python3 hashcheck.py
+          t=$(stat -c %y "$HASHCHECK_DATA_DIR/photos/a.jpg")
+          echo z > "$HASHCHECK_DATA_DIR/photos/a.jpg" && touch -d "$t" "$HASHCHECK_DATA_DIR/photos/a.jpg"
+          if python3 hashcheck.py | tee out.txt; then exit 1; fi
+          grep -q 'CORRUPT (same size and time, different contents): 1' out.txt
+          if HASHCHECK_DATA_DIR="$RUNNER_TEMP/nope" python3 hashcheck.py; then exit 1; fi
+
   lint-everything:
     runs-on: ubuntu-latest
 

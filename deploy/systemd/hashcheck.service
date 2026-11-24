@@ -1,0 +1,22 @@
+[Unit]
+Description=hashcheck: re-hash every file on /srv/data, email if any changed silently or went missing
+# Only runs with the data drive mounted (an unplugged drive is reported by the timer's next run).
+RequiresMountsFor=/srv/data /srv/state
+
+[Service]
+Type=oneshot
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/backend/services/hashcheck
+# Gmail settings shared with the inbox; hashcheck.env for its own overrides. Both optional.
+EnvironmentFile=-/etc/cesium/inbox.env
+EnvironmentFile=-/etc/cesium/hashcheck.env
+ExecStart=/usr/bin/python3 hashcheck.py
+# Low priority so the site and Samba stay responsive while it reads the whole drive.
+Nice=19
+IOSchedulingClass=idle
+# It only ever reads the drive it checks; it writes only its own list and reports.
+ProtectSystem=strict
+ReadOnlyPaths=/srv/data
+ReadWritePaths=/srv/state/hashcheck
+NoNewPrivileges=true
+PrivateTmp=true

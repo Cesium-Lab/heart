@@ -30,6 +30,9 @@ Checked 2026-11-22.
 
 - `/srv/data`: files (music, cesium). Lives on an external/data drive.
 - `/srv/state`: app data (databases, indexes). Lives on the internal NVMe.
+- **Weekly hash check** of everything on `/srv/data` (Sunday 02:00, `hashcheck.timer`): emails
+  if a file changed silently, can't be read, or went missing. Its list lives in
+  `/srv/state/hashcheck/`. See `backend/services/hashcheck/README.md`.
 - Apps get these paths from config (e.g. `/etc/cesium/paths.env`), never hard-coded. That way a
   new drive or a NAS can be mounted at the same path later without touching the apps.
 - **Safe if the drive is unplugged:** mount with `nofail` so the server still boots, keep the empty
