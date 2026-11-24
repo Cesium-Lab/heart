@@ -1040,7 +1040,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .replyline:hover,.editline:hover{color:var(--bright);text-decoration:underline}
 a.editline{text-decoration:none}
 .replies{margin:6px 0 0 18px;border-left:2px solid var(--line);padding-left:12px}
-.replies:empty{display:none}
+.replies:empty,.replies[hidden]{display:none}
+.replies.barhover{cursor:pointer;border-left-color:var(--muted)}
+.rtoggle{display:block;width:50%;text-align:left;background:none;border:0;padding:2px 0;margin:4px 0 0;font:inherit;font-size:13px;color:var(--muted);cursor:pointer}
+.rtoggle:hover{color:var(--bright)}.rarrow{font-size:2em;line-height:0;vertical-align:-.12em}
 .r{padding:8px 6px;border-radius:8px}.r+.r{border-top:1px solid var(--line)}
 .r.flash,.r.rsel{background:var(--hl)}
 .r{cursor:default}
@@ -1134,7 +1137,8 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .nav .today{font-weight:600;color:var(--bright);text-align:center}
 .title{font-size:28px;margin:4px 2px 12px;letter-spacing:-.01em}
 .title a{color:inherit;text-decoration:none}
-.pencil{font-size:15px;font-style:italic;color:var(--muted);margin:0 2px 6px}
+.pencil{font-size:18px;font-style:italic;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#b8860b;margin:0 2px 6px}
+@media(prefers-color-scheme:dark){.pencil{color:#f5c518}}
 .pinsnav{float:right;margin-top:4px}.pinsnav a,.nav a{display:inline-block;font-size:13px;font-weight:500;color:var(--bright);border:1px solid var(--line);border-radius:6px;padding:5px 10px;text-decoration:none}.pinsnav a:hover,.nav a:hover{border-color:var(--bright)}
 .pinbox{display:inline-flex;flex-direction:row-reverse;align-items:center;gap:8px}
 .pinbtn{background:none;border:0;padding:0;font:inherit;font-family:ui-monospace,monospace;font-size:.85em;color:var(--muted);cursor:pointer}
@@ -1380,6 +1384,7 @@ async function copyText(text) {
     if (!/^\\d+(\\.\\d+)?$/.test(id)) return;
     const el = document.getElementById(id);
     if (!el) return;
+    openRepliesFor(el);
     document.querySelectorAll(".r.flash").forEach((x) => x.classList.remove("flash"));
     const k = picks.findIndex((p) => p.closest(".e") === el.closest(".e"));
     if (el.classList.contains("e") && k >= 0) {
@@ -1573,10 +1578,10 @@ document.getElementById("copy").onclick = async (e) => {
   e.target.textContent = (await copyText(text)) ? "Copied" : "Couldn't copy";
 };
 </script>
-</body></html>"""
+{replies_js}</body></html>"""
 
 FORM = """<div class="pencil">pencil pencil.</div>
-<form method="post" action="{base}add" enctype="multipart/form-data">
+<form method="post" id="addform" action="{base}add" enctype="multipart/form-data">
   <textarea name="text" placeholder="Anything: a note, a link, what this photo is for…" autofocus></textarea>
   <div class="row">
     <label class="file"><input type="file" name="file" id="file" multiple></label>
@@ -1587,6 +1592,11 @@ FORM = """<div class="pencil">pencil pencil.</div>
     <button type="button" id="clearall" class="clear" hidden>Remove all files</button></div>
 </form>
 <script>
+// ⌘/Ctrl+Enter in the box saves: it clicks Save, so it does nothing while Save is disabled
+// (files over the size limit).
+document.querySelector("#addform textarea").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); document.getElementById("save").click(); }
+});
 // Picked files build up in a list (each with an x to remove it); the input is kept in sync so
 // a normal form post sends exactly the listed files. Total is checked against MAX_MB before
 // uploading: Cloudflare rejects anything over 100 MB with an error page.
@@ -1806,7 +1816,7 @@ if (emailOpen) {
   document.getElementById("emailcancel").onclick = () => { sf.hidden = true; emailOpen.hidden = false; };
 }
 const target = document.querySelector(".pcard.flash"); if (target) target.scrollIntoView({ block: "center" });
-</script></body></html>"""
+</script>{replies_js}</body></html>"""
 
 
 def render_pins(
@@ -1886,7 +1896,7 @@ def render_pins(
                 )
             rb.append(text_actions(day, r, r["id"], reply=False))
             reps.append('<div class="r">' + "".join(rb) + "</div>")
-        parts.append('<div class="replies">' + "".join(reps) + "</div>")
+        parts.append(replies_block(reps))
         cls = "e pcard" + (" flash" if focus == (day, n) else "")
         cards.append(
             f'<div class="{cls}" id="p-{day}-{n}" data-day="{day}" data-n="{n}">'
@@ -1912,6 +1922,7 @@ def render_pins(
     )
     page = (
         PINS_PAGE.replace("{style}", style)
+        .replace("{replies_js}", REPLIES_JS)
         .replace(
             "{logout}",
             LOGOUT.replace("{tag}", session["tag"]).replace("{base}", "/inbox/")
@@ -1940,6 +1951,44 @@ def render_pins(
         )
     )
     return page.encode()
+
+
+def replies_block(reps: list[str]) -> str:
+    """An entry's replies, minimized by default behind a "▸ N replies" line. Clicking that line
+    or the bar on the replies' left opens/closes them (see REPLIES_JS)."""
+    if not reps:
+        return ""
+    n = len(reps)
+    label = f"{n} repl{'y' if n == 1 else 'ies'}"
+    return (
+        f'<button type="button" class="rtoggle" aria-expanded="false" data-label="{label}"><span class="rarrow">▸</span> {label}</button>'
+        f'<div class="replies" hidden>{"".join(reps)}</div>'
+    )
+
+
+REPLIES_JS = """<script>
+// Replies: "▸ N replies" opens them; clicking it again or the bar on their left closes them.
+// Going to a reply's link (#5.1) opens its entry's replies first.
+function setReplies(box, open) {
+  const t = box.previousElementSibling;
+  box.hidden = !open;
+  t.setAttribute("aria-expanded", String(open));
+  t.firstElementChild.textContent = open ? "▾" : "▸";
+}
+function openRepliesFor(el) { const box = el && el.closest(".replies"); if (box && box.hidden) setReplies(box, true); }
+document.querySelectorAll(".rtoggle").forEach((t) => t.addEventListener("click", (e) => {
+  e.stopPropagation(); setReplies(t.nextElementSibling, t.nextElementSibling.hidden);
+}));
+document.querySelectorAll(".replies").forEach((box) => {
+  const onBar = (e) => e.target === box && e.offsetX < 32;
+  box.addEventListener("mousemove", (e) => box.classList.toggle("barhover", onBar(e)));
+  box.addEventListener("mouseleave", () => box.classList.remove("barhover"));
+  box.addEventListener("click", (e) => { if (onBar(e)) { e.stopPropagation(); setReplies(box, false); box.classList.remove("barhover"); } });
+});
+{ const id = decodeURIComponent(location.hash.slice(1)); if (id.includes(".")) openRepliesFor(document.getElementById(id)); }
+// Pinned page: the card you just came back to (after a reply or edit) shows its replies.
+document.querySelectorAll(".pcard.flash .replies").forEach((b) => setReplies(b, true));
+</script>"""
 
 
 def pins_link() -> str:
@@ -2119,7 +2168,7 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
         )
         # "Reply · Edit" right under the note and attachments; the reply box opens only on click.
         body.append(text_actions(day, e, ident, reply=True) + reply_form)
-        body.append('<div class="replies">' + "".join(reps) + "</div>")
+        body.append(replies_block(reps))
         # Icons twice: a left column (desktop) and in the bottom row (phones); CSS shows one.
         items.append(f'<div class="e" id="{ident}">' + "".join(body) + "</div>")
     d = date.fromisoformat(day)
@@ -2140,9 +2189,8 @@ def render(day: str, flash: str = "", session: dict | None = None) -> bytes:
     # Fill the template's own placeholders first, then insert user content (which may contain
     # anything, including "{day}").
     page = (
-        PAGE.replace(
-            "{logout}", LOGOUT.replace("{tag}", session["tag"]) if session else ""
-        )
+        PAGE.replace("{replies_js}", REPLIES_JS)
+        .replace("{logout}", LOGOUT.replace("{tag}", session["tag"]) if session else "")
         .replace("{base}", base)
         .replace("{day}", day)
         .replace(
