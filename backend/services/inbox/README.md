@@ -24,9 +24,14 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
   list) ticks everything. A bar then offers:
   - **Copy**: the selected entries as text, ready to paste into Claude/ChatGPT.
   - **Export .zip**: `selected.md` (same format as `inbox.md`) plus their photos and files.
-  - **Delete…**: confirm with your username and password (always, even at home). Deleted entries
-    move to the day's `.deleted/` folder (text in `deleted.md`, files beside it), so a mistake can
-    be undone by hand.
+  - **Delete…**: confirm with your username and password (always, even at home).
+    - An entry selected with all its files ticked is deleted whole.
+    - An entry selected with some files unticked loses its note and the ticked files; the
+      unticked files stay, as an entry without text.
+    - Files ticked on their own are deleted alone; their entry's note stays.
+    - Once an entry has no note and no files left, it disappears from the list (its number
+      isn't reused). Everything deleted moves to the day's `.deleted/` folder (`deleted.md` plus
+      the files), so a mistake can be undone by hand.
 - **Adding files:** each pick adds to a list under the box, each with an × to remove it, plus
   **Remove all files**. Over 95 MB in total, Save turns off until you remove some.
 - **Days:** `← yesterday` / `→` links browse past days; each day has **Copy for Claude** (the whole

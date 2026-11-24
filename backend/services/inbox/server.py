@@ -198,9 +198,14 @@ def delete_file(day: str, name: str) -> bool:
 
 
 def delete_selection(day: str, indexes: set[int], files: set[str]) -> tuple[int, int]:
-    """Delete what's selected. A selected entry whose files are all ticked (or that has none) is
-    deleted whole; other ticked files are deleted on their own and their notes stay. Everything
-    moves to <day>/.deleted/. Returns (entries deleted, files deleted)."""
+    """Delete what's selected. Everything moves to <day>/.deleted/.
+
+    - Selected entry, all its files ticked (or none): deleted whole.
+    - Selected entry with some files unticked: its note is deleted along with the ticked files;
+      the unticked files stay, as an entry without text.
+    - Files ticked on their own (entry not selected): just those files; the note stays.
+    An entry left with no note and no files disappears from the list.
+    Returns (entries deleted, files deleted)."""
     files = {safe_name(f) for f in files}
     with _write_lock:
         entries = read_day(day)
@@ -218,6 +223,25 @@ def delete_selection(day: str, indexes: set[int], files: set[str]) -> tuple[int,
                     )
                     fh.write("".join(f"> {ln}\n" for ln in e["text"].splitlines()))
                     fh.write("".join(f"- {f}\n" for f in gone) + "\n")
+                elif (
+                    i in indexes
+                ):  # selected, but some files kept: drop the note + ticked files
+                    whole += 1
+                    fh.write(
+                        f"## {e['n']} · {e['time']}: note"
+                        + (f" and files {', '.join(gone)}" if gone else "")
+                        + f" (deleted {datetime.now():%H:%M:%S}; other files kept)\n\n"
+                    )
+                    fh.write(
+                        "".join(f"> {ln}\n" for ln in e["text"].splitlines()) + "\n"
+                    )
+                    keep.append(
+                        {
+                            **e,
+                            "text": "",
+                            "files": [f for f in e["files"] if f not in files],
+                        }
+                    )
                 elif gone:
                     fh.write(
                         f"## {e['n']} · {e['time']}: files {', '.join(gone)} (deleted {datetime.now():%H:%M:%S})\n\n"
@@ -651,7 +675,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .ehead .copynote{margin-left:auto}
 .ehead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .e{-webkit-touch-callout:none;cursor:default;border-radius:8px;padding-left:8px;padding-right:8px;transition:background .1s}
-.e.sel{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.e.sel{background:var(--hl)}
 /* round checkbox on the right */
 .pick{appearance:none;-webkit-appearance:none;flex:none;width:18px;height:18px;margin:0;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
 .pick:checked{background:var(--accent);border-color:var(--accent)}
@@ -671,8 +695,8 @@ h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute
 h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
 .e{padding:12px 2px;border-bottom:1px solid var(--line)}.t{color:var(--muted);font-size:12px}
 .e p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}.e a{color:var(--accent)}
-.atts{border:1px solid var(--line);border-radius:10px;margin-top:8px;padding:4px 10px}
-.att{cursor:default;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px}
+.atts{border:1px solid var(--line);border-radius:10px;margin-top:8px;padding:0;overflow:hidden}
+.att{cursor:default;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;font-size:13px}
 .att+.att{border-top:1px solid var(--line)}
 .delfile{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 8px}
 .delfile input{flex:1;min-width:100px;font:inherit;font-size:13px;padding:6px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit}
@@ -682,7 +706,12 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .apick{appearance:none;-webkit-appearance:none;flex:none;width:14px;height:14px;margin:0 0 0 2px;border:2px solid var(--muted);border-radius:50%;cursor:pointer;display:grid;place-items:center}
 .apick:checked{background:var(--accent);border-color:var(--accent)}
 .apick:checked::after{content:"";width:3px;height:6px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:translateY(-1px) rotate(45deg)}
-.att.asel{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:6px}
+/* Files box keeps the page background even inside a selected (tinted) entry, so only the
+   ticked files look highlighted. */
+.atts{background:var(--bg)}
+:root{--hl:color-mix(in srgb,var(--accent) 14%,var(--bg))}  /* one solid highlight shade, never layered */
+/* rows fill the box edge to edge, so a highlight reaches all sides (corners clipped by .atts) */
+.att.asel{background:var(--hl)}
 .attname{min-width:0;overflow-wrap:anywhere}.atticons{display:flex;gap:6px;flex:none}
 .attbtn{display:inline-grid;place-items:center;flex:none;width:24px;height:24px;padding:0;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px;text-decoration:none;cursor:pointer}
 .attbtn:hover{color:var(--bright);border-color:var(--muted)}.attbtn.ok{color:#16a34a;border-color:#16a34a}
