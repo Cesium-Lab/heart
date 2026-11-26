@@ -18,9 +18,8 @@ serving the site.
 ## Music
 
 - Share selected mixes with MONARCH.
-- Music toys for the site, in the same style as Setlister (`/music/setlister/`) and TapTempo
-  (`/music/taptempo/`):
-  - **TUNER**: mic-based guitar/bass tuner with a needle display (browser only, pitch detection).
+- Music toys for the site, in the same style as Setlister (`/music/setlister/`), TapTempo
+  (`/music/taptempo/`) and Tuner (`/music/tuner/`, built 2026-11-24):
   - **SPECTRUM**: live spectrogram, waveform and loudness meter for the mic or a dropped-in mix
     (browser only).
   - **STEMS PLAYER**: play a song's stems with per-track mute and solo; files come from
