@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" href="/favicons/dash.ico?v=5" sizes="32x32" />
+<link rel="icon" href="/favicons/dash.svg?v=5" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style is:inline>
+:root {
+  --bg: #0a0c0f;
+  --surface: #111418;
+  --border: #232830;
+  --text: #c8d0da;
+  --text-dim: #5a6472;
+  --text-bright: #e8edf3;
+  --green: #4dff91;
+  --red: #ff4d4d;
+  --yellow: #ffd24d;
+  --mono: 'IBM Plex Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 32px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+  transition: all 0.12s;
+}
+.refresh-btn:hover { color: var(--text); border-color: #3a4550; }
+
+.api-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  transition: border-color 0.2s;
+}
+.api-card.up   { border-left: 2px solid var(--green); }
+.api-card.down { border-left: 2px solid var(--red); }
+.api-card.pending { border-left: 2px solid var(--border); }
+
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot.up      { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot.down    { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+.dot.pending { background: var(--text-dim); animation: blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.api-info { min-width: 0; }
+.api-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 3px;
+}
+.api-url {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.api-meta { text-align: right; }
+.api-status {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.up .api-status   { color: var(--green); }
+.down .api-status { color: var(--red); }
+.pending .api-status { color: var(--text-dim); }
+.api-latency {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.api-response {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  grid-column: 2 / -1;
+  background: #0a0c0f;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  white-space: pre;
+  overflow-x: auto;
+  display: none;
+}
+.api-card.up .api-response { display: block; }
+
+/* Full server status (scripts/status.sh via the inbox service, same login as the inbox). */
+.full { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 20px; }
+.full h2 { font-size: 12px; font-weight: 600; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
+.run-btn {
+  background: none; border: 1px solid var(--border); color: var(--text-bright); font-family: var(--mono);
+  font-size: 12px; padding: 8px 14px; cursor: pointer; border-radius: 3px;
+}
+.run-btn:hover { border-color: #3a4550; }
+.run-btn:disabled { opacity: 0.5; cursor: default; }
+.login { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.login[hidden] { display: none; }
+.login input {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: var(--mono);
+  font-size: 12px; padding: 8px; border-radius: 3px; min-width: 160px;
+}
+.full-msg { font-size: 11px; color: var(--text-dim); margin-top: 10px; }
+.full-msg.bad { color: var(--red); }
+.full-out .when { font-size: 10px; color: var(--text-dim); margin: 14px 0 6px; }
+.full-out pre {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px;
+  overflow-x: auto; font-family: var(--mono); font-size: 11px; line-height: 1.5;
+}
+.full-out .g { color: var(--green); } .full-out .y { color: var(--yellow); }
+.full-out .r { color: var(--red); font-weight: 600; } .full-out .d { opacity: 0.55; }
+
+.last-checked {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 20px;
+  text-align: right;
+}
+</style>
+</head>
+<body>
+
+<h1>
+  API Status — mr-ray
+  <button class="refresh-btn" onclick="checkAll()">↻ refresh</button>
+</h1>
+
+<div id="api-list"></div>
+<div class="last-checked" id="last-checked"></div>
+
+<section class="full">
+  <h2>Full server status</h2>
+  <button class="run-btn" id="run-status">Run status.sh</button>
+  <form class="login" id="status-login" hidden>
+    <input name="username" placeholder="Username" autocomplete="username" autocapitalize="none" required />
+    <input type="password" name="password" placeholder="Password" autocomplete="current-password" required />
+    <button class="run-btn">Log in and run</button>
+  </form>
+  <div class="full-msg" id="full-msg"></div>
+  <div class="full-out" id="full-out"></div>
+</section>
+
+<script is:inline>
+// ─── ADD / EDIT APIS HERE ──────────────────────────────────────────
+const APIS = [
+  {
+    name: "Rotation Visualizer",
+    url: "/api/rotation/health",
+    description: "rotation-viz/app.py · port 42902"
+  },
+  {
+    name: "Setlister Song Search",
+    url: "/api/setlister/health",
+    description: "backend/music/setlister/server.py · port 42903"
+  },
+  {
+    name: "Planes (SFO board)",
+    url: "/api/planes/health",
+    description: "backend/services/planes/server.py · port 42901"
+  },
+  {
+    name: "DataViz API",
+    url: "/api/dataviz/health",
+    description: "projects/dataviz/backend/main.py · port 42000"
+  },
+  // {
+  //   name: "Sensor Stream",
+  //   url: "/sensors/api/health",
+  //   description: "sensors/app.py · port 5003"
+  // },
+];
+// ──────────────────────────────────────────────────────────────────
+
+function buildCards() {
+  const list = document.getElementById("api-list");
+  list.innerHTML = "";
+  APIS.forEach((api, i) => {
+    const card = document.createElement("div");
+    card.className = "api-card pending";
+    card.id = `card-${i}`;
+    card.innerHTML = `
+      <div class="dot pending" id="dot-${i}"></div>
+      <div class="api-info">
+        <div class="api-name">${api.name}</div>
+        <div class="api-url">${api.description}</div>
+      </div>
+      <div class="api-meta">
+        <div class="api-status" id="status-${i}">checking…</div>
+        <div class="api-latency" id="latency-${i}"></div>
+      </div>
+      <div class="api-response" id="response-${i}"></div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+async function checkOne(api, i) {
+  const card     = document.getElementById(`card-${i}`);
+  const dot      = document.getElementById(`dot-${i}`);
+  const status   = document.getElementById(`status-${i}`);
+  const latency  = document.getElementById(`latency-${i}`);
+  const response = document.getElementById(`response-${i}`);
+
+  card.className = "api-card pending";
+  dot.className = "dot pending";
+  status.textContent = "checking…";
+  latency.textContent = "";
+
+  const t0 = performance.now();
+  try {
+    const res = await fetch(api.url, { cache: "no-store" });
+    const ms = Math.round(performance.now() - t0);
+    const text = await res.text();
+
+    let pretty = text;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+
+    card.className = `api-card ${res.ok ? "up" : "down"}`;
+    dot.className  = `dot ${res.ok ? "up" : "down"}`;
+    status.textContent  = res.ok ? `${res.status} OK` : `${res.status} ERROR`;
+    latency.textContent = `${ms}ms`;
+    response.textContent = pretty;
+  } catch (e) {
+    const ms = Math.round(performance.now() - t0);
+    card.className = "api-card down";
+    dot.className  = "dot down";
+    status.textContent  = "unreachable";
+    latency.textContent = `${ms}ms`;
+    response.style.display = "block";
+    response.textContent = e.message;
+  }
+}
+
+// Live tab icon: the dashboard gauge with a green dot when every API is up, red when any is
+// down (and the count in the tab title), so a background tab shows trouble at a glance.
+const BASE_TITLE = document.title;
+function setStatusIcon(down) {
+  const dot = down === null ? "#5a6472" : down ? "#ff4d4d" : "#4dff91";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="12" fill="#14140f"/>
+    <g fill="none" stroke="#ffc93c" stroke-width="5" stroke-linecap="round"><path d="M12 40a20 20 0 0 1 40 0"/><path d="M32 40l11-13"/></g>
+    <circle cx="48" cy="50" r="11" fill="${dot}" stroke="#14140f" stroke-width="3"/></svg>`;
+  const link = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
+  if (link) link.href = "data:image/svg+xml," + encodeURIComponent(svg);
+  document.title = down ? `(${down} down) ${BASE_TITLE}` : BASE_TITLE;
+}
+
+function checkAll() {
+  buildCards();
+  setStatusIcon(null);
+  Promise.allSettled(APIS.map((api, i) => checkOne(api, i))).then(() => {
+    setStatusIcon(document.querySelectorAll(".api-card.down").length);
+  });
+  document.getElementById("last-checked").textContent =
+    "last checked: " + new Date().toLocaleTimeString();
+}
+
+checkAll();
+
+// "Run status.sh": the inbox service runs scripts/status.sh and returns it as HTML. At home or
+// on Tailscale it just runs; from the web it needs the inbox login (asked for here, then kept
+// as the inbox's session cookie).
+const runBtn = document.getElementById("run-status");
+const loginForm = document.getElementById("status-login");
+const fullMsg = document.getElementById("full-msg");
+const fullOut = document.getElementById("full-out");
+function say(text, bad) { fullMsg.textContent = text; fullMsg.className = "full-msg" + (bad ? " bad" : ""); }
+async function runStatus() {
+  runBtn.disabled = true; runBtn.textContent = "Running…"; say("");
+  try {
+    const r = await fetch("/inbox/status.html", { cache: "no-store", credentials: "same-origin" });
+    if (r.status === 401) { loginForm.hidden = false; loginForm.username.focus(); say("Log in (same as the inbox)."); return; }
+    if (!r.ok) { say(`Couldn't run it (${r.status}).`, true); return; }
+    loginForm.hidden = true;
+    fullOut.innerHTML = await r.text();  // built by the server, text escaped there
+  } catch { say("Couldn't reach the server.", true); }
+  finally { runBtn.disabled = false; runBtn.textContent = "Run status.sh again"; }
+}
+runBtn.onclick = runStatus;
+loginForm.onsubmit = async (e) => {
+  e.preventDefault();
+  say("Logging in…");
+  const r = await fetch("/inbox/login", {
+    method: "POST", body: new URLSearchParams(new FormData(loginForm)), redirect: "manual", credentials: "same-origin",
+  }).catch(() => null);
+  if (!r) return say("Couldn't reach the server.", true);
+  if (r.type !== "opaqueredirect") {  // success is a redirect; anything else is a refusal
+    loginForm.password.value = "";
+    return say(r.status === 429 ? "Too many tries. Wait a few minutes." : "Wrong username or password.", true);
+  }
+  loginForm.reset();
+  runStatus();
+};
+</script>
+</body>
+</html>

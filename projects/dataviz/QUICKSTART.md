@@ -48,7 +48,7 @@ Stop the development stack:
 
 ```bash
 tmux kill-session -t dataviz
-docker compose -f projects/dataviz/docker-compose.yaml down
+docker compose -f monitoring/docker-compose.yaml down
 ```
 
 ## Verification

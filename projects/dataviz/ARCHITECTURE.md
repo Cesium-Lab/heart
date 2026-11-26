@@ -1,7 +1,8 @@
 # DataViz architecture
 
 DataViz is a proof-of-concept spacecraft command and telemetry stack. It has two
-Python services and an optional containerized monitoring pair.
+Python services; Prometheus and Grafana (the containerized monitoring pair) live in
+`monitoring/` at the repo root, since they watch more than DataViz.
 
 ```text
 Browser -> NiceGUI dashboard (42002) -> FastAPI backend (42000)

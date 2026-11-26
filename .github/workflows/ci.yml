@@ -118,6 +118,7 @@ jobs:
       - name: Save an entry and build the digest
         working-directory: backend/services/inbox
         run: |
+          export NOTES_DIR="$RUNNER_TEMP/notes"
           INBOX_DIR="$RUNNER_TEMP/inbox" python server.py &
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:42904/inbox/health && break; sleep 0.5; done
           # Pretend to be on the home LAN (Apache would add this header); elsewhere needs a login.
@@ -128,6 +129,34 @@ jobs:
           curl -fsS http://127.0.0.1:42904/inbox/ | grep -q 'name="password"'
           test "$(curl -s -o /dev/null -w '%{http_code}' -F 'text=x' http://127.0.0.1:42904/inbox/add)" = 401
           ls "$RUNNER_TEMP"/inbox/*/digest-preview.eml
+          # Notes: add an item (no link, so no network), see it listed, and the index counts it.
+          curl -fsS -o /dev/null -H 'X-Forwarded-For: 192.168.0.5' -d 'title=ci lick&note=n' http://127.0.0.1:42904/inbox/notes/licks/add
+          grep -q '^## ci lick' "$NOTES_DIR/licks.md"
+          curl -fsS -H 'X-Forwarded-For: 192.168.0.5' http://127.0.0.1:42904/inbox/notes/licks | grep -q 'ci lick'
+          python filing.py 2>&1 | grep -q 'filing.py unfiled'
+
+  hashcheck-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Baseline, then silently change a file (same size and time): it must be flagged CORRUPT
+      # (exit 1), and a missing drive must be refused rather than recorded as "all deleted".
+      - name: Catch a silent change
+        working-directory: backend/services/hashcheck
+        run: |
+          export HASHCHECK_DATA_DIR="$RUNNER_TEMP/data" HASHCHECK_STATE_DIR="$RUNNER_TEMP/state"
+          mkdir -p "$HASHCHECK_DATA_DIR/photos" && echo a > "$HASHCHECK_DATA_DIR/photos/a.jpg"
+          python3 hashcheck.py
+          t=$(stat -c %y "$HASHCHECK_DATA_DIR/photos/a.jpg")
+          echo z > "$HASHCHECK_DATA_DIR/photos/a.jpg" && touch -d "$t" "$HASHCHECK_DATA_DIR/photos/a.jpg"
+          # No pipe here: without pipefail a pipe would report tee's exit code, not hashcheck's.
+          if python3 hashcheck.py > out.txt; then cat out.txt; exit 1; fi
+          cat out.txt
+          grep -q 'CORRUPT (same size and time, different contents): 1' out.txt
+          if HASHCHECK_DATA_DIR="$RUNNER_TEMP/nope" python3 hashcheck.py; then exit 1; fi
 
   lint-everything:
     runs-on: ubuntu-latest

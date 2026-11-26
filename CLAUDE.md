@@ -21,12 +21,6 @@ and are imported below. When something changes, update the matching `architectur
 
 ## Now
 
-Done 2026-11-20: freed root space (96% → 72%), mounted the Samsung at `/srv/data`, deleted Windows,
-created `/srv/state`. In the repo 2026-11-22: merged the `dataviz` branch, retired Telemetry Viz,
-moved every service to the 42xxx port scheme, added CI, `scripts/status.sh`, and the Planes board.
-
-The machine was cut over to the new ports and redeployed the same day; all services verified healthy.
-
 1. Decide how to organize music on `/srv/data` (existing `Music/` folder vs a new `music/` tree).
 2. Keep a second copy of the irreplaceable files (taxes, important, photos, Music) until the new drive arrives.
 3. When the new drive arrives, decide its role (data vs backup), and whether to merge `/srv/state`

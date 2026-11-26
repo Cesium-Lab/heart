@@ -18,9 +18,8 @@ serving the site.
 ## Music
 
 - Share selected mixes with MONARCH.
-- Music toys for the site, in the same style as Setlister (`/music/setlister/`) and TapTempo
-  (`/music/taptempo/`):
-  - **TUNER**: mic-based guitar/bass tuner with a needle display (browser only, pitch detection).
+- Music toys for the site, in the same style as Setlister (`/music/setlister/`), TapTempo
+  (`/music/taptempo/`) and Tuner (`/music/tuner/`, built 2026-11-24):
   - **SPECTRUM**: live spectrogram, waveform and loudness meter for the mic or a dropped-in mix
     (browser only).
   - **STEMS PLAYER**: play a song's stems with per-track mute and solo; files come from
@@ -34,7 +33,7 @@ serving the site.
 
 - **Planes traffic stats** in Grafana (arrivals/departures per hour, busiest airlines): a `/metrics`
   endpoint on the planes service for Prometheus. Placeholder note: Grafana dashboard "Planes (to do)"
-  (`projects/dataviz/telemetry_server/grafana/provisioning/dashboards/planes-todo.json`).
+  (`monitoring/grafana/provisioning/dashboards/planes-todo.json`).
 - **Planes: bigger range when zoomed out.** Tiers by zoom, still centered on SFO: 40 nm (now),
   100 nm (~240 aircraft, ~32 KB/update), 250 nm (~430 aircraft, ~58 KB; adsb.fi's max). Cache per
   tier so viewers share fetches; look up routes only within 40 nm (plus clicked/hovered planes)
@@ -60,6 +59,15 @@ Self-hosted apps, all optional, each one small and in docker or a unit like the 
 - **Jellyfin** (or Plex): your own Netflix for movies/shows you own (`/srv/data/movies`).
 - **Photo gallery** for the photos on `/srv/data`.
 - **RSS reader** (Miniflux or FreshRSS): your own Feedly; more polished than a homemade feed.
+- **File sharing, Google Drive style**: browse `/srv/data` from any device, upload, and share a
+  file or folder by link (optionally with a password or expiry). Lightest options: File Browser
+  (one binary, a web file manager with share links) or Seafile; Nextcloud does everything (sync
+  clients, calendar, contacts) but is much heavier for an 8 GB box. Keep files as plain files on
+  `/srv/data` so it stays "files are the truth"; private by default, public links opt-in.
+- **Notion-style workspace**: pages with nested blocks, simple databases/tables, and links between
+  pages. Self-hosted options: AppFlowy or AFFiNE (closest to Notion), Outline or Docmost (team
+  wiki feel). Would also be the natural home for **Contacts** (above) and a Notion import.
+  Prefer one that stores Markdown or can export it, so the content isn't locked in.
 - **Wiki** (Wiki.js or BookStack) for notes and docs.
 - **Homepage / Homarr**: a landing page with service status, weather, and system stats (could
   replace the hand-made dashboards).

@@ -17,7 +17,7 @@ if tmux has-session -t "${SESSION_NAME}" 2>/dev/null; then
 fi
 
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-    docker compose -f "${PROJECT_DIR}/docker-compose.yaml" up -d
+    docker compose -f "${PROJECT_DIR}/../../monitoring/docker-compose.yaml" up -d
 else
     printf 'Docker Compose unavailable; skipping Prometheus and Grafana.\n'
 fi

@@ -44,5 +44,3 @@ LAN (development):    astro dev :42800
 - `docs/api/MUSIC_STORAGE.md`, `docs/api/ASSISTANT_MEMORY.md`: older, detailed sketches kept as
   reference for Coda and Juice (see [ideas.md](ideas.md)). They assume a Postgres/FastAPI stack
   that is not the plan.
-- `archive/docs/api/`: the retired Aug 2026 "personal platform" plan (Postgres, FastAPI, login,
-  retiring Apache). Historical only.

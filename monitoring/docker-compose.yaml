@@ -1,3 +1,7 @@
+# Monitoring for mr-ray: Prometheus (127.0.0.1:42004) scrapes metrics, Grafana (127.0.0.1:42003)
+# charts them. Started by scripts/deploy/monitoring.sh. DataViz is the first thing scraped.
+name: monitoring
+
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -7,7 +11,7 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yaml"
     volumes:
-      - ./telemetry_server/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -21,12 +25,14 @@ services:
       GF_PLUGINS_ALLOW_UNSIGNED_PLUGINS: "true"
       GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
     volumes:
-      - ./telemetry_server/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
 
 volumes:
   grafana_data:
+    # Kept from when this lived in projects/dataviz/, so Grafana keeps its data.
+    name: dataviz_grafana_data
 
 # user: "admin", password: "rocket"

@@ -7,7 +7,8 @@ Cesium Heart contains the Astro frontend and backend services used by the site.
 - `architecture/` — **source of truth**: machine, storage, services and ports, deploy, ideas.
 - `frontend/` — Astro source; builds to `frontend/dist/`.
 - `backend/services/` — Python APIs managed by systemd.
-- `projects/dataviz/` — DataViz backend, GUI, and monitoring stack.
+- `projects/dataviz/` — DataViz backend and GUI.
+- `monitoring/` — Prometheus + Grafana (docker) for the whole machine.
 - `backend/music/setlister/` — Setlister backend and private configuration.
 - `deploy/systemd/`, `deploy/apache/` — version-controlled systemd units and Apache config.
 - `scripts/deploy-startup.sh` — full deploy; runs the stages in `scripts/deploy/`.
@@ -46,13 +47,13 @@ an optional external API or production service is currently reachable.
 | Legacy homepage             | `/Others/old_index`                                                                | Archived | Kept as a historical page                                                                                                                                                   |
 | Decorative dashboards       | `/dash/system`, `/dash/visitors`, `/dash/vibes`                                    | Partial  | Presentation/mock data rather than live server data                                                                                                                         |
 | Rotation Visualizer         | `/rotation-viz/rotation-visualizer` plus `backend/services/rotation-viz/`          | Working  | Interactive UI and conversion API; depends on Three.js CDN                                                                                                                  |
-| Custom Telemetry Visualizer | `archive/telemetry-viz/`                                                           | Archived | Replaced by DataViz Prometheus and Grafana monitoring                                                                                                                       |
 | Setlister                   | `/music/setlister/` plus `backend/music/setlister/`                                | Working  | UI/API implemented; production secrets remain external under `/etc/cesium/`                                                                                                 |
 | TapTempo                    | `/music/taptempo/`                                                                 | Working  | Tap tempo, metronome, and count-ins; reads the Setlister library from the browser                                                                                           |
+| Tuner                       | `/music/tuner/`                                                                    | Working  | Mic tuner: chromatic or guitar/bass presets, needle or strobe, A4 calibration, reference tone; browser only                                                                 |
 | Planes (SFO board)          | `/planes/` plus `backend/services/planes/`                                         | Working  | Live map of aircraft around SFO: split-flap board drawer, hover/click tracks, follow mode; page in the Astro build, data from the planes API                                |
 | Piano                       | `/music/piano`                                                                     | Partial  | Standalone experimental music page                                                                                                                                          |
 | DataViz POC                 | `projects/dataviz/` and `https://dataviz.cesiumlab.net`                            | Partial  | Backend, NiceGUI command UI, Prometheus, and Grafana are implemented and are the canonical telemetry UI; state is in-memory and access control/real hardware are unfinished |
-| API checker                 | `/api-check`                                                                       | Working  | Reports health for deployed backend services                                                                                                                                |
+| Status                      | `/status`                                                                          | Working  | Health of each public API; "Run status.sh" shows the full server status (login like the inbox)                                                                            |
 
 DataViz-specific design, limitations, and startup instructions live in
 `projects/dataviz/ARCHITECTURE.md` and `projects/dataviz/QUICKSTART.md`.

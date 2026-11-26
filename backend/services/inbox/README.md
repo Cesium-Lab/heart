@@ -15,8 +15,11 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
 ## Using it
 
 - **Save:** one text box plus an optional file picker (on a phone it offers the camera). Save,
-  and the entry shows under "Today". Text-only and file-only entries are both fine. Files over
-  95 MB in total are refused before uploading (Cloudflare's limit is 100 MB): save a link instead.
+  and the entry shows under "Today". Text-only and file-only entries are both fine. The upload
+  limit per entry or reply (all its files together) shows under the box ("Files up to …"):
+  **95 MB from the web** (Cloudflare's free plan refuses anything over 100 MB) and **1 GB at home
+  or on Tailscale** (tentative; `INBOX_HOME_UPLOAD_MB`). Uploads stream straight to disk
+  (`.uploading/` in the inbox folder, then renamed into the day), so big files don't sit in RAM.
 - **Each entry records** its local time with zone (`14:54:32 PST`), UTC, Unix time, and where it
   was sent from: `home network 192.168.0.42`, `Tailscale 100.120.196.52`, or
   `internet 203.0.113.5 (via cesiumlab.net)`.
@@ -25,6 +28,26 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
   that reply.
 - **References:** type `#5` (same day), `#5.2` (a reply), or `2026-11-20#3` (another day) in a note
   and it becomes a link. `#` + digits only, so `#flowers` stays plain text.
+- **Listen & watch** (`listen.py`): the checklist on the public `/music/` page, stored in
+  `/srv/data/notes/listen.md`. `GET /inbox/listen.json` is public (read-only);
+  `POST /inbox/listen/add|toggle|delete` need home/Tailscale or the inbox login. Titles come from
+  the link: YouTube and Shorts (title + channel), Spotify (title), Instagram reels (the caption).
+- **Status page** (`/inbox/status`): runs `scripts/status.sh` (read-only, ~2 s) and shows its
+  output with its colors: services, APIs, upstream, docker, disks, hashcheck progress. Checks when
+  opened; **Refresh** checks again. Same access as the inbox (open at home / on Tailscale, login
+  elsewhere).
+- **Day buttons** (← · Today · →) switch days in place, without a full reload, so fast clicks
+  all register (Chrome ignores clicks during a reload).
+- **Pin**: click the 📌 at an entry's top right (entries only, not replies or files) to pin or
+  unpin it; gray and faint when unpinned, full color when pinned. Pinned entries show on the **Pinned page**
+  (`/inbox/pins`, linked as "Pinned (N)" under the title), which lists them from every day.
+  Hovering a pinned 📌 shows "go to pinned", to its left, linking to `/inbox/pins/<day>/<n>` (that
+  card highlighted). The Pinned page has the same entry actions as a day page (📌, Reply,
+  Edit, Copy, Raw, replies), plus Delete… per entry, an add box ("pencil pencil.") that saves to
+  today **and pins** the new entry, and "Email pinned…" (a To box, then Send) for the whole list
+  (no SMTP set: saves `pins-preview.eml` in the inbox folder). Delete… on the Pinned
+  page is the same real delete (password; the entry with all its files and replies). Stored as a
+  `_pinned_` line in the entry's block; the 9pm email ends with the list of pinned entries.
 - **Reply** (arrow icon on an entry): a note and/or files, shown indented under the entry, with
   its own copy/edit/delete icons (delete asks for the password). Stored in the entry's day file as
   `### 5.1 · time`. Deleting an entry whole takes its replies with it.
@@ -49,10 +72,18 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
       isn't reused). Everything deleted moves to the day's `.deleted/` folder (`deleted.md` plus
       the files), so a mistake can be undone by hand.
 - **Adding files:** each pick adds to a list under the box, each with an × to remove it, plus
-  **Remove all files**. Over 95 MB in total, Save turns off until you remove some.
+  **Remove all files**. Over the limit, Save (and ⌘/Ctrl+Enter) turns off until you remove some.
 - **Days:** `← yesterday` / `→` links browse past days; each day has **Copy for Claude** (the whole
   day as text), its raw `inbox.md`, and **Email this day…** (opens a To box with your address filled in; Send sends it, to anyone).
 - **Tip:** add it to your iPhone home screen (Share → Add to Home Screen) so it opens like an app.
+
+## Filing
+
+Claude Code sorts entries into bucket lists in `/srv/data/notes/` (song ideas, licks, content
+tips, business/production, later) with `filing.py`, after you approve its plan. Filed entries
+stay here, marked "filed → licks.md". The lists are on the **Notes page** (`/inbox/notes/`,
+linked next to Pinned): add, edit, move between lists, and delete, from the phone too. How it
+works: [FILING.md](FILING.md).
 
 ## Files are the truth
 
