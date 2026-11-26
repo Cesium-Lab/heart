@@ -1,6 +1,6 @@
 # Backend services
 
-These active Python APIs support the Astro frontend. Retired services belong under `archive/`.
+These Python APIs support the Astro frontend.
 
 ## Services
 
@@ -9,8 +9,7 @@ These active Python APIs support the Astro frontend. Retired services belong und
 | Rotation visualizer  | Flask     | 42902 | `http://127.0.0.1:42902/api/rotation/health` |
 | Planes (SFO map API) | stdlib    | 42901 | `http://127.0.0.1:42901/api/planes/health`   |
 
-DataViz telemetry is monitored through Prometheus and Grafana under
-`projects/dataviz/`; the former custom telemetry API and Chart.js page are archived.
+DataViz telemetry is monitored through Prometheus and Grafana under `monitoring/`.
 
 ## One-time Python setup
 

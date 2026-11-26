@@ -13,8 +13,7 @@ What it watches today: the DataViz backend's `/metrics` (every second), charted 
 things to watch (planes stats, drive health, room sensors; see `architecture/ideas.md`) go in
 `prometheus.yaml` plus a dashboard JSON under `grafana/provisioning/dashboards/`.
 
-Grafana's data lives in the docker volume `dataviz_grafana_data` (the name is kept from when
-this folder was `projects/dataviz/telemetry_server`).
+Grafana's data lives in the docker volume `dataviz_grafana_data`.
 
 ```bash
 ./scripts/deploy/monitoring.sh                                # start or update (needs docker)

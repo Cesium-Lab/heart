@@ -73,6 +73,14 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
   day as text), its raw `inbox.md`, and **Email this day…** (opens a To box with your address filled in; Send sends it, to anyone).
 - **Tip:** add it to your iPhone home screen (Share → Add to Home Screen) so it opens like an app.
 
+## Filing
+
+Claude Code sorts entries into bucket lists in `/srv/data/notes/` (song ideas, licks, content
+tips, business/production, later) with `filing.py`, after you approve its plan. Filed entries
+stay here, marked "filed → licks.md". The lists are on the **Notes page** (`/inbox/notes/`,
+linked next to Pinned): add, edit, move between lists, and delete, from the phone too. How it
+works: [FILING.md](FILING.md).
+
 ## Files are the truth
 
 ```text

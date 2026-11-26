@@ -40,6 +40,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote
 
+import notes  # the filed lists at /inbox/notes/ (notes.py, FILING.md)
+
 try:  # thumbnails in the email; without Pillow the email just links to the files
     from PIL import Image, ImageOps
 except ImportError:  # pragma: no cover
@@ -124,6 +126,7 @@ def _block(level: str, ident: str, item: dict) -> list[str]:
     out += [f"_{item['meta']}_"] if item.get("meta") else []
     out += [f"_edited {item['edited']}_"] if item.get("edited") else []
     out += ["_pinned_"] if item.get("pinned") else []
+    out += [f"_filed → {item['filed']}_"] if item.get("filed") else []
     out.append("")
     # Text is quoted so nothing a user types can look like an entry header.
     out += [f"> {line}" if line else ">" for line in item["text"].splitlines()]
@@ -202,6 +205,19 @@ def set_pinned(day: str, n: int, on: bool) -> bool:
         if e is None:
             return False
         e["pinned"] = on
+        write_day(day, entries)
+        return True
+
+
+def set_filed(day: str, n: int, where: str) -> bool:
+    """Mark entry n of a day as filed (a `_filed → where_` line; "" clears it). Used by
+    filing.py after a sorting session; the entry itself stays in the inbox."""
+    with _write_lock:
+        entries = read_day(day)
+        e = next((x for x in entries if x["n"] == n), None)
+        if e is None:
+            return False
+        e["filed"] = where
         write_day(day, entries)
         return True
 
@@ -500,6 +516,8 @@ def read_day(day: str) -> list[dict]:
             continue
         elif line == "_pinned_":
             cur["pinned"] = True
+        elif line.startswith("_filed → ") and line.endswith("_"):
+            cur["filed"] = line[len("_filed → ") : -1]
         elif line.startswith("_edited ") and line.endswith("_"):
             cur["edited"] = line[8:-1]
         elif line.startswith("_") and line.endswith("_") and not cur["text"]:
@@ -1045,6 +1063,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .ehead{flex-wrap:nowrap}.ehead .t{min-width:0;overflow-wrap:anywhere}
 .ehead a.num{text-decoration:none}
 .edited{margin-left:8px}
+.filed{margin-left:8px;font-size:13px;color:var(--muted)}
 .actions{display:flex;align-items:center;gap:6px;margin:8px 0 0;font-size:13px;color:var(--muted)}
 /* TEST (may be undone): Reply · Edit stay left; Copy · Raw ↗ (· Delete…) go right. */
 .actions .copyid{margin-left:auto}.actions span[aria-hidden]:has(+ .copyid){display:none}
@@ -2106,7 +2125,21 @@ load();
 
 def pins_link() -> str:
     n = len(pinned_entries())
-    return f'<div class="pinsnav"><a href="/inbox/pins">Pinned ({n})</a></div>'
+    return (
+        '<div class="pinsnav"><a href="/inbox/notes/">Notes</a> '
+        f'<a href="/inbox/pins">Pinned ({n})</a></div>'
+    )
+
+
+def notes_chrome(session: dict | None) -> tuple[str, str]:
+    """(style, logout) for the notes pages: the inbox's own look and per-tab login check."""
+    style = PAGE[PAGE.index("<style>") : PAGE.index("</style>") + len("</style>")]
+    logout = (
+        LOGOUT.replace("{tag}", session["tag"]).replace("{base}", "/inbox/")
+        if session
+        else ""
+    )
+    return style, logout
 
 
 def text_actions(day: str, item: dict, ident: str, reply: bool) -> str:
@@ -2178,6 +2211,15 @@ def item_head(
         if item.get("edited")
         else ""
     )
+    if item.get("filed") and "." not in ident:  # entries only (replies aren't filed)
+        # Each bucket name links to the note it became (wherever it is now; see notes.find).
+        links = ", ".join(
+            f'<a href="/inbox/notes/find/{day}/{ident}?b={quote(w.removesuffix(".md"))}">'
+            f"{html.escape(w)}</a>"
+            for w in (x.strip() for x in item["filed"].split(","))
+            if w
+        )
+        edited += f'<span class="filed">filed → {links}</span>'
     return (
         f'<div class="ehead">{lead}<span class="t"><a class="num" href="{href or "#" + ident}">{html.escape(label)}</a>'
         f'<span class="details" tabindex="0">details<span class="tip" role="tooltip">{tip}</span></span>'
@@ -2614,6 +2656,33 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, STATUS_PAGE.encode(), "text/html; charset=utf-8")
         elif path == "/inbox/status.html":
             self._send(200, run_status().encode(), "text/html; charset=utf-8")
+        elif path in ("/inbox/notes", "/inbox/notes/"):
+            self._send(
+                200,
+                notes.render_index(*notes_chrome(session), flash),
+                "text/html; charset=utf-8",
+            )
+        elif m := re.fullmatch(r"/inbox/notes/find/(\d{4}-\d{2}-\d{2})/(\d+)", path):
+            hint = (parse_qs(self.path.partition("?")[2]).get("b") or [""])[0]
+            where = notes.find(f"{m[1]}#{m[2]}", hint)
+            self._redirect(
+                where
+                or f"/inbox/{m[1]}?sent={quote('That note is no longer in Notes (deleted).')}#{m[2]}"
+            )
+        elif m := re.fullmatch(r"/inbox/notes/thumbs/([\w-]+\.jpg)", path):
+            f = notes.NOTES / "thumbs" / m[1]
+            if f.is_file():
+                self._send(200, f.read_bytes(), "image/jpeg")
+            else:
+                self._send(404, b"not found", "text/plain")
+        elif (m := re.fullmatch(r"/inbox/notes/([\w-]+)/?", path)) and m[
+            1
+        ] in notes.BUCKETS:
+            self._send(
+                200,
+                notes.render_bucket(m[1], *notes_chrome(session), flash),
+                "text/html; charset=utf-8",
+            )
         elif path == "/inbox/health":
             ok = DIR.parent.exists()
             self._send(
@@ -2718,6 +2787,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(
                 401, login_page("Please log in again."), "text/html; charset=utf-8"
             )
+            return
+        if m := re.fullmatch(r"/inbox/notes/([\w-]+)/(add|edit|move|delete)", path):
+            self._notes_post(m[1], m[2], form_fields(ctype, body))
             return
         if m := re.fullmatch(r"/inbox/delete/(\d{4}-\d{2}-\d{2})", path):
             # Always confirmed with username + password, even at home.
@@ -2835,6 +2907,39 @@ class Handler(BaseHTTPRequestHandler):
             self._redirect(f"/inbox/{m[1]}?sent={quote(result)}")
         else:
             self._send(404, b"not found", "text/plain")
+
+    def _notes_post(self, bucket: str, action: str, f: dict[str, list[str]]) -> None:
+        """Add / edit / move / delete on a notes bucket page, then back to it with a message.
+        Deletes aren't password-confirmed (unlike the inbox): they go to notes/.deleted.md."""
+        if bucket not in notes.BUCKETS:
+            self._send(404, b"not found", "text/plain")
+            return
+        one = lambda k: (f.get(k) or [""])[0].strip()  # noqa: E731
+        picks = {int(v) for v in f.get("i", []) if v.isdigit()}
+        plural = lambda n: f"{n} item{'' if n == 1 else 's'}"  # noqa: E731
+        try:
+            if action == "add":
+                if not (one("link") or one("title") or one("note")):
+                    msg = "Nothing to add."
+                else:
+                    item = notes.new_item(one("title"), one("link"), one("note"))
+                    notes.append(bucket, item)
+                    msg = f"Added “{item['title']}”."
+            elif action == "edit":
+                ok = notes.edit(
+                    bucket, int(one("n") or -1), one("title"), one("note"), one("v")
+                )
+                msg = "Saved." if ok else "That item wasn't found."
+            elif action == "move" and one("to") in notes.BUCKETS:
+                n = notes.move(bucket, picks, one("to"), one("v"))
+                msg = f"Moved {plural(n)} to {notes.BUCKETS[one('to')][0]}."
+            elif action == "delete":
+                msg = f"Deleted {plural(notes.delete(bucket, picks, one('v')))}."
+            else:
+                msg = "Pick a list to move to."
+        except notes.Stale:
+            msg = "The list changed since this page loaded; nothing was changed. Try again."
+        self._redirect(f"/inbox/notes/{bucket}?sent={quote(msg)}")
 
     def log_message(self, *args) -> None:
         pass

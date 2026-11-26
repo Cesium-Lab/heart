@@ -50,6 +50,8 @@ Checked 2026-11-22.
 │       ├── mixes/
 │       ├── stems/
 │       └── masters/
+├── inbox/        # the inbox's day folders (backend/services/inbox/)
+├── notes/        # filed inbox items: song-ideas, licks, content-tips, business, later (.md)
 └── cesium/       # engineering projects + datasets
 ```
 
