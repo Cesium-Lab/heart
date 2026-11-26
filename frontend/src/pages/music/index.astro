@@ -1,0 +1,177 @@
+---
+import "../../styles/setlister.css";
+import "../../styles/music.css";
+
+// Edit the lists here. `note` is shown under the link; `href` empty = plain text (no link).
+const tools = [
+  { name: "Setlister", href: "/music/setlister/", note: "Build and reorder setlists" },
+  { name: "TapTempo", href: "/music/taptempo/", note: "Tap tempo, metronome, count-ins" },
+  { name: "Tuner", href: "/music/tuner/", note: "Guitar, bass, anything: needle or strobe" },
+  { name: "Piano", href: "/music/piano/", note: "Piano in the browser" },
+];
+
+const sections = [
+  {
+    title: "MAKE TABS",
+    links: [
+      { name: "My Guitar Tabs", href: "https://app.my-guitar-tabs.com/create", note: "Tab editor" },
+      {
+        name: "Songscription",
+        href: "https://www.songscription.ai/guitar-tab-generator",
+        note: "AI guitar tab generator (from audio)",
+      },
+      { name: "Tabby", href: "https://tabby.pro/instruments/guitar", note: "Guitar tabs" },
+    ],
+  },
+  {
+    title: "LICKS & LESSONS",
+    links: [
+      { name: "Bebop licks", href: "https://www.jazzguitar.be/blog/bebop-licks/", note: "jazzguitar.be" },
+      {
+        name: "21 pentatonic licks",
+        href: "https://www.guitar-pro.com/blog/p/34480-21-pentatonic-licks-to-spice-up-your-solos",
+        note: "Guitar Pro blog",
+      },
+      {
+        name: "Bold as Love (John Mayer) tab",
+        href: "https://www.songsterr.com/a/wsa/john-mayer-bold-as-love-tab-s39727",
+        note: "Songsterr",
+      },
+      {
+        name: "Play like B.B. King",
+        href: "https://www.fundamental-changes.com/video-lesson-play-like-b-b-king/",
+        note: "Video lesson, Fundamental Changes",
+      },
+    ],
+  },
+  {
+    title: "SONGWRITING",
+    links: [
+      {
+        name: "10 songwriting techniques",
+        href: "https://blog.landr.com/10-songwriting-techniques/",
+        note: "LANDR blog",
+      },
+    ],
+  },
+  {
+    title: "STEMS & VOCAL REMOVAL",
+    links: [
+      { name: "Ultimate Vocal Remover", href: "https://ultimatevocalremover.com/", note: "Free app (UVR)" },
+      { name: "UVR walkthrough", href: "https://www.youtube.com/watch?v=qYK_8xkIIOw", note: "YouTube" },
+      { name: "Model: MDX23C-InstVoc HQ", href: "", note: "The one to pick in UVR" },
+      { name: "Logic Pro: Stem Splitter", href: "", note: "Built into Logic" },
+    ],
+  },
+  {
+    title: "MONARCH",
+    links: [
+      { name: "monarchonstage.com", href: "https://monarchonstage.com/", note: "The band site" },
+      {
+        name: "Website code (GitHub)",
+        href: "https://github.com/monarch-on-stage/website",
+        note: "monarch-on-stage/website",
+      },
+    ],
+  },
+  {
+    title: "TO CHECK OUT",
+    links: [{ name: "Playhouse", href: "https://playhouse.band/", note: "playhouse.band" }],
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="icon" href="/favicons/music.ico?v=5" sizes="32x32" />
+    <link rel="icon" href="/favicons/music.svg?v=5" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Music tools and links" />
+    <meta property="og:title" content="Music" />
+    <meta property="og:url" content="https://cesiumlab.net/music/" />
+    <title>MUSIC.EXE</title>
+  </head>
+
+  <body>
+    <main class="app">
+      <header class="titlebar">
+        <span>♫ MUSIC.EXE — TOOLS &amp; LINKS</span><span class="window-buttons" aria-hidden="true"
+          ><i>_</i><i>□</i><i>×</i></span
+        >
+      </header>
+      <nav class="toolbar" aria-label="Links">
+        <a class="button" href="/">← Home</a>
+      </nav>
+
+      <section class="mu-tools" aria-label="My tools">
+        {
+          tools.map((t) => (
+            <a class="mu-tool" href={t.href}>
+              <b>{t.name}</b>
+              <span>{t.note}</span>
+            </a>
+          ))
+        }
+      </section>
+
+      <section class="mu-listen panel" aria-label="Listen and watch">
+        <header class="panel-title">
+          <span>LISTEN &amp; WATCH</span><span id="lwCount" class="mu-count"></span>
+        </header>
+        <form id="lwAdd" class="mu-add" hidden>
+          <input name="link" placeholder="Paste a YouTube, Shorts, reel, or Spotify link" inputmode="url" />
+          <input name="title" placeholder="Title (optional: looked up from the link)" />
+          <button class="primary small">Add</button>
+        </form>
+        <form id="lwLogin" class="mu-add" hidden>
+          <input name="username" placeholder="Username" autocomplete="username" autocapitalize="none" required />
+          <input type="password" name="password" placeholder="Password" autocomplete="current-password" required />
+          <button class="small">Log in to edit</button>
+        </form>
+        <div id="lwMsg" class="mu-msg"></div>
+        <ul id="lwTodo" class="mu-check"></ul>
+        <details id="lwDoneBox" class="mu-done" hidden>
+          <summary>Done (<span id="lwDoneN">0</span>)</summary>
+          <ul id="lwDone" class="mu-check"></ul>
+        </details>
+        <button id="lwEdit" class="small mu-editbtn" hidden>Log in to add or check off</button>
+      </section>
+
+      <section class="mu-grid">
+        {
+          sections.map((s) => (
+            <article class="panel">
+              <header class="panel-title">
+                <span>{s.title}</span>
+              </header>
+              <ul class="mu-links">
+                {s.links.map((l) =>
+                  l.href ? (
+                    <li>
+                      <a href={l.href} target="_blank" rel="noopener">
+                        {l.name} <span class="mu-arrow">↗</span>
+                      </a>
+                      <small>{l.note}</small>
+                    </li>
+                  ) : (
+                    <li>
+                      <span class="mu-plain">{l.name}</span>
+                      <small>{l.note}</small>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </article>
+          ))
+        }
+      </section>
+      <footer class="footer">Links open in a new tab.</footer>
+    </main>
+    <script>
+      import "../../scripts/listen.js";
+    </script>
+  </body>
+</html>

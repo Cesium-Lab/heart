@@ -28,6 +28,10 @@ phone / laptop → https://cesiumlab.net/inbox/   (login page)    ┐
   that reply.
 - **References:** type `#5` (same day), `#5.2` (a reply), or `2026-11-20#3` (another day) in a note
   and it becomes a link. `#` + digits only, so `#flowers` stays plain text.
+- **Listen & watch** (`listen.py`): the checklist on the public `/music/` page, stored in
+  `/srv/data/notes/listen.md`. `GET /inbox/listen.json` is public (read-only);
+  `POST /inbox/listen/add|toggle|delete` need home/Tailscale or the inbox login. Titles come from
+  the link: YouTube and Shorts (title + channel), Spotify (title), Instagram reels (the caption).
 - **Status page** (`/inbox/status`): runs `scripts/status.sh` (read-only, ~2 s) and shows its
   output with its colors: services, APIs, upstream, docker, disks, hashcheck progress. Checks when
   opened; **Refresh** checks again. Same access as the inbox (open at home / on Tailscale, login

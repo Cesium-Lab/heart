@@ -29,6 +29,9 @@ BUCKETS = {  # file stem -> (title, icon)
 }
 UA = "Mozilla/5.0"  # a full browser UA gets a script-only page without the caption
 IG = re.compile(r"instagram\.com/(?:[\w.]+/)?(reel|reels|p|tv)/([\w-]+)")
+SP = re.compile(
+    r"open\.spotify\.com/(?:intl-\w+/)?(track|album|playlist|episode|show|artist)/(\w+)"
+)
 YT = re.compile(r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|shorts/)|youtu\.be/)([\w-]{11})")
 _lock = threading.Lock()
 _cap_lock = (
@@ -46,7 +49,7 @@ def _get(url: str) -> bytes:
 
 
 def link_info(url: str) -> dict:
-    """{"creator", "caption", "thumb_url"} for an Instagram or YouTube link; {} if neither,
+    """{"creator", "caption", "thumb_url"} for an Instagram, YouTube or Spotify link; {} if none,
     {"error"} if the fetch failed (Instagram blocked it, the post is gone...)."""
     try:
         if m := IG.search(url):
@@ -79,6 +82,14 @@ def link_info(url: str) -> dict:
                 "creator": j.get("author_name", ""),
                 "caption": j.get("title", ""),
                 "thumb_url": f"https://i.ytimg.com/vi/{m[1]}/hqdefault.jpg",
+            }
+        if SP.search(url):
+            q = urllib.parse.quote(url, safe="")
+            j = json.loads(_get(f"https://open.spotify.com/oembed?url={q}"))
+            return {
+                "creator": "",
+                "caption": j.get("title", ""),
+                "thumb_url": j.get("thumbnail_url", ""),
             }
     except Exception as exc:  # network, 404, layout change: no caption
         return {"error": str(exc)[:200]}

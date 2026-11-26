@@ -41,6 +41,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote
 
 import notes  # the filed lists at /inbox/notes/ (notes.py, FILING.md)
+import listen  # the Listen & watch checklist shown on /music/ (listen.py)
 
 try:  # thumbnails in the email; without Pillow the email just links to the files
     from PIL import Image, ImageOps
@@ -2630,7 +2631,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _gate(self, path: str) -> tuple[bool, dict | None]:
         """(allowed, session). Home network: allowed, no session. Elsewhere: needs a login."""
-        if path == "/inbox/health" or is_home(self.headers):
+        if path in ("/inbox/health", "/inbox/listen.json") or is_home(self.headers):
             return True, None
         sess = session_for(self.headers)
         return sess is not None, sess
@@ -2732,6 +2733,13 @@ class Handler(BaseHTTPRequestHandler):
                 export_zip(m[1], picks, files, reps),
                 "application/zip",
                 {"Content-Disposition": f'attachment; filename="{name}"'},
+            )
+        elif path == "/inbox/listen.json":  # public: the /music/ page reads it
+            can_edit = is_home(self.headers) or session_for(self.headers) is not None
+            self._send(
+                200,
+                json.dumps({**listen.public(), "edit": can_edit}).encode(),
+                "application/json",
             )
         elif path in ("/inbox/status", "/inbox/status/"):
             self._send(200, STATUS_PAGE.encode(), "text/html; charset=utf-8")
@@ -2952,6 +2960,24 @@ class Handler(BaseHTTPRequestHandler):
             if n.isdigit():
                 set_pinned(m[1], int(n), (f.get("on") or ["1"])[0] == "1")
             self._redirect(back)
+        elif m := re.fullmatch(r"/inbox/listen/(add|toggle|delete)", path):
+            f = form_fields(ctype, body)
+            get = lambda k: (f.get(k) or [""])[0]  # noqa: E731
+            msg = ""
+            try:
+                if m[1] == "add":
+                    msg = listen.add(get("link"), get("title"))
+                elif get("i").isdigit():
+                    (listen.toggle if m[1] == "toggle" else listen.delete)(
+                        int(get("i")), get("v")
+                    )
+            except (listen.Stale, IndexError):
+                msg = "The list changed on another device; reloaded it."
+            self._send(
+                200,
+                json.dumps({**listen.public(), "edit": True, "msg": msg}).encode(),
+                "application/json",
+            )
         elif m := re.fullmatch(r"/inbox/file/(\d{4}-\d{2}-\d{2})", path):
             f = form_fields(ctype, body)
             n, bucket = (f.get("n") or [""])[0], (f.get("bucket") or [""])[0]

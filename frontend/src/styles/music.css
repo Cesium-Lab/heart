@@ -1,0 +1,181 @@
+/* Music landing page (/music/): builds on setlister.css (app frame, panels, buttons). */
+.mu-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 16px 16px 0;
+}
+.mu-tool {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.mu-tool:hover {
+  border-color: var(--amber);
+  background: rgba(249, 171, 0, 0.06);
+}
+.mu-tool b {
+  font:
+    600 16px "Roboto Mono",
+    monospace;
+  color: var(--amber);
+}
+.mu-tool span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.mu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+.mu-links {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+.mu-links li {
+  display: grid;
+  gap: 2px;
+  padding: 9px 18px;
+}
+.mu-links li + li {
+  border-top: 1px solid rgba(60, 64, 67, 0.6);
+}
+.mu-links a {
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 500;
+}
+.mu-links a:hover {
+  text-decoration: underline;
+}
+.mu-arrow {
+  font-size: 70%;
+  color: var(--muted);
+}
+.mu-plain {
+  color: var(--text);
+  font-weight: 500;
+}
+.mu-links small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Listen & watch checklist */
+.mu-listen {
+  margin: 16px 16px 0;
+}
+.mu-count {
+  color: var(--muted);
+  font-weight: 400;
+}
+.mu-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 18px 0;
+}
+.mu-add[hidden] {
+  display: none;
+}
+.mu-add input {
+  flex: 1 1 220px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.mu-msg {
+  min-height: 0;
+  padding: 6px 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mu-msg:empty {
+  display: none;
+}
+.mu-check {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+}
+.mu-check li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+}
+.mu-check li + li {
+  border-top: 1px solid rgba(60, 64, 67, 0.6);
+}
+.mu-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--green);
+}
+.mu-check .t {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mu-check a {
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 500;
+}
+.mu-check a:hover {
+  text-decoration: underline;
+}
+.mu-check .by {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mu-check .x {
+  min-height: 26px;
+  padding: 0 8px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+}
+.mu-check .x:hover {
+  color: var(--red);
+}
+.mu-done {
+  padding: 0 0 8px;
+}
+.mu-done[hidden] {
+  display: none;
+}
+.mu-done summary {
+  padding: 8px 18px;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.mu-done .t a,
+.mu-done .t span {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.mu-editbtn {
+  margin: 4px 18px 14px;
+}
+.mu-editbtn[hidden] {
+  display: none;
+}
