@@ -81,6 +81,17 @@ and a link back to the inbox entry. On any device:
 - Every form carries the list's version, so if the file changed meanwhile (another tab, a
   filing run) nothing happens and the page says to try again.
 
+## File ▾ (one entry at a time, from the inbox)
+
+Each entry's actions row has **File ▾**: the five buckets, with a ★ on the likely one (a
+keyword guess from the note, replies, and any cached reel caption: `notes.GUESS`; no hits →
+Later). Picking a bucket writes the item in the same format as `filing.py` (title from the reel
+caption, or the note's first line), saves the thumbnail, and marks the entry `filed → …`.
+Buckets it's already in show ✓; picking another adds it there too, and picking a ✓ one
+takes it back out (after a confirm; the note goes to `notes/.deleted.md`). The ★ is only a guess:
+nothing is filed until you pick. Claude Code's batch filing (below) still works for writing
+better titles over many entries at once.
+
 ## Links both ways
 
 - A note's "from 2026-11-25#4" opens the inbox entry it came from.

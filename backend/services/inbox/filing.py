@@ -29,18 +29,7 @@ LINK = re.compile(r"https?://\S+")
 
 
 def captions(urls: list[str]) -> dict[str, dict]:
-    """Caption + thumbnail URL per link, cached in the inbox folder so each is fetched once."""
-    cache = json.loads(CACHE.read_text()) if CACHE.exists() else {}
-    changed = False
-    for u in urls:
-        if u not in cache or "error" in cache[u] or "thumb_url" not in cache[u]:
-            got = notes.link_info(u)
-            if got or u in cache:
-                cache[u] = got
-                changed = True
-    if changed:
-        CACHE.write_text(json.dumps(cache, indent=1, ensure_ascii=False))
-    return {u: cache.get(u, {}) for u in urls}
+    return notes.captions(urls, CACHE)
 
 
 def unfiled() -> list[dict]:

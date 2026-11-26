@@ -31,6 +31,9 @@ UA = "Mozilla/5.0"  # a full browser UA gets a script-only page without the capt
 IG = re.compile(r"instagram\.com/(?:[\w.]+/)?(reel|reels|p|tv)/([\w-]+)")
 YT = re.compile(r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|shorts/)|youtu\.be/)([\w-]{11})")
 _lock = threading.Lock()
+_cap_lock = (
+    threading.Lock()
+)  # caption cache (a fetch can take seconds; not under _lock)
 
 
 # ---------- links: caption + thumbnail ----------
@@ -210,6 +213,14 @@ def delete(bucket: str, picks: set[int], version: str) -> int:
         return len(gone)
 
 
+def unfile(bucket: str, ident: str) -> int:
+    """Remove the note(s) filed from inbox entry `ident` from one bucket (File ▾ toggled off).
+    They go to .deleted.md like any delete. Returns how many were removed."""
+    items, version = load(bucket)
+    picks = {i for i, it in enumerate(items) if source_id(it) == ident}
+    return delete(bucket, picks, version) if picks else 0
+
+
 def move(bucket: str, picks: set[int], target: str, version: str) -> int:
     path_of(target)  # unknown bucket -> KeyError
     with _lock:
@@ -284,6 +295,80 @@ def new_item(title: str, link: str = "", note: str = "", source: str = "") -> di
         f.append(("thumb", thumb))
     f += [("note", " ".join(note.split()))] if note.strip() else []
     return {"title": title.strip(), "fields": f, "extra": []}
+
+
+def captions(urls: list[str], cache_path: Path) -> dict[str, dict]:
+    """Caption + thumbnail URL per link, cached (in the inbox folder) so each is fetched once."""
+    with _cap_lock:
+        cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+        changed = False
+        for u in urls:
+            if u not in cache or "error" in cache[u] or "thumb_url" not in cache[u]:
+                got = link_info(u)
+                if got or u in cache:
+                    cache[u] = got
+                    changed = True
+        if changed:
+            cache_path.write_text(json.dumps(cache, indent=1, ensure_ascii=False))
+    return {u: cache.get(u, {}) for u in urls}
+
+
+# Words that hint at a bucket (in the note, replies, or the reel's caption). Most hits wins;
+# no hits -> "later". Only a guess: it's starred in the File menu, never filed on its own.
+GUESS = {
+    "licks": "lick licks riff riffs solo solos scale scales lesson tab tabs fingerstyle "
+    "technique exercise practice learn learning lead line vocabulary arpeggio strumming",
+    "song-ideas": "lyric lyrics hook verse chorus bridge melody song idea title write "
+    "writing progression",
+    "content-tips": "reel reels post posting views algorithm followers content engagement "
+    "tiktok instagram viral trial editing caption thumbnail creator",
+    "business": "mix mixing master mastering record recording producer production gig "
+    "show shows booking label funding grant royalties distribution spotify release pr",
+}
+
+
+def guess(text: str) -> str:
+    words = re.findall(r"[a-z]+", text.lower())
+    score = {b: sum(w in set(v.split()) for w in words) for b, v in GUESS.items()}
+    best = max(score, key=lambda b: score[b])
+    return best if score[best] else "later"
+
+
+LINK_RE = re.compile(r"https?://\S+")
+
+
+def entry_item(ident: str, entry: dict, folder: Path, cache_path: Path) -> dict:
+    """A bucket item built from an inbox entry, the same shape filing.py writes: title from
+    the first link's caption (or the note), the links, caption, saved thumbnail, the entry's
+    and its replies' files, and the note (its words, links taken out)."""
+    day, n = ident.split("#")
+    texts = [entry["text"]] + [r["text"] for r in entry["replies"]]
+    links = list(
+        dict.fromkeys(u.rstrip(").,") for t in texts for u in LINK_RE.findall(t))
+    )
+    info = captions(links[:1], cache_path)[links[0]] if links else {}
+    words = "\n".join(x for x in (LINK_RE.sub("", t).strip() for t in texts) if x)
+    files = [str(folder / f) for f in entry["files"]]
+    files += [str(folder / f) for r in entry["replies"] for f in r["files"]]
+    cap = (info.get("caption") or "").split("\n")[0]
+    cap = cap if len(cap) <= 60 else cap[:60].rsplit(" ", 1)[0] + "…"
+    first = words.split("\n")[0] if words else ""
+    first = first if len(first) <= 60 else first[:60].rsplit(" ", 1)[0] + "…"
+    title = (
+        (f"{cap} ({info['creator']})" if info.get("creator") else cap)
+        or first
+        or (links[0] if links else "")
+        or (Path(files[0]).name if files else "Untitled")
+    )
+    f = [("from", f"[{ident}](/inbox/{day}#{n})"), ("filed", str(date.today()))]
+    f += [("link", u) for u in links]
+    if info.get("caption"):
+        f.append(("caption", " / ".join(info["caption"].splitlines())))
+    if links and (thumb := save_thumb(links[0], info.get("thumb_url", ""))):
+        f.append(("thumb", thumb))
+    f += [("file", x) for x in files]
+    f += [("note", clean_note(words))] if words else []
+    return {"title": title, "fields": f, "extra": []}
 
 
 def counts() -> dict[str, int]:

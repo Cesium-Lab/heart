@@ -209,6 +209,30 @@ def set_pinned(day: str, n: int, on: bool) -> bool:
         return True
 
 
+def file_entry(day: str, n: int, bucket: str) -> str:
+    """File one entry into a notes bucket (the File ▾ menu). Returns a message for the page."""
+    if bucket not in notes.BUCKETS:
+        return "Unknown bucket."
+    e = next((x for x in read_day(day) if x["n"] == n), None)
+    if e is None:
+        return "That entry no longer exists."
+    have = [w.strip() for w in (e.get("filed") or "").split(",") if w.strip()]
+    name = notes.BUCKETS[bucket][0]
+    if f"{bucket}.md" in have:  # ticked: toggle it off
+        gone = notes.unfile(bucket, f"{day}#{n}")
+        set_filed(day, n, ", ".join(w for w in have if w != f"{bucket}.md"))
+        return (
+            f"Removed from {name} (kept in notes/.deleted.md)."
+            if gone
+            else f"Unmarked {name} (the note had already been moved or deleted)."
+        )
+    notes.append(
+        bucket, notes.entry_item(f"{day}#{n}", e, day_dir(day), DIR / ".captions.json")
+    )
+    set_filed(day, n, ", ".join(dict.fromkeys(have + [f"{bucket}.md"])))
+    return f"Filed to {name}."
+
+
 def set_filed(day: str, n: int, where: str) -> bool:
     """Mark entry n of a day as filed (a `_filed → where_` line; "" clears it). Used by
     filing.py after a sorting session; the entry itself stays in the inbox."""
@@ -1064,6 +1088,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .ehead a.num{text-decoration:none}
 .edited{margin-left:8px}
 .filed{margin-left:8px;font-size:13px;color:var(--muted)}
+/* File ▾: a small menu of the note buckets under an entry (the starred one is the guess). */
+.filemenu{position:relative;display:inline-block}
+.filemenu summary{list-style:none;cursor:pointer}.filemenu summary::-webkit-details-marker{display:none}
+.filemenu form{position:absolute;z-index:20;top:calc(100% + 4px);left:0;display:grid;gap:2px;min-width:190px;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.filemenu form button{display:flex;align-items:center;gap:6px;text-align:left;font-size:13px;font-weight:500;
+  color:var(--ink);background:transparent;border:0;border-radius:6px;padding:7px 8px}
+.filemenu form button:hover,.filemenu form button.guess{background:var(--hl)}
+.fstar{width:12px;color:#ca8a04}
 .actions{display:flex;align-items:center;gap:6px;margin:8px 0 0;font-size:13px;color:var(--muted)}
 /* TEST (may be undone): Reply · Edit stay left; Copy · Raw ↗ (· Delete…) go right. */
 .actions .copyid{margin-left:auto}.actions span[aria-hidden]:has(+ .copyid){display:none}
@@ -1356,7 +1389,7 @@ async function copyText(text) {
   const range = (a, b, on) => { const [x, y] = a < b ? [a, b] : [b, a]; for (let k = x; k <= y; k++) picks[k].checked = on; };
   // Phones: press and hold an entry to select it; while anything is selected, taps add or
   // remove entries. With nothing selected a tap does nothing, so scrolling never selects.
-  const busy = (t) => t.closest("a, button, input, textarea, select, form, video, audio, .details, .replies");
+  const busy = (t) => t.closest("a, button, input, textarea, select, form, video, audio, .details, .replies, details");
   let touchTimer = null, held = false, lastTouch = 0;
   rows.forEach((row, i) => {
     row.addEventListener("touchstart", (e) => {
@@ -1902,7 +1935,7 @@ def render_pins(
             f'<input type="hidden" name="dreply" value="{r["id"]}">'
             for r in e["replies"]
         )
-        acts = text_actions(day, e, ident, reply=True)
+        acts = text_actions(day, e, ident, reply=True, back=f"/inbox/pins/{day}/{n}")
         acts = (
             acts[: -len("</div>")]
             + f'{sep}<button type="button" class="editline pdel">Delete…</button></div>'
@@ -2044,6 +2077,16 @@ if (!document.body.classList.contains("pins")) document.querySelectorAll(".pinbo
   const link = document.querySelector('.pinsnav a[href="/inbox/pins"]');
   if (link) link.textContent = link.textContent.replace(/\\d+/, (k) => String(Number(k) + (on ? 1 : -1)));
 }));
+// File ▾: clicking elsewhere closes it; while it files (fetching the reel's caption can take
+// a few seconds) it says so.
+document.addEventListener("click", (e) => {
+  document.querySelectorAll(".filemenu[open]").forEach((d) => { if (!d.contains(e.target)) d.open = false; });
+});
+document.querySelectorAll(".filemenu form").forEach((f) => f.addEventListener("submit", (e) => {
+  const off = e.submitter && e.submitter.hasAttribute("data-unfile");
+  if (off && !confirm("Take it out of this bucket? (The note is kept in notes/.deleted.md.)")) { e.preventDefault(); return; }
+  f.closest(".filemenu").querySelector("summary").textContent = off ? "Removing…" : "Filing…";
+}));
 // Pinned page: the card you just came back to (after a reply or edit) shows its replies.
 document.querySelectorAll(".pcard.flash .replies").forEach((b) => setReplies(b, true));
 </script>"""
@@ -2142,7 +2185,43 @@ def notes_chrome(session: dict | None) -> tuple[str, str]:
     return style, logout
 
 
-def text_actions(day: str, item: dict, ident: str, reply: bool) -> str:
+UNFILE_ATTR = ' data-unfile title="Click to take it out of this bucket"'
+
+
+def file_menu(day: str, item: dict, ident: str, back: str = "") -> str:
+    """File ▾ under an entry: the five note buckets, the likely one starred. Picking one files
+    the entry there (POST /inbox/file/<day>). Buckets it's already in are ticked; picking a
+    ticked one takes it back out (the note goes to notes/.deleted.md)."""
+    texts = " ".join([item["text"]] + [r["text"] for r in item["replies"]])
+    cache = DIR / ".captions.json"
+    try:  # cached captions only: never fetch while drawing the page
+        cached = json.loads(cache.read_text()) if cache.exists() else {}
+    except ValueError:
+        cached = {}
+    caps = " ".join(
+        (cached.get(u.rstrip(").,")) or {}).get("caption", "")
+        for u in notes.LINK_RE.findall(texts)
+    )
+    star = notes.guess(texts + " " + caps)
+    done = {w.strip().removesuffix(".md") for w in (item.get("filed") or "").split(",")}
+    opts = "".join(
+        f'<button name="bucket" value="{b}"'
+        + (' class="guess"' if b == star else "")
+        + (UNFILE_ATTR if b in done else "")
+        + f'><span class="fstar">{"★" if b == star else ""}</span>{icon} {html.escape(title)}'
+        + (" ✓" if b in done else "")
+        + "</button>"
+        for b, (title, icon) in notes.BUCKETS.items()
+    )
+    return (
+        f'<details class="filemenu"><summary class="editline">File ▾</summary>'
+        f'<form method="post" action="/inbox/file/{day}"><input type="hidden" name="n" value="{ident}">'
+        f'<input type="hidden" name="back" value="{html.escape(back or f"/inbox/{day}#{ident}")}">'
+        f"{opts}</form></details>"
+    )
+
+
+def text_actions(day: str, item: dict, ident: str, reply: bool, back: str = "") -> str:
     """The row under an entry/reply: Reply (entries) · Edit · Copy · Raw ↗ (the note as plain
     text in a new tab). Copy and Raw only when there's a note."""
     sep = '<span aria-hidden="true">·</span>'
@@ -2154,6 +2233,8 @@ def text_actions(day: str, item: dict, ident: str, reply: bool) -> str:
     parts.append(
         f'<button type="button" class="editline editbtn" data-id="{ident}">Edit</button>'
     )
+    if reply:  # entries only: File ▾
+        parts.append(file_menu(day, item, ident, back))
     if item["text"]:
         parts.append(
             f'<button type="button" class="editline copyid" data-id="{ident}">Copy</button>'
@@ -2871,6 +2952,15 @@ class Handler(BaseHTTPRequestHandler):
             if n.isdigit():
                 set_pinned(m[1], int(n), (f.get("on") or ["1"])[0] == "1")
             self._redirect(back)
+        elif m := re.fullmatch(r"/inbox/file/(\d{4}-\d{2}-\d{2})", path):
+            f = form_fields(ctype, body)
+            n, bucket = (f.get("n") or [""])[0], (f.get("bucket") or [""])[0]
+            back = (f.get("back") or [""])[0]
+            if not back.startswith("/inbox/"):
+                back = f"/inbox/{m[1]}#{n}"
+            msg = file_entry(m[1], int(n), bucket) if n.isdigit() else "Not found."
+            path_, _, frag = back.partition("#")
+            self._redirect(f"{path_}?sent={quote(msg)}" + (f"#{frag}" if frag else ""))
         elif m := re.fullmatch(r"/inbox/edit/(\d{4}-\d{2}-\d{2})", path):
             f = form_fields(ctype, body)
             ident = (f.get("id") or [""])[0]
