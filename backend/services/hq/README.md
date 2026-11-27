@@ -54,3 +54,6 @@ Unit `deploy/systemd/hq.service`, port `127.0.0.1:42907`, Apache route `/hq/`. I
 
 API: `GET /hq/api/state` (schema + all records) · `POST /hq/api/<collection>` ·
 `PATCH|DELETE /hq/api/<collection>/<id>` with collections `people`, `orgs`, `projects`, `songs`.
+
+Links: every tab and view has its own address, e.g. `/hq/songs?view=table`, `/hq/songs?view=status`,
+`/hq/people?view=cards`, `/hq/orgs`, plus `&open=<id>` for an open record. Back/forward work.

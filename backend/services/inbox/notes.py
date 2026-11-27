@@ -466,8 +466,7 @@ def _page(title: str, body: str, style: str, logout: str, flash: str) -> bytes:
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         f'<title>{html.escape(title)}</title><meta name="robots" content="noindex">'
         '<link rel="icon" href="/favicon.svg?v=5" type="image/svg+xml">'
-        f"{style}{NOTES_CSS}<script src='/nav.js' defer></script></head><body><main>{logout}"
-        '<div class="pinsnav"><a href="/inbox/">Inbox</a></div>'
+        f"{style}{NOTES_CSS}<script src='/nav.js?v=2' defer></script></head><body><main>{logout}"
         f"{body}{flash_html}</main></body></html>"
     ).encode()
 
@@ -567,7 +566,6 @@ def render_bucket(bucket: str, style: str, logout: str, flash: str = "") -> byte
         if b != bucket
     )
     body = (
-        '<div class="nav"><a href="/inbox/notes/">‹ Notes</a><span></span></div>'
         f'<h1 class="title">{icon} {html.escape(name)} <span class="ct">({len(items)})</span></h1>'
         f'<details class="nadd"><summary>+ Add</summary>'
         f'<form method="post" action="/inbox/notes/{bucket}/add">'

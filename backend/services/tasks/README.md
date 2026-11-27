@@ -76,3 +76,6 @@ Export folders are git-ignored (`*_ExportBlock-*/`); delete them once imported.
 `GET /tasks/api/state` · `POST /tasks/api/groups` `{name}` · `PATCH|DELETE /tasks/api/groups/<id>`
 · `POST /tasks/api/tasks` `{title, group?, parent?, container?, due?, priority?, status?, notes?}` ·
 `PATCH|DELETE /tasks/api/tasks/<id>`. JSON in and out; writes need `X-Tasks: 1`.
+
+Links: `/tasks/board`, `/tasks/table`, `/tasks/categories`, pinned tabs `/tasks/g/<id>` and
+`/tasks/t/<id>`, plus `?open=<task id>` for an open task. Back/forward work.

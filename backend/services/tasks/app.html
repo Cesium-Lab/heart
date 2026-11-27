@@ -149,7 +149,7 @@ td input[type=date]:hover{background:var(--hover)}
 .jump button{width:38px;height:38px;border-radius:50%;border:1px solid #3a3a3a;background:#2a2a2a;color:#e9e9e7;font-size:17px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4);opacity:.85}
 .jump button:hover{opacity:1;background:#333}
 </style>
-<script src="/nav.js" defer></script>
+<script src="/nav.js?v=2" defer></script>
 </head>
 <body>
 <main>
@@ -677,7 +677,37 @@ $("closeP").onclick = closeTask;
 $("shade").onclick = (e) => { if (e.target === $("shade")) closeTask(); };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { if (menuEl) closeMenu(); else if (openId && !editingNotes) closeTask(); } });
 
-refresh();
+// ---------- links: /tasks/board, /tasks/table, /tasks/categories, /tasks/g/<id> or
+// /tasks/t/<id> (pinned tabs), plus ?open=<task id> for an open task page ----------
+const TAB_PATH = { board: "board", table: "table", cats: "categories" };
+function readUrl() {
+  const parts = location.pathname.replace(/^\/tasks\/?/, "").split("/");
+  const named = Object.keys(TAB_PATH).find((k) => TAB_PATH[k] === parts[0]);
+  if (named) tab = named;
+  else if ((parts[0] === "g" || parts[0] === "t") && parts[1]) tab = parts[0] + ":" + parts[1];
+  openId = new URLSearchParams(location.search).get("open");
+}
+function urlNow() {
+  const path = "/tasks/" + (TAB_PATH[tab] || tab.replace(":", "/"));
+  return openId ? path + "?open=" + openId : path;
+}
+let firstUrl = true;
+function syncUrl() {
+  if (firstUrl) return;
+  const u = urlNow(); if (u === location.pathname + location.search) return;
+  // A new tab or task is a new page (Back returns).
+  history.pushState(null, "", u);
+}
+window.addEventListener("popstate", () => { readUrl(); editingNotes = false; $("shade").hidden = !openId; render(); if (openId) fillPage(); });
+readUrl();
+const urlOpen = openId; openId = null;
+const _render = render; render = function () { _render(); syncUrl(); };
+const _openTask = openTask; openTask = function (id) { _openTask(id); syncUrl(); };
+const _closeTask = closeTask; closeTask = function () { _closeTask(); syncUrl(); };
+refresh().then(() => {
+  if (urlOpen && BY.get(urlOpen)) _openTask(urlOpen);
+  firstUrl = false; history.replaceState(null, "", urlNow());
+});
 
 // Jump buttons: scroll the open record/task page if there is one, else the main page.
 (() => {

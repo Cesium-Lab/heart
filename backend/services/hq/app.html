@@ -107,7 +107,7 @@ h2{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--mu
 .jump button{width:38px;height:38px;border-radius:50%;border:1px solid #3a3a3a;background:#2a2a2a;color:#e9e9e7;font-size:17px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4);opacity:.85}
 .jump button:hover{opacity:1;background:#333}
 </style>
-<script src="/nav.js" defer></script>
+<script>window.CL_LOGIN = true;</script><script src="/nav.js?v=2" defer></script>
 </head>
 <body>
 <main>
@@ -190,9 +190,7 @@ function renderTabs() {
   bar.append(el("span", "spacer"));
   const nb = el("button", "newbtn", "New " + S(tab).one.toLowerCase()); nb.type = "button";
   nb.onclick = async () => { const n = prompt(`New ${S(tab).one.toLowerCase()}: ${field(tab, "name").label}`); if (n && n.trim()) { const r = await api("POST", tab, { name: n }); await refresh(); openRec(tab, r.id); } };
-  const out = el("button", "plain", "Log out"); out.type = "button"; out.style.marginLeft = "6px";
-  out.onclick = async () => { await fetch("/hq/logout", { method: "POST", credentials: "same-origin" }); location.reload(); };
-  bar.append(nb, out);
+  bar.append(nb);  // Log out is in the shared top bar (nav.js)
 }
 
 // ---------- list views ----------
@@ -456,7 +454,45 @@ function fillPage() {
 const LINK = { org: "orgs", project: "projects" };
 $("shade").onclick = (e) => { if (e.target === $("shade")) closeRec(); };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) closeRec(); });
-refresh();
+
+// ---------- links: /hq/<tab>?view=<view>&open=<id> (e.g. /hq/songs?view=table) ----------
+const VIEWS_ALL = { people: 1, orgs: 1, projects: 1, songs: 1 };
+const VIEWS = { songs: ["status", "project", "table"], people: ["table", "cards"] };
+function readUrl() {
+  const t = location.pathname.replace(/^\/hq\/?/, "").split("/")[0], p = new URLSearchParams(location.search);
+  if (["people", "orgs", "projects", "songs"].includes(t)) tab = t;
+  const v = p.get("view");
+  if (v && VIEWS.songs.includes(v) && tab === "songs") songView = v;
+  if (v && VIEWS.people.includes(v) && tab === "people") peopleView = v;
+  const o = p.get("open"), c = o && Object.keys(VIEWS_ALL).find((k) => D && byId(k, o));
+  open = o && D ? [c || tab, o] : null;  // records are looked up once the data is loaded
+}
+function urlNow() {
+  const p = new URLSearchParams();
+  if (tab === "songs") p.set("view", songView);
+  if (tab === "people") p.set("view", peopleView);
+  if (open) p.set("open", open[1]);
+  return "/hq/" + tab + "?" + p;
+}
+let firstUrl = true;
+function syncUrl() {
+  const u = urlNow(); if (u === location.pathname + location.search) return;
+  if (firstUrl) return;  // until the first load is done (it may still need to read ?open=)
+  // A new tab or record is a new page (Back returns); a view switch just replaces the link.
+  const samePage = location.pathname === "/hq/" + tab && !!new URLSearchParams(location.search).get("open") === !!open;
+  history[samePage ? "replaceState" : "pushState"](null, "", u);
+}
+window.addEventListener("popstate", () => { readUrl(); if (open) { $("shade").hidden = false; } else $("shade").hidden = true; render(); });
+readUrl();
+const _render = render; render = function () { _render(); syncUrl(); };
+const _renderView = renderView; renderView = function () { _renderView(); syncUrl(); };
+const _openRec = openRec; openRec = function (c, id) { _openRec(c, id); syncUrl(); };
+const _closeRec = closeRec; closeRec = function () { _closeRec(); syncUrl(); };
+refresh().then(() => {
+  readUrl();
+  if (open && byId(open[0], open[1])) _openRec(open[0], open[1]); else open = null;
+  firstUrl = false; history.replaceState(null, "", urlNow());
+});
 
 // Jump buttons: scroll the open record/task page if there is one, else the main page.
 (() => {

@@ -20,7 +20,7 @@ log "Installing Apache sites"
 sudo install -m 0644 "${APACHE_DEPLOY_DIR}/sites-available/cesiumlab.conf" /etc/apache2/sites-available/cesiumlab.conf
 sudo install -m 0644 "${APACHE_DEPLOY_DIR}/sites-available/dataviz.conf" /etc/apache2/sites-available/dataviz.conf
 sudo install -m 0644 "${APACHE_DEPLOY_DIR}/sites-available/docs.conf" /etc/apache2/sites-available/docs.conf
-sudo a2enmod proxy proxy_http proxy_wstunnel
+sudo a2enmod proxy proxy_http proxy_wstunnel headers
 sudo a2ensite cesiumlab.conf dataviz.conf docs.conf
 sudo a2dissite 000-default.conf >/dev/null 2>&1 || true
 

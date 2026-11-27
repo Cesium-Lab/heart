@@ -435,6 +435,12 @@ def visitor_ip(headers) -> str:
     return xff.split(",")[-1].strip() if xff else "?"
 
 
+def safe_next(form: dict, default: str) -> str:
+    """Where to go after logging in: the app link the login page was opened at (same app only)."""
+    nxt = (form.get("next") or [""])[0]
+    return nxt if re.fullmatch(default + r"[A-Za-z0-9/?=&:_-]*", nxt) else default
+
+
 def logged_in(headers) -> bool:
     return session.valid(headers)  # the shared login (common/session.py)
 
@@ -458,7 +464,7 @@ h1{font-size:20px;margin:0}input{font:inherit;padding:10px;border:1px solid #2f2
 button{font:inherit;font-weight:600;color:#fff;background:#2383e2;border:0;border-radius:8px;padding:10px;cursor:pointer}
 .msg{color:#e0645a;font-size:13px;min-height:1em}
 </style></head><body>
-<form method="post" action="/hq/login">
+<form method="post" action="/hq/login"><input type="hidden" name="next" id="next"><script>document.getElementById("next").value = location.pathname + location.search;</script>
   <h1>HQ</h1>
   <input name="username" placeholder="Username" autocomplete="username" autocapitalize="none" autofocus required>
   <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
@@ -517,7 +523,9 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/hq/health":
             return self._json(200, {"ok": True, "db": str(DB), "exists": DB.exists()})
-        if path in ("/hq", "/hq/"):
+        if path in ("/hq", "/hq/") or re.fullmatch(
+            r"/hq(?:/[a-z]+)?", path
+        ):  # app links, e.g. /hq/songs
             if not logged_in(self.headers):
                 return self._send(200, login_page(), "text/html; charset=utf-8")
             return self._send(200, APP.encode(), "text/html; charset=utf-8")
@@ -593,7 +601,10 @@ class Handler(BaseHTTPRequestHandler):
         ):
             cookie = session.issue(self.headers)
             return self._send(
-                303, b"", "text/plain", {"Location": "/hq/", "Set-Cookie": cookie}
+                303,
+                b"",
+                "text/plain",
+                {"Location": safe_next(f, "/hq/"), "Set-Cookie": cookie},
             )
         with _auth_lock:
             _fails.setdefault(ip, []).append(time.time())

@@ -1,6 +1,7 @@
 // Shared top bar for cesiumlab.net's own tools (Inbox, Notes, Tasks, HQ, Status, Music, Docs).
-// One file, used by every page that has <script src="/nav.js" defer></script>; edit LINKS here
-// and every page updates. It inserts a slim bar at the top of the page and highlights the
+// One file, used by every page that has <script src="/nav.js?v=N" defer></script>; edit LINKS here
+// and every page updates. Changed this file? Bump ?v= in those tags (Cloudflare caches it).
+// It inserts a slim bar at the top of the page and highlights the
 // current app. Plain dark style (not the retro look of the public pages).
 (() => {
   const LINKS = [
@@ -31,7 +32,9 @@
 #cl-nav a{display:inline-block;padding:8px 9px;color:#9b9b98;text-decoration:none;border-bottom:2px solid transparent}
 #cl-nav a:hover{color:#e9e9e7}
 #cl-nav a.here{color:#e9e9e7;border-bottom-color:#e9e9e7}
-#cl-nav .sep{flex:1}`;
+#cl-nav .sep{flex:1}
+#cl-nav button{font:inherit;color:#9b9b98;background:none;border:0;padding:8px 9px;cursor:pointer}
+#cl-nav button:hover{color:#e9e9e7}`;
     const bar = document.createElement("nav");
     bar.id = "cl-nav";
     bar.setAttribute("aria-label", "cesiumlab.net");
@@ -53,6 +56,17 @@
       }
       bar.append(a);
     });
+    // Logged-in pages set window.CL_LOGIN; one Log out ends the shared login everywhere.
+    if (window.CL_LOGIN) {
+      const out = document.createElement("button");
+      out.type = "button";
+      out.textContent = "Log out";
+      out.onclick = () =>
+        fetch("/inbox/logout", { method: "POST", cache: "no-store" })
+          .catch(() => {})
+          .then(() => location.reload());
+      bar.append(out);
+    }
     if (!document.getElementById("cl-nav-css")) {
       css.id = "cl-nav-css";
       document.head.append(css);

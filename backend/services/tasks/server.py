@@ -349,6 +349,12 @@ def is_home(headers) -> bool:
     return any(ip in net for net in HOME_NETS)
 
 
+def safe_next(form: dict, default: str) -> str:
+    """Where to go after logging in: the app link the login page was opened at (same app only)."""
+    nxt = (form.get("next") or [""])[0]
+    return nxt if re.fullmatch(default + r"[A-Za-z0-9/?=&:_-]*", nxt) else default
+
+
 def logged_in(headers) -> bool:
     return session.valid(headers)  # the shared login (common/session.py)
 
@@ -373,7 +379,7 @@ h1{font-size:18px;margin:0}input{font:inherit;padding:10px;border:1px solid var(
 button{font:inherit;font-weight:600;color:#fff;background:var(--accent);border:0;border-radius:8px;padding:10px;cursor:pointer}
 .msg{color:#dc2626;font-size:13px;min-height:1em}
 </style></head><body>
-<form method="post" action="/tasks/login">
+<form method="post" action="/tasks/login"><input type="hidden" name="next" id="next"><script>document.getElementById("next").value = location.pathname + location.search;</script>
   <h1>Tasks</h1>
   <input name="username" placeholder="Username" autocomplete="username" autocapitalize="none" autofocus required>
   <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
@@ -435,10 +441,17 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/tasks/health":
             return self._json(200, {"ok": True, "db": str(DB), "exists": DB.exists()})
-        if path in ("/tasks", "/tasks/"):
+        if path in ("/tasks", "/tasks/") or re.fullmatch(
+            r"/tasks(?:/[a-z]+(?:/[0-9a-f]{4,12})?)?", path
+        ):  # app links, e.g. /tasks/table
             if not self._allowed():
                 return self._send(200, login_page(), "text/html; charset=utf-8")
-            return self._send(200, APP.encode(), "text/html; charset=utf-8")
+            page = APP
+            if logged_in(self.headers):  # show "Log out" in the shared top bar (nav.js)
+                page = page.replace(
+                    "</head>", "<script>window.CL_LOGIN = true;</script></head>", 1
+                )
+            return self._send(200, page.encode(), "text/html; charset=utf-8")
         if path == "/tasks/api/state":
             if not self._allowed():
                 return self._json(401, {"error": "login"})
@@ -503,7 +516,10 @@ class Handler(BaseHTTPRequestHandler):
         ):
             cookie = session.issue(self.headers)
             return self._send(
-                303, b"", "text/plain", {"Location": "/tasks/", "Set-Cookie": cookie}
+                303,
+                b"",
+                "text/plain",
+                {"Location": safe_next(f, "/tasks/"), "Set-Cookie": cookie},
             )
         with _auth_lock:
             _fails.setdefault(ip, []).append(time.time())

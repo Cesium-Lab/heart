@@ -1207,7 +1207,7 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .pingo{display:none;font-size:13px;color:var(--accent)}
 .pinbox:hover .pingo,.pinbox:focus-within .pingo{display:inline}
 form.inline{display:contents}
-</style><script src="/nav.js" defer></script></head><body><main>
+</style><script src="/nav.js?v=2" defer></script></head><body><main>
 <script data-nav>
 // Day buttons (← · Today · →) swap the page in place instead of a full reload, so rapid clicks
 // all register (Chrome ignores clicks while it holds the old page during a reload). The new
@@ -1714,13 +1714,9 @@ document.querySelector("#addform textarea").addEventListener("keydown", (e) => {
 </script>"""
 
 
-# Shown only to visitors who logged in (outside the home network). Logging out here logs out
-# of Tasks and HQ too (one shared cookie).
-LOGOUT = """<div class="top"><button type="button" id="logout">Log out</button></div>
-<script>
-document.getElementById("logout").onclick = () =>
-  fetch("{base}logout", { method: "POST", cache: "no-store" }).catch(() => {}).then(() => location.replace("{base}"));
-</script>"""
+# Only for visitors who logged in (outside the home network): tells the shared top bar
+# (frontend/public/nav.js) to show "Log out", which logs out of every app (one shared cookie).
+LOGOUT = """<script>window.CL_LOGIN = true;</script>"""
 
 
 TEXT_EXT = {
@@ -1813,9 +1809,8 @@ PINS_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <style>.pcard.flash{background:var(--hl)}.pcard .atts .apick{display:none}.pins .elist{padding-left:0}
 .pcard .delfile[hidden]{display:none}.copyatt{display:none}
 /* Same room as the day page's selection bar (12px gap + ~70px bar); on phones that bar floats. */
-.pinsend{margin-top:82px}@media(max-width:899px){.pinsend{margin-top:12px}}</style><script src="/nav.js" defer></script></head><body class="pins"><main>
+.pinsend{margin-top:82px}@media(max-width:899px){.pinsend{margin-top:12px}}</style><script src="/nav.js?v=2" defer></script></head><body class="pins"><main>
 {logout}
-<div class="pinsnav"><a href="/inbox/">Today</a></div>
 <h1 class="title"><a href="/inbox/" title="Today">Drop a line.</a></h1>
 <div class="nav">{prev}{today}<span></span></div>
 <div class="cols">
@@ -2129,8 +2124,8 @@ button:disabled{opacity:.5;cursor:default}
 pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto;
   font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
 .g{color:#16a34a}.y{color:#ca8a04}.r{color:#dc2626;font-weight:700}.d{opacity:.6}
-</style><script src="/nav.js" defer></script></head><body><main>
-<div class="top"><h1>Status</h1><button id="refresh">Refresh</button><a class="btn" href="/inbox/">Inbox</a></div>
+</style><script src="/nav.js?v=2" defer></script></head><body><main>
+<div class="top"><h1>Status</h1><button id="refresh">Refresh</button></div>
 <div id="out"><div class="when">Checking…</div></div>
 </main>
 <script>
@@ -2151,10 +2146,7 @@ load();
 
 def pins_link() -> str:
     n = len(pinned_entries())
-    return (
-        '<div class="pinsnav"><a href="/inbox/notes/">Notes</a> '
-        f'<a href="/inbox/pins">Pinned ({n})</a></div>'
-    )
+    return f'<div class="pinsnav"><a href="/inbox/pins">Pinned ({n})</a></div>'
 
 
 def notes_chrome(session: dict | None) -> tuple[str, str]:
@@ -2738,7 +2730,10 @@ class Handler(BaseHTTPRequestHandler):
                 "application/json",
             )
         elif path in ("/inbox/status", "/inbox/status/"):
-            self._send(200, STATUS_PAGE.encode(), "text/html; charset=utf-8")
+            page = STATUS_PAGE
+            if not is_home(self.headers):  # here only when logged in: show "Log out"
+                page = page.replace("</head>", LOGOUT + "</head>", 1)
+            self._send(200, page.encode(), "text/html; charset=utf-8")
         elif path == "/inbox/status.html":
             self._send(200, run_status().encode(), "text/html; charset=utf-8")
         elif path in ("/inbox/notes", "/inbox/notes/"):
