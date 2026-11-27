@@ -104,8 +104,9 @@ Apache only proxies `/inbox/`; the service decides who must log in.
   `INBOX_HOME_NETS`.
 - **Login page** (username + password) from everywhere else, including everything through
   cesiumlab.net and mr-ray's second, shared WiFi (`10.27.150.x`).
-  - A login lasts only for that tab: a new tab, reopening the home-screen app, or restarting the
-    browser asks again. It also expires after `INBOX_IDLE_MIN` (10) minutes unused.
+  - One login for Inbox, Notes, Status, Tasks and HQ (cookie `cl_s`, `backend/services/common/session.py`).
+    It lasts until an hour unused; logging out in any of them logs out of all. Changing the
+    password logs everyone out.
   - **Log out** (top right) appears only when you're logged in.
   - 5 wrong passwords from one address in 5 minutes lock it out for a while.
   - The session cookie is `HttpOnly`, `SameSite=Strict`, and `Secure` over https.
@@ -145,7 +146,7 @@ INBOX_DIR=/tmp/inbox .venv/bin/python backend/services/inbox/server.py   # http:
 # Run by hand there's no Apache in front, so it shows the login page (set INBOX_PASSWORD_HASH).
 ```
 
-Config (env vars): `INBOX_USERNAME` (colin), `INBOX_PASSWORD_HASH`, `INBOX_IDLE_MIN` (10),
+Config (env vars): `INBOX_USERNAME` (colin), `INBOX_PASSWORD_HASH`,
 `INBOX_HOME_NETS`, `INBOX_SMTP_USER`, `INBOX_SMTP_PASS`, `INBOX_TO`, `INBOX_DIGEST_HOUR` (21),
 `INBOX_DIR` (`/srv/data/inbox`), `INBOX_PORT` (42904), `INBOX_PUBLIC_URL`
 (`https://cesiumlab.net/inbox/`, used for links in the email).

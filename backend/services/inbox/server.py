@@ -38,6 +38,9 @@ from email.parser import BytesParser
 from email.policy import default as email_policy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from common import session as shared_session  # noqa: E402
 from urllib.parse import parse_qs, quote, unquote
 
 import notes  # the filed lists at /inbox/notes/ (notes.py, FILING.md)
@@ -78,7 +81,6 @@ HOME_NETS = [
     ).split(",")
     if n.strip()
 ]
-IDLE_S = int(os.getenv("INBOX_IDLE_MIN", "10")) * 60  # log out after this long unused
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif"}
 _write_lock = threading.Lock()
 
@@ -898,12 +900,9 @@ def digest_worker() -> None:
 # address to X-Forwarded-For. The *last* entry is that address (anything a visitor sends is
 # earlier in the list), so it can't be faked. Home LAN and Tailscale need no login. Everyone
 # else (including everything through the Cloudflare tunnel, which reaches Apache from
-# 127.0.0.1) gets a login page. A login lasts while the tab is open and expires after IDLE_S
-# unused; the page also asks again in every new tab or app launch (see LOGOUT script).
+# 127.0.0.1) gets a login page. The login is shared with Tasks and HQ (common/session.py) and
+# lasts until an hour unused.
 
-_sessions: dict[
-    str, dict
-] = {}  # token -> {"seen": epoch, "tag": short id for the tab check}
 _fails: dict[str, list[float]] = {}  # visitor ip -> recent failed login times
 _auth_lock = threading.Lock()
 
@@ -967,16 +966,8 @@ def describe_source(headers) -> str:
 
 
 def session_for(headers) -> dict | None:
-    m = re.search(r"(?:^|;\s*)inbox_s=([A-Za-z0-9_-]{20,})", headers.get("Cookie", ""))
-    if not m:
-        return None
-    with _auth_lock:
-        s = _sessions.get(m[1])
-        if not s or time.time() - s["seen"] > IDLE_S:
-            _sessions.pop(m[1], None)
-            return None
-        s["seen"] = time.time()
-        return {"token": m[1], **s}
+    """The shared login (common/session.py), or None."""
+    return {"tag": ""} if shared_session.valid(headers) else None
 
 
 def too_many_fails(ip: str) -> bool:
@@ -1723,20 +1714,12 @@ document.querySelector("#addform textarea").addEventListener("keydown", (e) => {
 </script>"""
 
 
-# Shown only to visitors who logged in (outside the home network). Also enforces "log in again
-# on every new open": the login is remembered per tab (sessionStorage), so a new tab, a
-# reopened home-screen app, or a restarted browser logs out and shows the login page.
+# Shown only to visitors who logged in (outside the home network). Logging out here logs out
+# of Tasks and HQ too (one shared cookie).
 LOGOUT = """<div class="top"><button type="button" id="logout">Log out</button></div>
 <script>
-(() => {
-  const TAG = "{tag}";
-  const logout = () => fetch("{base}logout", { method: "POST", cache: "no-store" })
-    .catch(() => {}).then(() => location.replace("{base}"));
-  const fresh = new URLSearchParams(location.search).get("login");
-  if (fresh === TAG) { try { sessionStorage.setItem("inbox_tab", TAG); } catch {} history.replaceState(null, "", location.pathname); }
-  else { let mine = null; try { mine = sessionStorage.getItem("inbox_tab"); } catch {} if (mine !== TAG) logout(); }
-  document.getElementById("logout").onclick = logout;
-})();
+document.getElementById("logout").onclick = () =>
+  fetch("{base}logout", { method: "POST", cache: "no-store" }).catch(() => {}).then(() => location.replace("{base}"));
 </script>"""
 
 
@@ -2002,9 +1985,7 @@ def render_pins(
         .replace("{replies_js}", REPLIES_JS)
         .replace(
             "{logout}",
-            LOGOUT.replace("{tag}", session["tag"]).replace("{base}", "/inbox/")
-            if session
-            else "",
+            LOGOUT.replace("{base}", "/inbox/") if session else "",
         )
         .replace(
             "{prev}",
@@ -2179,11 +2160,7 @@ def pins_link() -> str:
 def notes_chrome(session: dict | None) -> tuple[str, str]:
     """(style, logout) for the notes pages: the inbox's own look and per-tab login check."""
     style = PAGE[PAGE.index("<style>") : PAGE.index("</style>") + len("</style>")]
-    logout = (
-        LOGOUT.replace("{tag}", session["tag"]).replace("{base}", "/inbox/")
-        if session
-        else ""
-    )
+    logout = LOGOUT.replace("{base}", "/inbox/") if session else ""
     return style, logout
 
 
@@ -2430,7 +2407,7 @@ def render(
     # anything, including "{day}").
     page = (
         PAGE.replace("{replies_js}", REPLIES_JS)
-        .replace("{logout}", LOGOUT.replace("{tag}", session["tag"]) if session else "")
+        .replace("{logout}", LOGOUT if session else "")
         .replace("{base}", base)
         .replace("{day}", day)
         .replace(
@@ -2622,7 +2599,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Robots-Tag", "noindex")
-        for k, v in (extra or {}).items():
+        extra = dict(extra or {})
+        if "Set-Cookie" not in extra and (c := shared_session.refresh(self.headers)):
+            extra["Set-Cookie"] = c  # slide the shared login's hour
+        for k, v in extra.items():
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
@@ -2847,23 +2827,12 @@ class Handler(BaseHTTPRequestHandler):
             if PASSWORD_HASH and check_login(
                 (f.get("username") or [""])[0], (f.get("password") or [""])[0]
             ):
-                token, tag = secrets.token_urlsafe(32), secrets.token_hex(6)
-                with _auth_lock:
-                    _sessions[token] = {"seen": time.time(), "tag": tag}
-                secure = (
-                    "; Secure"
-                    if self.headers.get("X-Forwarded-Proto") == "https"
-                    else ""
-                )
-                cookie = (
-                    f"inbox_s={token}; Path=/inbox/; HttpOnly; SameSite=Strict{secure}"
-                )
-                # No Max-Age: the cookie dies with the browser; the per-tab check handles new tabs.
+                cookie = shared_session.issue(self.headers)
                 self._send(
                     303,
                     b"",
                     "text/plain",
-                    {"Location": f"/inbox/?login={tag}", "Set-Cookie": cookie},
+                    {"Location": "/inbox/", "Set-Cookie": cookie},
                 )
             else:
                 with _auth_lock:
@@ -2876,15 +2845,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(401, login_page(msg), "text/html; charset=utf-8")
             return
         if path == "/inbox/logout":
-            sess = session_for(self.headers)
-            if sess:
-                with _auth_lock:
-                    _sessions.pop(sess["token"], None)
             self._send(
                 200,
                 b"logged out",
                 "text/plain",
-                {"Set-Cookie": "inbox_s=; Path=/inbox/; Max-Age=0"},
+                {"Set-Cookie": shared_session.clear(self.headers)},
             )
             return
         allowed, _ = self._gate(path)

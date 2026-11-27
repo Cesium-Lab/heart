@@ -36,6 +36,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs
 
+import sys  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from common import session  # noqa: E402
+
 HOST = "127.0.0.1"
 PORT = int(os.getenv("TASKS_PORT", "42906"))
 DIR = Path(os.getenv("TASKS_DIR", "/srv/state/tasks"))
@@ -54,7 +59,6 @@ HOME_NETS = [
     ).split(",")
     if n.strip()
 ]
-IDLE_S = int(os.getenv("TASKS_IDLE_MIN", "60")) * 60
 
 PRIORITIES = ("low", "normal", "medium", "high")  # normal = no priority set
 STATUSES = (
@@ -316,7 +320,6 @@ def delete_task(tid: str) -> int:
 # Same rule as the inbox (see backend/services/inbox/server.py, "auth"): Apache appends the real
 # visitor address as the last X-Forwarded-For entry; home LAN and Tailscale need no login.
 
-_sessions: dict[str, float] = {}  # token -> last seen
 _fails: dict[str, list[float]] = {}
 _auth_lock = threading.Lock()
 
@@ -347,16 +350,7 @@ def is_home(headers) -> bool:
 
 
 def logged_in(headers) -> bool:
-    m = re.search(r"(?:^|;\s*)tasks_s=([A-Za-z0-9_-]{20,})", headers.get("Cookie", ""))
-    if not m:
-        return False
-    with _auth_lock:
-        seen = _sessions.get(m[1])
-        if seen is None or time.time() - seen > IDLE_S:
-            _sessions.pop(m[1], None)
-            return False
-        _sessions[m[1]] = time.time()
-        return True
+    return session.valid(headers)  # the shared login (common/session.py)
 
 
 def too_many_fails(ip: str) -> bool:
@@ -408,7 +402,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
-        for k, v in (extra or {}).items():
+        extra = dict(extra or {})
+        if "Set-Cookie" not in extra and (c := session.refresh(self.headers)):
+            extra["Set-Cookie"] = c  # slide the shared login's hour
+        for k, v in extra.items():
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
@@ -504,13 +501,7 @@ class Handler(BaseHTTPRequestHandler):
         if PASSWORD_HASH and check_login(
             (f.get("username") or [""])[0], (f.get("password") or [""])[0]
         ):
-            token = secrets.token_urlsafe(32)
-            with _auth_lock:
-                _sessions[token] = time.time()
-            secure = (
-                "; Secure" if self.headers.get("X-Forwarded-Proto") == "https" else ""
-            )
-            cookie = f"tasks_s={token}; Path=/tasks/; HttpOnly; SameSite=Strict{secure}"
+            cookie = session.issue(self.headers)
             return self._send(
                 303, b"", "text/plain", {"Location": "/tasks/", "Set-Cookie": cookie}
             )

@@ -37,6 +37,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs
 
+import sys  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from common import session  # noqa: E402
+
 HOST = "127.0.0.1"
 PORT = int(os.getenv("HQ_PORT", "42907"))
 DIR = Path(os.getenv("HQ_DIR", "/srv/state/hq"))
@@ -48,7 +53,6 @@ KEEP_BACKUPS = 30
 DB = DIR / "hq.json"
 USERNAME = os.getenv("INBOX_USERNAME", "colin")
 PASSWORD_HASH = os.getenv("INBOX_PASSWORD_HASH", "")
-IDLE_S = int(os.getenv("HQ_IDLE_MIN", "60")) * 60
 
 # ------------------------------------------------------------------ schema
 # type: str (one line) | text (multi-line) | lines (one item per line) | enum | multi
@@ -410,7 +414,6 @@ def delete(coll: str, rid: str) -> None:
 # --------------------------------------------------------------------- auth
 # Always a login (no home-network bypass): contacts are private. Same credentials as the inbox.
 
-_sessions: dict[str, float] = {}
 _fails: dict[str, list[float]] = {}
 _auth_lock = threading.Lock()
 
@@ -433,16 +436,7 @@ def visitor_ip(headers) -> str:
 
 
 def logged_in(headers) -> bool:
-    m = re.search(r"(?:^|;\s*)hq_s=([A-Za-z0-9_-]{20,})", headers.get("Cookie", ""))
-    if not m:
-        return False
-    with _auth_lock:
-        seen = _sessions.get(m[1])
-        if seen is None or time.time() - seen > IDLE_S:
-            _sessions.pop(m[1], None)
-            return False
-        _sessions[m[1]] = time.time()
-        return True
+    return session.valid(headers)  # the shared login (common/session.py)
 
 
 def too_many_fails(ip: str) -> bool:
@@ -494,7 +488,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
-        for k, v in (extra or {}).items():
+        extra = dict(extra or {})
+        if "Set-Cookie" not in extra and (c := session.refresh(self.headers)):
+            extra["Set-Cookie"] = c  # slide the shared login's hour
+        for k, v in extra.items():
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
@@ -544,17 +541,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/hq/login":
             return self._login()
         if path == "/hq/logout":
-            m = re.search(
-                r"(?:^|;\s*)hq_s=([A-Za-z0-9_-]{20,})", self.headers.get("Cookie", "")
-            )
-            if m:
-                with _auth_lock:
-                    _sessions.pop(m[1], None)
             return self._send(
                 303,
                 b"",
                 "text/plain",
-                {"Location": "/hq/", "Set-Cookie": "hq_s=; Path=/hq/; Max-Age=0"},
+                {"Location": "/hq/", "Set-Cookie": session.clear(self.headers)},
             )
         self._api("POST", path)
 
@@ -600,13 +591,7 @@ class Handler(BaseHTTPRequestHandler):
         if PASSWORD_HASH and check_login(
             (f.get("username") or [""])[0], (f.get("password") or [""])[0]
         ):
-            token = secrets.token_urlsafe(32)
-            with _auth_lock:
-                _sessions[token] = time.time()
-            secure = (
-                "; Secure" if self.headers.get("X-Forwarded-Proto") == "https" else ""
-            )
-            cookie = f"hq_s={token}; Path=/hq/; HttpOnly; SameSite=Strict{secure}"
+            cookie = session.issue(self.headers)
             return self._send(
                 303, b"", "text/plain", {"Location": "/hq/", "Set-Cookie": cookie}
             )

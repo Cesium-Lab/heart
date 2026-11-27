@@ -35,6 +35,9 @@
 | Grafana             | docker (`monitoring/`) | `127.0.0.1:42003` | private/admin                                                                 |
 | Prometheus          | docker (`monitoring/`) | `127.0.0.1:42004` | private only                                                                  |
 
+Inbox, Notes, Status, Tasks and HQ share one login (cookie `cl_s`, `backend/services/common/session.py`),
+valid until an hour unused; logging out of one logs out of all.
+
 `./scripts/status.sh` shows what is actually running right now; the same output is on the
 site: `/status/` (public API checks, plus a "Run status.sh" button that asks for the inbox login
 off-LAN) and `/inbox/status` (inbox access rules).
