@@ -2631,7 +2631,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def _gate(self, path: str) -> tuple[bool, dict | None]:
         """(allowed, session). Home network: allowed, no session. Elsewhere: needs a login."""
-        if path in ("/inbox/health", "/inbox/listen.json") or is_home(self.headers):
+        if path in (
+            "/inbox/health",
+            "/inbox/listen.json",
+            "/inbox/music.json",
+        ) or is_home(self.headers):
             return True, None
         sess = session_for(self.headers)
         return sess is not None, sess
@@ -2733,6 +2737,17 @@ class Handler(BaseHTTPRequestHandler):
                 export_zip(m[1], picks, files, reps),
                 "application/zip",
                 {"Content-Disposition": f'attachment; filename="{name}"'},
+            )
+        elif (
+            path == "/inbox/music.json"
+        ):  # public, read-only: the /music/ page's note sections
+            can_edit = is_home(self.headers) or session_for(self.headers) is not None
+            self._send(
+                200,
+                json.dumps(
+                    {"sections": notes.public_music(), "edit": can_edit}
+                ).encode(),
+                "application/json",
             )
         elif path == "/inbox/listen.json":  # public: the /music/ page reads it
             can_edit = is_home(self.headers) or session_for(self.headers) is not None

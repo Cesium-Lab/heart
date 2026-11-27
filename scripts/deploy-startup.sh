@@ -2,7 +2,7 @@
 # deploy-startup.sh: build the site and (re)install/start every service on mr-ray.
 # Runs the stages in scripts/deploy/ in order. Uses sudo. Run from anywhere.
 #
-#   Full deploy/repair (all stages: frontend backends monitoring apache verify):
+#   Full deploy/repair (all stages: frontend backends monitoring docs apache verify):
 #       ./scripts/deploy-startup.sh
 #
 #   Run one stage only (e.g. after changing a unit file or Apache config):
@@ -24,6 +24,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # Authenticate once, then run each independently usable deployment stage.
 # Cache sudo credentials once so individual stages do not repeatedly prompt.
 sudo -v
-for stage in frontend backends monitoring apache verify; do
+# docs starts SilverBullet (127.0.0.1:42905, public at docs.cesiumlab.net/docs/ via Apache's docs.conf).
+for stage in frontend backends monitoring docs apache verify; do
     "${SCRIPT_DIR}/deploy/${stage}.sh"
 done

@@ -29,6 +29,7 @@
 | Hashcheck (weekly)  | `hashcheck.timer`      | -                 | emails on problems (`backend/services/hashcheck/`)                            |
 | DataViz API         | `dataviz-backend`      | `127.0.0.1:42000` | `/api/dataviz/`                                                               |
 | DataViz GUI         | `dataviz-gui`          | `127.0.0.1:42002` | `dataviz.cesiumlab.net`                                                       |
+| SilverBullet (docs) | docker (`backend/services/silverbullet/`) | `127.0.0.1:42905` | `docs.cesiumlab.net/docs/` (its own login, always)                            |
 | Grafana             | docker (`monitoring/`) | `127.0.0.1:42003` | private/admin                                                                 |
 | Prometheus          | docker (`monitoring/`) | `127.0.0.1:42004` | private only                                                                  |
 
@@ -78,6 +79,7 @@ Assigned and reserved ports:
 | 42902 | Rotation visualizer API      |
 | 42903 | Setlister API                |
 | 42904 | Inbox                        |
+| 42905 | SilverBullet (docs editor)   |
 
 ## Adding a service
 
@@ -92,7 +94,7 @@ Assigned and reserved ports:
 ## Deploy
 
 - `./scripts/deploy-startup.sh` runs the stages in `scripts/deploy/`: `frontend.sh`, `backends.sh`,
-  `monitoring.sh`, `apache.sh`, `verify.sh`. Each can run on its own. Uses sudo.
+  `monitoring.sh`, `docs.sh`, `apache.sh`, `verify.sh`. Each can run on its own. Uses sudo.
 - A redeploy does **not** restart services that are already running. After code changes:
   `sudo systemctl restart <name>`.
 - Logs: `journalctl -u <name> -n 50 --no-pager`.

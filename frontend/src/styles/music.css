@@ -382,3 +382,37 @@ ul {
     display: none;
   }
 }
+/* "Edit in Notes" next to a section title (only shown to you). */
+.mu-editnotes {
+  margin-left: 12px;
+  color: var(--mu-red);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.mu-editnotes[hidden] {
+  display: none;
+}
+.mu-editnotes:hover {
+  opacity: 0.5;
+}
+/* Note columns: at least 360px each (they stack before they'd squeeze), up to 20% wider
+   overall than before (1240px -> 1490px); long titles/notes wrap instead of spilling out. */
+.mu-cols {
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  max-width: 1490px;
+}
+.mu-cols .mu-section,
+.mu-links li {
+  min-width: 0;
+}
+.mu-links .mu-plus,
+.mu-links small {
+  overflow-wrap: anywhere;
+}
+.mu-links .mu-plus {
+  width: auto;
+  max-width: 100%;
+}

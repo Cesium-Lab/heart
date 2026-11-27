@@ -1,3 +1,72 @@
+---
+// Subway map of the site: each section is a line, pages are stations, Home is the interchange.
+// Coordinates are in the SVG's 760x560 space. `side` = where the label sits.
+const HOME = { x: 380, y: 280 };
+const lines = [
+  {
+    name: "Main", color: "#e4002b",
+    path: [[380, 280], [680, 280], [720, 320], [720, 520]],
+    stops: [
+      { name: "About Me", href: "/about_me/", x: 460, y: 280, side: "up" },
+      { name: "Everything Hub", href: "/everything-hub/", x: 550, y: 280, side: "down" },
+      { name: "Clock", href: "/now/", x: 640, y: 280, side: "up" },
+      { name: "Status", href: "/status/", x: 720, y: 360, side: "left" },
+      { name: "Inbox 🔒", href: "/inbox/", x: 720, y: 430, side: "left" },
+      { name: "Docs 🔒 ↗", href: "https://docs.cesiumlab.net/docs/", x: 720, y: 500, side: "left" },
+    ],
+  },
+  {
+    name: "Music", color: "#ffb000",
+    path: [[380, 280], [380, 200], [460, 120], [720, 120]],
+    stops: [
+      { name: "Music", href: "/music/", x: 380, y: 200, side: "left" },
+      { name: "Setlister", href: "/music/setlister/", x: 500, y: 120, side: "up" },
+      { name: "TapTempo", href: "/music/taptempo/", x: 595, y: 120, side: "up" },
+      { name: "Tuner", href: "/music/tuner/", x: 690, y: 120, side: "up" },
+    ],
+  },
+  {
+    name: "Nerd", color: "#0078d4",
+    path: [[380, 280], [60, 280]],
+    stops: [
+      { name: "SFO Planes", href: "/planes/", x: 300, y: 280, side: "down" },
+      { name: "Rotation Viz", href: "/rotation-viz/rotation-visualizer/", x: 200, y: 280, side: "up" },
+      { name: "DataViz ↗", href: "https://dataviz.cesiumlab.net", x: 95, y: 280, side: "down" },
+    ],
+  },
+  {
+    name: "Dashboards", color: "#00a651",
+    path: [[380, 280], [380, 360], [300, 440], [80, 440]],
+    stops: [
+      { name: "System Stats", href: "/dash/system/", x: 380, y: 360, side: "right" },
+      { name: "Visitor Log", href: "/dash/visitors/", x: 250, y: 440, side: "down" },
+      { name: "Vibes Only", href: "/dash/vibes/", x: 120, y: 440, side: "down" },
+    ],
+  },
+  {
+    name: "Other dimensions", color: "#8e44ad",
+    path: [[380, 280], [150, 50]],
+    stops: [
+      { name: "Cyberspace", href: "/Others/cyberspace/", x: 334, y: 234, side: "lowleft" },
+      { name: "Terminal", href: "/Others/terminal/", x: 288, y: 188, side: "lowleft" },
+      { name: "Minimal Mode", href: "/Others/minimal/", x: 242, y: 142, side: "lowleft" },
+      { name: "Sites I Don't Need", href: "/Others/sites-i-dont-need/", x: 196, y: 96, side: "lowleft" },
+      { name: "Old Homepage", href: "/Others/old_index/", x: 150, y: 50, side: "lowleft" },
+    ],
+  },
+];
+const pts = (path) => path.map(([x, y]) => `${x},${y}`).join(" ");
+const label = (s) =>
+  ({
+    up: { x: s.x, y: s.y - 14, anchor: "middle" },
+    down: { x: s.x, y: s.y + 26, anchor: "middle" },
+    left: { x: s.x - 14, y: s.y + 6, anchor: "end" },
+    right: { x: s.x + 14, y: s.y + 6, anchor: "start" },
+    lowleft: { x: s.x - 16, y: s.y + 16, anchor: "end" }, // under a diagonal line
+  })[s.side];
+const external = (href) => href.startsWith("http");
+---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,6 +98,17 @@
   a:visited { color: #800080; }
   a:hover { background: #ffff00; color: #ff00ff; }
   .note { color: #555; font-size: 16px; }
+  .metro { margin: 0 0 16px; border: 2px inset #fff; background: #fff; }
+  .metro svg { display: block; width: 100%; height: auto; }
+  .metro .line { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+  .metro .stop { fill: #fff; stroke-width: 4; }
+  .metro text { font-family: 'VT323', monospace; font-size: 19px; fill: #000080; }
+  .metro a:hover text { fill: #ff00ff; }
+  .metro a:hover .stop { fill: #ffff00; }
+  .metro .home circle { fill: #fff; stroke: #000; stroke-width: 5; }
+  .metro .home text { font-family: 'Press Start 2P', monospace; font-size: 13px; fill: #000; }
+  .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; padding: 8px; border-top: 2px groove #fff; font-size: 18px; }
+  .legend span::before { content: ""; display: inline-block; width: 22px; height: 7px; margin-right: 6px; vertical-align: middle; border-radius: 4px; background: var(--c); }
   hr { margin: 18px 0 14px; border: 0; border-top: 2px ridge #fff; }
   .footer { margin: 0; text-align: center; font-size: 16px; }
   @media (max-width: 560px) { body { padding: 10px; } .inner { padding: 15px; } .map-grid { grid-template-columns: 1fr; } .titlebar { font-size: 8px; } }
@@ -40,9 +120,33 @@
     <div class="inner">
       <h1>SITE MAP</h1>
       <p class="intro">Every known corner of this computer, neatly indexed.</p>
+      <figure class="metro" aria-label="Subway map of the site">
+        <svg viewBox="0 0 760 560" role="img">
+          <title>Site map as a subway map</title>
+          {lines.map((l) => <polyline class="line" points={pts(l.path)} stroke={l.color} />)}
+          {
+            lines.map((l) =>
+              l.stops.map((s) => (
+                <a href={s.href} {...(external(s.href) ? { target: "_blank", rel: "noopener" } : {})}>
+                  <circle class="stop" cx={s.x} cy={s.y} r="8" stroke={l.color} />
+                  <text x={label(s).x} y={label(s).y} text-anchor={label(s).anchor}>{s.name}</text>
+                </a>
+              )),
+            )
+          }
+          <a class="home" href="/">
+            <circle cx={HOME.x} cy={HOME.y} r="15" />
+            <text x={HOME.x + 22} y={HOME.y + 32}>HOME</text>
+          </a>
+        </svg>
+        <figcaption class="legend">
+          {lines.map((l) => <span style={`--c:${l.color}`}>{l.name}</span>)}
+          <span style="--c:transparent">🔒 = login · ↗ = other site</span>
+        </figcaption>
+      </figure>
       <div class="map-grid">
         <section class="map-group"><h2>★ MAIN PAGES</h2><ul>
-          <li><a href="/">Internet Home</a></li><li><a href="/about_me/">About Me</a></li><li><a href="/everything-hub/">Everything Hub</a></li><li><a href="/now/">Clock</a></li><li><a href="/inbox/">Inbox</a> <span class="note">(private)</span></li><li><a href="/status/">Status</a></li>
+          <li><a href="/">Internet Home</a></li><li><a href="/about_me/">About Me</a></li><li><a href="/everything-hub/">Everything Hub</a></li><li><a href="/now/">Clock</a></li><li><a href="/inbox/">Inbox</a> <span class="note">(private)</span></li><li><a href="https://docs.cesiumlab.net/docs/">Docs</a> <span class="note">(private)</span></li><li><a href="https://docs.cesiumlab.net/music/">Music notes</a> <span class="note">(private)</span></li><li><a href="/status/">Status</a></li>
         </ul></section>
         <section class="map-group"><h2>★ DASHBOARDS</h2><ul>
           <li><a href="/dash/system/">System Stats</a></li><li><a href="/dash/visitors/">Visitor Log</a></li><li><a href="/dash/vibes/">Vibes Only</a></li>

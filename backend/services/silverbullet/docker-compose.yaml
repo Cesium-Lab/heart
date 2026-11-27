@@ -1,0 +1,20 @@
+# SilverBullet: edit the Markdown files in /srv/data/docs from any browser, at
+# docs.cesiumlab.net (Apache vhost deploy/apache/sites-available/docs.conf -> 127.0.0.1:42905).
+# Started by scripts/deploy/docs.sh. Login: SB_USER in /etc/cesium/silverbullet.env.
+name: silverbullet
+
+services:
+  silverbullet:
+    image: ghcr.io/silverbulletmd/silverbullet:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:42905:3000"
+    env_file:
+      - /etc/cesium/silverbullet.env
+    environment:
+      SB_FOLDER: /space
+      # Files are written as Colin's user (the exFAT drive is mounted as uid 1000 anyway).
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - /srv/data/docs:/space

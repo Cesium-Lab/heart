@@ -9,7 +9,7 @@ Checked 2026-11-22.
   local DNS may also call it `mr.ray`).
 - **Domain**: [cesiumlab.net](https://cesiumlab.net), registered and routed through Cloudflare
   (about $12/year).
-  The `cloudflared` tunnel sends `cesiumlab.net` and `dataviz.cesiumlab.net` to Apache on
+  The `cloudflared` tunnel sends `cesiumlab.net`, `dataviz.cesiumlab.net` and `docs.cesiumlab.net` to Apache on
   `127.0.0.1:80`; everything else gets a 404.
 - **Tailscale**: private remote access only. `tailscale serve`/`funnel` are not used.
 - `dnsmasq` provides local DNS (config: `/etc/dnsmasq.conf`).
@@ -52,6 +52,7 @@ Checked 2026-11-22.
 │       └── masters/
 ├── inbox/        # the inbox's day folders (backend/services/inbox/)
 ├── notes/        # filed inbox items: song-ideas, licks, content-tips, business, later (.md)
+├── docs/         # SilverBullet: config at the top, pages in spaces/<id>/ (docs.cesiumlab.net/docs/)
 └── cesium/       # engineering projects + datasets
 ```
 

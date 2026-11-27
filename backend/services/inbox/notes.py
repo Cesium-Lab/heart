@@ -23,6 +23,8 @@ INBOX = Path(os.getenv("INBOX_DIR", "/srv/data/inbox"))
 BUCKETS = {  # file stem -> (title, icon)
     "licks": ("Licks to learn", "🎸"),
     "song-ideas": ("Song ideas", "🎵"),
+    "music-tools": ("Music tools", "🧰"),
+    "listen": ("Listen & watch", "🎧"),
     "content-tips": ("Content tips", "📱"),
     "business": ("Business and production", "💼"),
     "later": ("Later (not music)", "🗂️"),
@@ -333,6 +335,9 @@ GUESS = {
     "writing progression",
     "content-tips": "reel reels post posting views algorithm followers content engagement "
     "tiktok instagram viral trial editing caption thumbnail creator",
+    "music-tools": "tool tools app plugin generator splitter remover stems stem vocal uvr tabs "
+    "transcribe transcription daw editor",
+    "listen": "listen watch album ep track video podcast interview documentary playlist",
     "business": "mix mixing master mastering record recording producer production gig "
     "show shows booking label funding grant royalties distribution spotify release pr",
 }
@@ -380,6 +385,35 @@ def entry_item(ident: str, entry: dict, folder: Path, cache_path: Path) -> dict:
     f += [("file", x) for x in files]
     f += [("note", clean_note(words))] if words else []
     return {"title": title, "fields": f, "extra": []}
+
+
+# Buckets shown read-only on the public /music/ page (GET /inbox/music.json). Only titles,
+# links, captions, and notes go out: never the files, thumbnails, or inbox "from" links.
+PUBLIC_BUCKETS = ["licks", "song-ideas", "music-tools"]
+
+
+def public_music() -> list[dict]:
+    out = []
+    for b in PUBLIC_BUCKETS:
+        items, _ = load(b)
+        out.append(
+            {
+                "bucket": b,
+                "title": BUCKETS[b][0],
+                "icon": BUCKETS[b][1],
+                "items": [
+                    {
+                        "title": it["title"],
+                        "links": fields(it, "link"),
+                        "by": field(it, "by"),
+                        "note": field(it, "note"),
+                        "caption": field(it, "caption")[:200],
+                    }
+                    for it in items
+                ],
+            }
+        )
+    return out
 
 
 def counts() -> dict[str, int]:

@@ -100,6 +100,7 @@ PUBLIC_APIS=(
     "planes     /api/planes/weather|http://127.0.0.1/api/planes/weather||f\"{d.get('station')} {d.get('category') or '?'}\" + (', ' + d['error'] if d.get('error') else '')"
     "planes     /api/planes/replay|http://127.0.0.1/api/planes/replay||f\"{len(d.get('planes',[]))} planes recorded\""
     "dataviz.cesiumlab.net|http://127.0.0.1/|dataviz.cesiumlab.net|"
+    "docs.cesiumlab.net/docs/|http://127.0.0.1/docs/|docs.cesiumlab.net|"
 )
 # Outside services the site depends on (one tiny request each).
 UPSTREAM_APIS=(

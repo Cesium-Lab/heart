@@ -9,80 +9,12 @@ const tools = [
   { name: "Piano", href: "/music/piano/", note: "Piano in the browser" },
 ];
 
-const sections = [
-  {
-    id: "tabs",
-    title: "Make tabs",
-    links: [
-      { name: "My Guitar Tabs", href: "https://app.my-guitar-tabs.com/create", note: "Tab editor" },
-      {
-        name: "Songscription",
-        href: "https://www.songscription.ai/guitar-tab-generator",
-        note: "AI guitar tab generator (from audio)",
-      },
-      { name: "Tabby", href: "https://tabby.pro/instruments/guitar", note: "Guitar tabs" },
-    ],
-  },
-  {
-    id: "licks",
-    title: "Licks & lessons",
-    links: [
-      { name: "Bebop licks", href: "https://www.jazzguitar.be/blog/bebop-licks/", note: "jazzguitar.be" },
-      {
-        name: "21 pentatonic licks",
-        href: "https://www.guitar-pro.com/blog/p/34480-21-pentatonic-licks-to-spice-up-your-solos",
-        note: "Guitar Pro blog",
-      },
-      {
-        name: "Bold as Love (John Mayer) tab",
-        href: "https://www.songsterr.com/a/wsa/john-mayer-bold-as-love-tab-s39727",
-        note: "Songsterr",
-      },
-      {
-        name: "Play like B.B. King",
-        href: "https://www.fundamental-changes.com/video-lesson-play-like-b-b-king/",
-        note: "Video lesson, Fundamental Changes",
-      },
-    ],
-  },
-  {
-    id: "songwriting",
-    title: "Songwriting",
-    links: [
-      {
-        name: "10 songwriting techniques",
-        href: "https://blog.landr.com/10-songwriting-techniques/",
-        note: "LANDR blog",
-      },
-    ],
-  },
-  {
-    id: "stems",
-    title: "Stems & vocal removal",
-    links: [
-      { name: "Ultimate Vocal Remover", href: "https://ultimatevocalremover.com/", note: "Free app (UVR)" },
-      { name: "UVR walkthrough", href: "https://www.youtube.com/watch?v=qYK_8xkIIOw", note: "YouTube" },
-      { name: "Model: MDX23C-InstVoc HQ", href: "", note: "The one to pick in UVR" },
-      { name: "Logic Pro: Stem Splitter", href: "", note: "Built into Logic" },
-    ],
-  },
-  {
-    id: "monarch",
-    title: "MONARCH",
-    links: [
-      { name: "monarchonstage.com", href: "https://monarchonstage.com/", note: "The band site" },
-      {
-        name: "Website code (GitHub)",
-        href: "https://github.com/monarch-on-stage/website",
-        note: "monarch-on-stage/website",
-      },
-    ],
-  },
-  {
-    id: "later",
-    title: "To check out",
-    links: [{ name: "Playhouse", href: "https://playhouse.band/", note: "playhouse.band" }],
-  },
+// The note sections (Licks to learn, Song ideas, Music tools) come from your Notes buckets on
+// mr-ray, read-only, via /inbox/music.json (scripts/music-notes.js). Edit them in /inbox/notes/.
+const noteSections = [
+  { id: "licks", title: "Licks to learn" },
+  { id: "song-ideas", title: "Song ideas" },
+  { id: "music-tools", title: "Music tools" },
 ];
 ---
 
@@ -110,7 +42,7 @@ const sections = [
       <nav aria-label="Sections">
         <a href="#tools">Tools</a>
         <a href="#listen">Listen</a>
-        {sections.map((s) => <a href={`#${s.id}`}>{s.title === "Stems & vocal removal" ? "Stems" : s.title}</a>)}
+        {noteSections.map((s) => <a href={`#${s.id}`}>{s.title}</a>)}
         <a class="mu-ext" href="https://monarchonstage.com/" target="_blank" rel="noopener">MONARCH ↗</a>
         <a class="mu-ext" href="/">Cesium Lab</a>
       </nav>
@@ -155,36 +87,26 @@ const sections = [
       </section>
 
       <div class="mu-cols">
-      {
-        sections.map((s) => (
-          <section id={s.id} class="mu-section">
-            <h2>{s.title}</h2>
-            <ul class="mu-grid mu-links">
-              {s.links.map((l) =>
-                l.href ? (
-                  <li>
-                    <a class="mu-plus" href={l.href} target="_blank" rel="noopener">
-                      {l.name}
-                    </a>
-                    <small>{l.note}</small>
-                  </li>
-                ) : (
-                  <li>
-                    <span class="mu-plus mu-plain">{l.name}</span>
-                    <small>{l.note}</small>
-                  </li>
-                ),
-              )}
-            </ul>
-          </section>
-        ))
-      }
+        {
+          noteSections.map((s) => (
+            <section id={s.id} class="mu-section" data-bucket={s.id}>
+              <h2>
+                {s.title}
+                <a class="mu-editnotes" href={`/inbox/notes/${s.id}`} hidden>Edit in Notes ↗</a>
+              </h2>
+              <ul class="mu-grid mu-links">
+                <li><small>Loading…</small></li>
+              </ul>
+            </section>
+          ))
+        }
       </div>
     </main>
 
 
     <script>
       import "../../scripts/listen.js";
+      import "../../scripts/music-notes.js";
     </script>
   </body>
 </html>

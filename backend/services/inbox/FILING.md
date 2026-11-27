@@ -12,6 +12,8 @@ One file per bucket in `/srv/data/notes/` (`NOTES_DIR`):
 | ----------------- | ---------------------------------------------------------------- |
 | `song-ideas.md`   | Lyrics, hooks, chord ideas, arrangements: a loose pile           |
 | `licks.md`        | Guitar/piano things to learn (needs a video, audio, or tab link) |
+| `music-tools.md`  | Tools and references: tab makers, stem splitters, songwriting guides, MONARCH links |
+| `listen.md`       | Videos/songs to listen to or watch (the /music/ checklist; `done:` when checked off) |
 | `content-tips.md` | Reels, hooks, posting times/habits, trial reels, editing         |
 | `business.md`     | Business _and_ production: funding, shows, mixing, recording     |
 | `later.md`        | Anything not about music that's worth keeping                    |
@@ -99,3 +101,10 @@ better titles over many entries at once.
   highlighted). It goes through `/inbox/notes/find/<day>/<n>`, which looks in the bucket it was
   filed to first, then all buckets, so it still works after a note is moved. If the note was
   deleted, it says so.
+
+## On /music/
+
+Licks to learn, Song ideas, and Music tools are shown **publicly, read-only** on `/music/`
+(`notes.PUBLIC_BUCKETS`, served by `GET /inbox/music.json`): titles, links, notes, captions only;
+never files, thumbnails, or the inbox "from" links. Listen & watch is the checklist there. Edit
+everything in `/inbox/notes/`; the page shows "Edit in Notes" links when you're home or logged in.

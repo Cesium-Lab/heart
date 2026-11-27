@@ -28,6 +28,10 @@ unit_exists dataviz-gui.service && check_url "DataViz Dashboard" "http://127.0.0
 # Monitoring is optional, so probe it only when Docker Compose is installed.
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     check_url "Grafana" "http://127.0.0.1:42003/login"
+    # SilverBullet answers its login redirect; only checked once its login file exists.
+    if sudo test -f /etc/cesium/silverbullet.env; then
+        check_url "SilverBullet" "http://127.0.0.1:42905/"
+    fi
     check_url "Prometheus" "http://127.0.0.1:42004/-/healthy"
 fi
 

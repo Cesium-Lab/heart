@@ -34,6 +34,7 @@ LAN / SSH ───────────────────────�
                                         /inbox/        → inbox          :42904  (password off-LAN)
                                         /api/dataviz   → dataviz API    :42000
                                         dataviz.cesiumlab.net → NiceGUI :42002
+                                        docs.cesiumlab.net    → SilverBullet :42905
 Private (SSH tunnel): Grafana :42003 · Prometheus :42004
 LAN (development):    astro dev :42800
 ```
