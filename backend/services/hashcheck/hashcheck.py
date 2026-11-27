@@ -58,6 +58,13 @@ SKIP_DIRS = {
     ".uploading",  # the inbox's in-progress uploads
 }
 SKIP_FILES = {".DS_Store", "Thumbs.db"}
+# Folders (relative to the data dir) whose files rotate on purpose, e.g. the tasks service's
+# daily backups: old copies get deleted, which would otherwise be reported as MISSING.
+SKIP_PATHS = {
+    p.strip().strip("/")
+    for p in os.getenv("HASHCHECK_SKIP_PATHS", "backups/tasks").split(",")
+    if p.strip()
+}
 
 
 def log(msg: str) -> None:
@@ -75,7 +82,13 @@ def sha256(path: Path) -> str:
 def walk(root: Path):
     """Every regular file under root (relative path string, Path), skipping clutter."""
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        here = os.path.relpath(dirpath, root)
+        dirnames[:] = sorted(
+            d
+            for d in dirnames
+            if d not in SKIP_DIRS
+            and os.path.normpath(os.path.join(here, d)) not in SKIP_PATHS
+        )
         for name in sorted(filenames):
             if name in SKIP_FILES or name.startswith("._"):
                 continue

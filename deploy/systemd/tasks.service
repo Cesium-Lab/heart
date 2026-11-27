@@ -1,0 +1,22 @@
+[Unit]
+Description=Tasks: personal task tracker (127.0.0.1:42906, Apache at /tasks/)
+After=network-online.target
+Wants=network-online.target
+# Data lives on the internal drive (/srv/state); daily backups go to /srv/data when it's there.
+RequiresMountsFor=/srv/state
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/backend/services/tasks
+# Same login as the inbox (INBOX_USERNAME / INBOX_PASSWORD_HASH); tasks.env for overrides.
+EnvironmentFile=-/etc/cesium/inbox.env
+EnvironmentFile=-/etc/cesium/tasks.env
+ExecStart=/usr/bin/python3 server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -220,3 +220,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Personal data exports (e.g. a Notion export to import into Tasks). Never commit these.
+backend/services/tasks/*_ExportBlock-*/
+backend/services/tasks/image*.png

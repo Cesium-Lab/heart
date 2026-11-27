@@ -135,6 +135,32 @@ jobs:
           curl -fsS -H 'X-Forwarded-For: 192.168.0.5' http://127.0.0.1:42904/inbox/notes/licks | grep -q 'ci lick'
           python filing.py 2>&1 | grep -q 'filing.py unfiled'
 
+  tasks-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # The main flow: create a course, add an assignment with a subtask, see it as upcoming,
+      # mark it done; plus restart persistence and the login/cross-site guards.
+      - name: Course, assignment, subtask, done
+        working-directory: backend/services/tasks
+        run: |
+          # Own port, so it can never talk to a real tasks service running on 42906.
+          export TASKS_DIR="$RUNNER_TEMP/tasks" TASKS_BACKUP_NEEDS="$RUNNER_TEMP/none" TASKS_PORT=42977
+          python3 server.py & sleep 1
+          B=http://127.0.0.1:42977/tasks
+          H=(-H 'X-Forwarded-For: 192.168.0.5' -H 'X-Tasks: 1' -H 'Content-Type: application/json')
+          G=$(curl -fsS "${H[@]}" -d '{"name":"School"}' $B/api/groups | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          T=$(curl -fsS "${H[@]}" -d "{\"title\":\"HW 4\",\"group\":\"$G\",\"due\":\"$(date -d '+3 days' +%F)\"}" $B/api/tasks | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          curl -fsS "${H[@]}" -d "{\"title\":\"Problem 2\",\"parent\":\"$T\"}" $B/api/tasks | grep -q "\"group\": \"$G\""
+          curl -fsS "${H[@]}" -X PATCH -d '{"status":"done"}' $B/api/tasks/$T | grep -q '"status": "done"'
+          kill %1; sleep 1; python3 server.py & sleep 1
+          curl -fsS "${H[@]}" $B/api/state | python3 -c 'import json,sys; d=json.load(sys.stdin); assert [t["status"] for t in d["tasks"] if t["title"]=="HW 4"]==["done"]; assert len(d["tasks"])==2'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 8.8.8.8' $B/api/state)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 192.168.0.5' -d '{"title":"x"}' $B/api/tasks)" = 403
+
   hashcheck-smoke:
     runs-on: ubuntu-latest
 
