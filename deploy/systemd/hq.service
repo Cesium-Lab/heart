@@ -1,0 +1,23 @@
+[Unit]
+Description=HQ: people, organizations, projects, songs (127.0.0.1:42907, Apache at /hq/; login always)
+After=network-online.target
+Wants=network-online.target
+# Data lives on the internal drive (/srv/state); daily backups go to /srv/data when it's there.
+RequiresMountsFor=/srv/state
+
+[Service]
+Type=simple
+User=cskin
+WorkingDirectory=/home/cskin/Cesium/heart/backend/services/hq
+# Same login as the inbox (INBOX_USERNAME / INBOX_PASSWORD_HASH); hq.env for overrides.
+EnvironmentFile=-/etc/cesium/inbox.env
+EnvironmentFile=-/etc/cesium/hq.env
+ExecStart=/usr/bin/python3 server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

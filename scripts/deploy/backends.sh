@@ -40,6 +40,11 @@ if [[ -f "${INBOX_DIR}/server.py" ]]; then
     install -d -m 0755 /srv/data/inbox 2>/dev/null || true
 fi
 
+# HQ keeps hq.json (contacts) on the internal drive, owner-only; daily backups to /srv/data/backups/hq.
+if [[ -f "${REPO_ROOT}/backend/services/hq/server.py" ]]; then
+    sudo install -d -m 0700 -o cskin -g cskin /srv/state/hq
+fi
+
 # Tasks keeps tasks.json on the internal drive; daily backups go to /srv/data/backups/tasks.
 if [[ -f "${REPO_ROOT}/backend/services/tasks/server.py" ]]; then
     sudo install -d -m 0755 -o cskin -g cskin /srv/state/tasks
@@ -59,7 +64,7 @@ fi
 
 # Copy each available unit definition into systemd.
 log "Installing backend service definitions"
-for unit in rotation-viz.service setlister.service planes.service inbox.service tasks.service dataviz-backend.service dataviz-gui.service hashcheck.service hashcheck.timer; do
+for unit in rotation-viz.service setlister.service planes.service inbox.service tasks.service hq.service dataviz-backend.service dataviz-gui.service hashcheck.service hashcheck.timer; do
     if [[ -f "${SYSTEMD_DIR}/${unit}" ]]; then
         sudo install -m 0644 "${SYSTEMD_DIR}/${unit}" "/etc/systemd/system/${unit}"
     fi
@@ -69,7 +74,7 @@ sudo systemctl daemon-reload
 
 # Configure installed backend services to start now and at boot.
 log "Enabling backend services"
-for unit in rotation-viz.service setlister.service planes.service inbox.service tasks.service dataviz-backend.service dataviz-gui.service; do
+for unit in rotation-viz.service setlister.service planes.service inbox.service tasks.service hq.service dataviz-backend.service dataviz-gui.service; do
     enable_installed_unit "${unit}"
 done
 # hashcheck runs from its timer only (enabling the service itself would start a full,

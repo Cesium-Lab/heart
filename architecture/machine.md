@@ -52,6 +52,7 @@ Checked 2026-11-22.
 │       └── masters/
 ├── inbox/        # the inbox's day folders (backend/services/inbox/)
 ├── notes/        # filed inbox items: song-ideas, licks, content-tips, business, later (.md)
+├── backups/hq/     # daily copies of /srv/state/hq/hq.json (contacts; last 30; skipped by hashcheck)
 ├── backups/tasks/  # daily copies of /srv/state/tasks/tasks.json (last 30; skipped by hashcheck)
 ├── docs/         # SilverBullet: config at the top, pages in spaces/<id>/ (docs.cesiumlab.net/docs/)
 └── cesium/       # engineering projects + datasets

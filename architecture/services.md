@@ -27,6 +27,7 @@
 | Planes (SFO map)    | `planes`               | `127.0.0.1:42901` | `/planes/` (map + board drawer), `/api/planes/`                               |
 | Inbox               | `inbox`                | `127.0.0.1:42904` | `/inbox/`, `/inbox/notes/` (no password on LAN/Tailscale; password elsewhere) |
 | Tasks               | `tasks`                | `127.0.0.1:42906` | `/tasks/` (same access as the inbox; data in `/srv/state/tasks`)              |
+| HQ                  | `hq`                   | `127.0.0.1:42907` | `/hq/` (login always, even on the LAN; contacts; data in `/srv/state/hq`)     |
 | Hashcheck (weekly)  | `hashcheck.timer`      | -                 | emails on problems (`backend/services/hashcheck/`)                            |
 | DataViz API         | `dataviz-backend`      | `127.0.0.1:42000` | `/api/dataviz/`                                                               |
 | DataViz GUI         | `dataviz-gui`          | `127.0.0.1:42002` | `dataviz.cesiumlab.net`                                                       |
@@ -82,6 +83,7 @@ Assigned and reserved ports:
 | 42904 | Inbox                        |
 | 42905 | SilverBullet (docs editor)   |
 | 42906 | Tasks (task tracker)         |
+| 42907 | HQ (people, projects, songs) |
 
 ## Adding a service
 

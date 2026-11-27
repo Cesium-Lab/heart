@@ -28,6 +28,7 @@ SERVICES=(
     "planes|42901|http://127.0.0.1:42901/api/planes/health"
     "inbox|42904|http://127.0.0.1:42904/inbox/health"
     "tasks|42906|http://127.0.0.1:42906/tasks/health"
+    "hq|42907|http://127.0.0.1:42907/hq/health"
     "hashcheck|-|-"
     "dataviz-backend|42000|http://127.0.0.1:42000/api/v1/health"
     "dataviz-gui|42002|http://127.0.0.1:42002/"

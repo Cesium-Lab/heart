@@ -62,7 +62,7 @@ SKIP_FILES = {".DS_Store", "Thumbs.db"}
 # daily backups: old copies get deleted, which would otherwise be reported as MISSING.
 SKIP_PATHS = {
     p.strip().strip("/")
-    for p in os.getenv("HASHCHECK_SKIP_PATHS", "backups/tasks").split(",")
+    for p in os.getenv("HASHCHECK_SKIP_PATHS", "backups/tasks,backups/hq").split(",")
     if p.strip()
 }
 

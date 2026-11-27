@@ -11,7 +11,7 @@ require_command systemctl
 
 # Check every installed unit while ignoring optional units not deployed here.
 log "Checking installed services"
-for unit in apache2.service frontend-build.service rotation-viz.service setlister.service planes.service inbox.service tasks.service dataviz-backend.service dataviz-gui.service cloudflared.service; do
+for unit in apache2.service frontend-build.service rotation-viz.service setlister.service planes.service inbox.service tasks.service hq.service dataviz-backend.service dataviz-gui.service cloudflared.service; do
     check_unit "${unit}"
 done
 
@@ -23,6 +23,7 @@ unit_exists setlister.service && check_url "Setlister API" "http://127.0.0.1:429
 unit_exists planes.service && check_url "Planes API" "http://127.0.0.1:42901/api/planes/health"
 unit_exists inbox.service && check_url "Inbox" "http://127.0.0.1:42904/inbox/health"
 unit_exists tasks.service && check_url "Tasks" "http://127.0.0.1:42906/tasks/health"
+unit_exists hq.service && check_url "HQ" "http://127.0.0.1:42907/hq/health"
 unit_exists dataviz-backend.service && check_url "DataViz API" "http://127.0.0.1:42000/api/v1/health"
 unit_exists dataviz-gui.service && check_url "DataViz Dashboard" "http://127.0.0.1:42002/"
 

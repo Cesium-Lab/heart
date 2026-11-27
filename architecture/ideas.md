@@ -11,9 +11,9 @@ serving the site.
   Rebuildable from the files. Reference sketch: `docs/api/MUSIC_STORAGE.md` (assumes Postgres).
 - **Juice**: a small API that Claude/Codex can call to search lyrics and notes. Reference sketch:
   `docs/api/ASSISTANT_MEMORY.md` (assumes Postgres + a memories table).
-- **Contacts**: a private people database (who someone is, how you know them, organizations,
-  relationships), replacing Notion. Someday, private only. The old plan's people model lives in
-  `archive/docs/api/BIG.md` and `BACKEND.md`.
+- **Contacts**: built 2026-11-27 as HQ (`backend/services/hq/`, `/hq/`). Still to come there:
+  Career HQ (companies + applications, still in the Notion export), social media / creator
+  content, events / interactions / opportunities, and a follow-up view.
 
 ## Music
 
@@ -22,6 +22,11 @@ serving the site.
   (`/music/taptempo/`) and Tuner (`/music/tuner/`, built 2026-11-24):
   - **SPECTRUM**: live spectrogram, waveform and loudness meter for the mic or a dropped-in mix
     (browser only).
+  - **SONG SKETCH**: quick chicken-scratch notes for a song idea, like the scratch pages in
+    SilverBullet but with fields up top: **title, key, tempo (BPM), tuning** (maybe also time
+    signature and capo), then free notes/lyrics/chords below. One tap to start a new one; tempo
+    could come from TapTempo. Files are the truth: one Markdown file per song
+    (`/srv/data/music/<song>/lyrics/` or the SilverBullet music space), fields as a small header.
   - **STEMS PLAYER**: play a song's stems with per-track mute and solo; files come from
     `/srv/data`, opt-in songs only.
 - **MIDI logger**: Pi 3 plugged into the Alesis piano, records everything played with timestamps.

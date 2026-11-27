@@ -161,6 +161,33 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 8.8.8.8' $B/api/state)" = 401
           test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 192.168.0.5' -d '{"title":"x"}' $B/api/tasks)" = 403
 
+  hq-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Login is always required: make a throwaway password, log in, add a person linked to an
+      # org with a role, a project with a song, then check that deleting the org removes the link.
+      - name: Login, link, delete
+        working-directory: backend/services/hq
+        run: |
+          export HQ_DIR="$RUNNER_TEMP/hq" HQ_BACKUP_NEEDS="$RUNNER_TEMP/none" HQ_PORT=42982 INBOX_USERNAME=ci
+          export INBOX_PASSWORD_HASH=$(python3 -c 'import hashlib; s="00"*16; print("pbkdf2_sha256$1000$" + s + "$" + hashlib.pbkdf2_hmac("sha256", b"pw", bytes.fromhex(s), 1000).hex())')
+          python3 server.py & sleep 1
+          B=http://127.0.0.1:42982/hq
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: 192.168.0.5' $B/api/state)" = 401
+          curl -fsS -c jar -o /dev/null -d 'username=ci&password=pw' $B/login
+          H=(-b jar -H 'X-HQ: 1' -H 'Content-Type: application/json')
+          id() { python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])'; }
+          O=$(curl -fsS "${H[@]}" -d '{"name":"MONARCH","type":"Band"}' $B/api/orgs | id)
+          P=$(curl -fsS "${H[@]}" -d '{"name":"MONARCH"}' $B/api/projects | id)
+          curl -fsS "${H[@]}" -d "{\"name\":\"Song A\",\"project\":\"$P\"}" $B/api/songs >/dev/null
+          M=$(curl -fsS "${H[@]}" -d "{\"name\":\"Drummer\",\"links\":[{\"kind\":\"org\",\"id\":\"$O\",\"role\":\"drums\"}]}" $B/api/people | id)
+          curl -fsS "${H[@]}" -X DELETE $B/api/orgs/$O >/dev/null
+          curl -fsS "${H[@]}" $B/api/state | python3 -c "import json,sys; d=json.load(sys.stdin); p=[x for x in d['people'] if x['id']=='$M'][0]; assert p['links']==[], p; assert len(d['songs'])==1"
+
   hashcheck-smoke:
     runs-on: ubuntu-latest
 

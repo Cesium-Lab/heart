@@ -22,6 +22,10 @@ export default defineConfig({
           target: "http://127.0.0.1:42906",
           changeOrigin: true,
         },
+        "/hq": {
+          target: "http://127.0.0.1:42907",
+          changeOrigin: true,
+        },
         "/api/planes": {
           target: "http://127.0.0.1:42901",
           changeOrigin: true,

@@ -33,6 +33,7 @@ LAN / SSH ───────────────────────�
                                         /api/planes    → planes         :42901
                                         /inbox/        → inbox          :42904  (password off-LAN)
                                         /tasks/        → tasks          :42906  (password off-LAN)
+                                        /hq/           → hq             :42907  (password always)
                                         /api/dataviz   → dataviz API    :42000
                                         dataviz.cesiumlab.net → NiceGUI :42002
                                         docs.cesiumlab.net    → SilverBullet :42905

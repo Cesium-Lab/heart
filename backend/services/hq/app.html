@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
+<meta name="referrer" content="no-referrer">
+<title>HQ</title>
+<link rel="icon" href="/favicon.svg?v=5" type="image/svg+xml">
+<style>
+:root{--bg:#191919;--panel:#202020;--card:#252525;--hover:#2c2c2c;--ink:#e9e9e7;--muted:#9b9b98;--faint:#6f6f6c;
+  --line:#2f2f2f;--accent:#2383e2;--red:#e0645a}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font:14.5px/1.5 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+main{max-width:1400px;margin:0 auto;padding:18px 20px 80px}
+button{font:inherit;color:inherit}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;max-width:100%}
+input[type=date]{color-scheme:dark}
+a{color:var(--ink)}
+h1{font-size:30px;font-weight:700;margin:6px 0 2px}
+.sub{color:var(--muted);margin:0 0 14px}
+.tabs{display:flex;gap:2px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 10px;color:var(--muted);cursor:pointer;font-weight:500}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+.tabs .n{font-weight:400;color:var(--faint);margin-left:4px}
+.tabs .spacer{flex:1}
+.newbtn{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:5px 12px;font-weight:600;cursor:pointer;margin:4px 0}
+.plain{background:transparent;border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+.plain:hover{background:var(--hover)}
+.danger{color:var(--red)}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px;color:var(--muted);font-size:13.5px}
+.tools input[type=search]{min-width:240px;flex:1;max-width:420px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{background:none;border:0;padding:5px 10px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--hover);color:var(--ink)}
+.empty{padding:14px;color:var(--muted)}
+.tag{display:inline-block;padding:0 6px;border-radius:4px;font-size:13px;line-height:1.55;white-space:nowrap;font-weight:500;margin:1px 4px 1px 0}
+.c-gray{background:#5a5a5a;color:#f0efed}.c-brown{background:#603b2c;color:#f4eeee}.c-orange{background:#854c1d;color:#f8ecdf}
+.c-yellow{background:#89632a;color:#fef9e5}.c-green{background:#2b593f;color:#edf3ec}.c-blue{background:#28456c;color:#e7f3f8}
+.c-purple{background:#492f64;color:#f6f3f9}.c-pink{background:#69314c;color:#faf1f5}.c-red{background:#6e3630;color:#fdebec}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--ink)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;max-width:340px;overflow-wrap:anywhere}
+tr{cursor:pointer}
+tr:hover td{background:#1f1f1f}
+td.first{font-weight:600}
+.sm{color:var(--muted);font-size:13px}
+.cards{display:flex;gap:12px;overflow-x:auto;align-items:flex-start;padding-bottom:12px}
+.col{flex:0 0 280px;background:#1e1e1e;border-radius:10px;padding:8px}
+.colh{display:flex;gap:8px;align-items:center;padding:4px 4px 8px;color:var(--muted)}
+.card{background:var(--card);border-radius:8px;padding:9px 11px;margin-bottom:8px;cursor:pointer}
+.card:hover{background:var(--hover)}
+.card b{display:block}
+.scard{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.scard b{font-weight:500}
+.col.drop{outline:2px solid var(--accent)}
+.colnew{width:100%;text-align:left;background:none;border:0;color:var(--muted);padding:6px 4px;cursor:pointer;border-radius:6px}
+.colnew:hover{background:var(--hover)}
+.ghost{position:fixed;pointer-events:none;z-index:50;opacity:.85;transform:rotate(2deg);width:250px}
+/* Status-tinted columns (song status board), like Notion. */
+.tint-pink{background:#2a1f25}.tint-pink .card{background:#3b2731}.tint-red{background:#2b1f1e}.tint-red .card{background:#3d2a28}
+.tint-green{background:#1d2620}.tint-green .card{background:#27362c}.tint-blue{background:#1c232c}.tint-blue .card{background:#26323f}
+.tint-purple{background:#241f2b}.tint-purple .card{background:#33293d}.tint-orange{background:#2a211b}.tint-orange .card{background:#3d2e22}
+.tint-yellow{background:#29251b}.tint-yellow .card{background:#3a3424}.tint-gray{background:#222}.tint-gray .card{background:#2f2f2f}
+.msg{display:flex;gap:12px;align-items:center}.msg .undo{background:none;border:0;color:#2383e2;font-weight:700;cursor:pointer;padding:0}
+.tree .row{display:flex;gap:8px;align-items:baseline;padding:7px 8px 7px calc(8px + var(--d,0) * 22px);border-bottom:1px solid var(--line);cursor:pointer}
+.tree .row:hover{background:var(--hover)}
+.tree .row b{font-weight:600}
+.shade{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;justify-content:center;align-items:flex-start;z-index:40;overflow-y:auto}
+.shade[hidden]{display:none}
+.page{width:min(860px,100%);min-height:100%;background:var(--panel);margin:0 auto;padding:22px 56px 60px;box-shadow:0 0 60px rgba(0,0,0,.6)}
+.pbar{display:flex;gap:8px;align-items:center;margin-bottom:22px;color:var(--muted);font-size:13.5px}
+.pbar .kind{flex:1}
+.ptitle{width:100%;background:transparent;border:0;font-size:34px;font-weight:700;padding:0;margin:0 0 18px}
+.ptitle:focus{outline:none}
+.props{display:grid;grid-template-columns:200px 1fr;gap:6px 12px;align-items:start;margin-bottom:18px}
+.props .k{color:var(--muted);padding:6px 0}
+.props .v{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.props .v input:not([type=checkbox]),.props .v select,.props .v textarea{width:100%}
+.props textarea{min-height:38px;resize:vertical}
+.chipbtn{border:1px solid var(--line);background:transparent;border-radius:999px;padding:1px 10px;cursor:pointer;color:var(--muted)}
+.chipbtn.on{background:var(--hover);color:var(--ink);border-color:#555}
+.linksv a{color:var(--ink);overflow-wrap:anywhere}
+h2{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:22px 0 6px;font-weight:600}
+.rel{border-top:1px solid var(--line)}
+.rel .r{display:flex;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line)}
+.rel .r .nm{cursor:pointer;font-weight:500}
+.rel .r .nm:hover{text-decoration:underline}
+.rel .r .role{color:var(--muted)}
+.rel .r .sp{flex:1}
+.addlink{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.addlink select,.addlink input{flex:1;min-width:140px}
+.saved{font-size:12px;color:var(--faint);min-height:16px}
+.msg{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#e9e9e7;color:#191919;padding:8px 14px;border-radius:999px;font-size:14px;z-index:70}
+.msg[hidden]{display:none}
+@media(max-width:700px){main{padding:12px 12px 80px}.page{padding:16px 18px 50px}.ptitle{font-size:26px}
+  .props{grid-template-columns:1fr}.props .k{padding:4px 0 0}.col{flex-basis:84vw}.tools input[type=search]{min-width:0}}
+
+/* Jump to top / bottom (bottom-right; only when there's something to scroll). */
+.jump{position:fixed;right:14px;bottom:62px;z-index:65;display:flex;flex-direction:column;gap:6px}
+.jump[hidden]{display:none}
+.jump button{width:38px;height:38px;border-radius:50%;border:1px solid #3a3a3a;background:#2a2a2a;color:#e9e9e7;font-size:17px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4);opacity:.85}
+.jump button:hover{opacity:1;background:#333}
+</style>
+</head>
+<body>
+<main>
+  <h1>HQ</h1>
+  <p class="sub">People, organizations, projects, and songs.</p>
+  <div class="tabs" id="tabs"></div>
+  <section id="view"></section>
+</main>
+<div class="shade" id="shade" hidden><article class="page" id="page" role="dialog"></article></div>
+<div class="jump" id="jump" hidden><button type="button" id="jumpTop" title="Top" aria-label="Go to top">↑</button><button type="button" id="jumpEnd" title="Bottom" aria-label="Go to bottom">↓</button></div>
+<div class="msg" id="msg" hidden></div>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const store = { get(k, d) { try { const v = localStorage.getItem("hq." + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("hq." + k, JSON.stringify(v)); } catch {} } };
+let D = null, tab = store.get("tab", "people"), open = null;  // open = [collection, id]
+let q = "", filters = store.get("filters", {}), sortBy = store.get("sortBy", {}), peopleView = store.get("peopleView", "table"), groupBy = store.get("groupBy", "areas");
+let songView = store.get("songView", "status"), ready = store.get("ready", "all");
+// "Ready" = Ready, Recording, Released; "Not ready" = everything before (Idea .. Rehearsing).
+const READY = new Set(["Ready", "Recording", "Released"]);
+// People: relationship checkboxes (e.g. only Super close, or Super close + Strong). None = all.
+let strengths = new Set(store.get("strengths", []));
+
+async function api(method, path, body) {
+  const r = await fetch("/hq/api/" + path, { method, credentials: "same-origin",
+    headers: { "Content-Type": "application/json", "X-HQ": "1" }, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (r.status === 401) { location.reload(); throw new Error("login"); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) { toast(data.error || "Something went wrong."); throw new Error(data.error); }
+  return data;
+}
+async function refresh() { D = await api("GET", "state"); render(); }
+function toast(t) { const m = $("msg"); m.textContent = t; m.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (m.hidden = true), 2400); }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+const S = (c) => D.schema[c];
+const field = (c, k) => S(c).fields.find((f) => f.key === k);
+const byId = (c, id) => D[c].find((x) => x.id === id);
+const nameOf = (c, id) => { const r = byId(c, id); return r ? (r.icon ? r.icon + " " : "") + r.name : ""; };
+const label = (c, r) => (r.icon ? r.icon + " " : "") + r.name;
+const COLORS = ["blue", "green", "purple", "pink", "yellow", "orange", "brown", "red", "gray"];
+// Song statuses use Notion's colors; other options cycle through the palette.
+const SONG_STATUS = { Released: "pink", Recording: "red", Ready: "green", Rehearsing: "blue", Arranging: "purple", Demo: "orange", Writing: "yellow", Idea: "gray" };
+const optColor = (f, v) => (f.options.includes("Released") && SONG_STATUS[v]) || COLORS[Math.max(0, f.options.indexOf(v)) % COLORS.length];
+function tagFor(f, v) { return el("span", "tag c-" + optColor(f, v), v); }
+const safeUrl = (u) => (/^(https?:|mailto:|tel:)/i.test(u) ? u : /^[\w.-]+\.[a-z]{2,}(\/\S*)?$/i.test(u) ? "https://" + u : null);
+function linkish(v) {  // a line that may be a link: clickable if it's a web/mail/phone address
+  const u = safeUrl(v.trim()); if (!u) return document.createTextNode(v);
+  const a = el("a", null, v); a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; a.onclick = (e) => e.stopPropagation(); return a;
+}
+// Display a value in a table cell.
+function cell(c, f, rec) {
+  const v = rec[f.key], td = el("td", f.key === "name" ? "first" : null);
+  if (f.type === "multi") (v || []).forEach((x) => td.append(tagFor(f, x)));
+  else if (f.type === "enum") { if (v) td.append(tagFor(f, v)); }
+  else if (f.type === "ref") { if (v) td.append(el("span", "sm", nameOf(f.to, v))); }
+  else if (f.type === "bool") td.textContent = v ? "✓" : "";
+  else if (f.type === "lines") td.append(el("span", "sm", (v || []).join(", ")));
+  else if (f.type === "text") td.append(el("span", "sm", (v || "").split("\n")[0].slice(0, 120)));
+  else td.textContent = v || "";
+  return td;
+}
+const TABLE_COLS = {
+  people: ["name", "areas", "strength", "org_text", "role", "known_from", "location"],
+  orgs: ["name", "type", "location", "context"],
+  projects: ["name", "type", "status", "org", "next_action"],
+  songs: ["name", "kind", "references", "project", "status"],
+};
+const FILTERS = { people: ["areas"], orgs: ["type"], projects: ["type", "status"], songs: ["kind", "project"] };
+const textOf = (c, r) => S(c).fields.map((f) => { const v = r[f.key]; return Array.isArray(v) ? v.join(" ") : f.type === "ref" ? nameOf(f.to, v) : v ?? ""; }).join(" ").toLowerCase();
+
+// ---------- tabs ----------
+function renderTabs() {
+  const bar = $("tabs"); bar.replaceChildren();
+  for (const c of Object.keys(D.schema)) {
+    const b = el("button", c === tab ? "on" : null, S(c).label); b.type = "button"; b.append(el("span", "n", String(D[c].length)));
+    b.onclick = () => { tab = c; store.set("tab", c); q = ""; render(); };
+    bar.append(b);
+  }
+  bar.append(el("span", "spacer"));
+  const nb = el("button", "newbtn", "New " + S(tab).one.toLowerCase()); nb.type = "button";
+  nb.onclick = async () => { const n = prompt(`New ${S(tab).one.toLowerCase()}: ${field(tab, "name").label}`); if (n && n.trim()) { const r = await api("POST", tab, { name: n }); await refresh(); openRec(tab, r.id); } };
+  const out = el("button", "plain", "Log out"); out.type = "button"; out.style.marginLeft = "6px";
+  out.onclick = async () => { await fetch("/hq/logout", { method: "POST", credentials: "same-origin" }); location.reload(); };
+  bar.append(nb, out);
+}
+
+// ---------- list views ----------
+function rows(c) {
+  const fs = filters[c] || {};
+  let rs = D[c].filter((r) => (!q || textOf(c, r).includes(q.toLowerCase()))
+    && (c !== "songs" || ready === "all" || (ready === "ready") === READY.has(r.status))
+    && (c !== "people" || !strengths.size || strengths.has(r.strength))
+    && Object.entries(fs).every(([k, v]) => {
+    if (!v) return true; const f = field(c, k), x = r[k];
+    return f.type === "multi" ? (x || []).includes(v) : v === "__none" ? !x : x === v;
+  }));
+  const s = sortBy[c] || { k: "name", dir: 1 }, f = field(c, s.k);
+  const key = (r) => { const v = r[s.k]; if (f?.type === "ref") return nameOf(f.to, v).toLowerCase(); if (f?.type === "enum") return v ? f.options.indexOf(v) : 99; if (Array.isArray(v)) return v.join(",").toLowerCase(); return (v ?? "").toString().toLowerCase() || "￿"; };
+  return rs.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * s.dir; });
+}
+function toolbar(v, c) {
+  const t = el("div", "tools");
+  const s = el("input"); s.type = "search"; s.placeholder = `Search ${S(c).label.toLowerCase()}…`; s.value = q;
+  s.oninput = () => { q = s.value; const keep = s.selectionStart; renderView(); const n = document.querySelector(".tools input[type=search]"); n.focus(); n.setSelectionRange(keep, keep); };
+  t.append(s);
+  for (const k of FILTERS[c]) {
+    const f = field(c, k), sel = el("select"); sel.append(new Option(`${f.label}: all`, ""));
+    if (f.type === "ref") { sel.append(new Option(`${f.label}: none`, "__none")); D[f.to].slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((x) => sel.append(new Option(x.name, x.id))); }
+    else f.options.forEach((o) => sel.append(new Option(o, o)));
+    sel.value = (filters[c] || {})[k] || "";
+    sel.onchange = () => { filters[c] = { ...(filters[c] || {}), [k]: sel.value }; store.set("filters", filters); renderView(); };
+    t.append(sel);
+  }
+  const segOf = (items, cur, set) => { const sg = el("span", "seg"); for (const [k, l] of items) { const b = el("button", cur === k ? "on" : null, l); b.type = "button"; b.onclick = () => set(k); sg.append(b); } return sg; };
+  if (c === "songs") {
+    t.append(segOf([["status", "Status board"], ["project", "Project board"], ["table", "Table"]], songView, (k) => { songView = k; store.set("songView", k); renderView(); }));
+    t.append(segOf([["all", "All"], ["ready", "Ready"], ["not", "Not ready"]], ready, (k) => { ready = k; store.set("ready", k); renderView(); }));
+  }
+  if (c === "people") {
+    const f = field("people", "strength"), box = el("span", "seg");
+    f.options.slice().reverse().forEach((o) => { const b = el("button", strengths.has(o) ? "on" : null, o); b.type = "button";
+      b.onclick = () => { strengths.has(o) ? strengths.delete(o) : strengths.add(o); store.set("strengths", [...strengths]); renderView(); }; box.append(b); });
+    box.title = "Relationship (none selected = everyone)"; t.append(box);
+    const seg = el("span", "seg");
+    for (const [k, label] of [["table", "Table"], ["cards", "Cards"]]) { const b = el("button", peopleView === k ? "on" : null, label); b.type = "button"; b.onclick = () => { peopleView = k; store.set("peopleView", k); renderView(); }; seg.append(b); }
+    t.append(seg);
+    if (peopleView === "cards") {
+      const g = el("select"); [["areas", "Group by Area"], ["known_from", "Group by where I know them from"], ["strength", "Group by Relationship"]].forEach(([k, l]) => g.append(new Option(l, k)));
+      g.value = groupBy; g.onchange = () => { groupBy = g.value; store.set("groupBy", groupBy); renderView(); }; t.append(g);
+    }
+  }
+  v.append(t);
+}
+function table(v, c, list) {
+  const wrap = el("div", "tablewrap"), tb = el("table"), hr = el("tr");
+  for (const k of TABLE_COLS[c]) {
+    const f = field(c, k), th = el("th", null, f.label), s = sortBy[c] || { k: "name", dir: 1 };
+    if (s.k === k) th.append(s.dir > 0 ? " ▲" : " ▼");
+    th.onclick = () => { sortBy[c] = s.k === k ? { k, dir: -s.dir } : { k, dir: 1 }; store.set("sortBy", sortBy); renderView(); };
+    hr.append(th);
+  }
+  const th = el("thead"); th.append(hr); tb.append(th);
+  const body = el("tbody");
+  list.forEach((r) => { const tr = el("tr"); TABLE_COLS[c].forEach((k) => tr.append(cell(c, field(c, k), r))); tr.onclick = () => openRec(c, r.id); body.append(tr); });
+  tb.append(body); wrap.append(tb); v.append(wrap);
+  if (!list.length) v.append(el("div", "empty", D[c].length ? "Nothing matches." : `No ${S(c).label.toLowerCase()} yet.`));
+}
+function cards(v, list) {
+  const f = field("people", groupBy), groups = new Map();
+  for (const p of list) {
+    const keys = f.type === "multi" ? (p[groupBy]?.length ? p[groupBy] : ["(none)"]) : [p[groupBy] || "(none)"];
+    for (const k of keys) { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
+  }
+  const order = [...groups.keys()].sort((a, b) => (f.options ? (f.options.indexOf(a) + 1 || 99) - (f.options.indexOf(b) + 1 || 99) : 0) || (a === "(none)") - (b === "(none)") || groups.get(b).length - groups.get(a).length || a.localeCompare(b));
+  const box = el("div", "cards");
+  for (const k of order.slice(0, 60)) {
+    const col = el("div", "col"), h = el("div", "colh");
+    h.append(f.options && f.options.includes(k) ? tagFor(f, k) : el("b", null, k), el("span", null, String(groups.get(k).length)));
+    col.append(h);
+    groups.get(k).forEach((p) => {
+      const cd = el("div", "card"); cd.append(el("b", null, p.name));
+      const sub = [p.role, p.org_text].filter(Boolean).join(" · "); if (sub) cd.append(el("div", "sm", sub));
+      if (p.strength) cd.append(tagFor(field("people", "strength"), p.strength));
+      cd.onclick = () => openRec("people", p.id); col.append(cd);
+    });
+    box.append(col);
+  }
+  v.append(box);
+  if (!list.length) v.append(el("div", "empty", "Nothing matches."));
+}
+function projectTree(v, list) {
+  const keep = new Set(list.map((x) => x.id)), filtered = !!q || Object.values(filters.projects || {}).some(Boolean);
+  const tree = el("div", "tree");
+  const kidsOf = (id) => D.projects.filter((p) => (p.parent || null) === id).sort((a, b) => a.name.localeCompare(b.name));
+  const showSub = (p) => keep.has(p.id) || kidsOf(p.id).some(showSub);
+  const walk = (p, d) => {
+    if (!showSub(p)) return;
+    const r = el("div", "row"); r.style.setProperty("--d", d); r.append(el("b", null, label("projects", p)));
+    if (p.status) r.append(tagFor(field("projects", "status"), p.status));
+    const songs = D.songs.filter((s) => s.project === p.id).length; if (songs) r.append(el("span", "sm", `${songs} song${songs > 1 ? "s" : ""}`));
+    if (p.org) r.append(el("span", "sm", "· " + nameOf("orgs", p.org)));
+    r.onclick = () => openRec("projects", p.id); tree.append(r);
+    kidsOf(p.id).forEach((k) => walk(k, d + 1));
+  };
+  (filtered ? list.filter((p) => !p.parent || !keep.has(p.parent)) : kidsOf(null)).forEach((p) => walk(p, 0));
+  v.append(tree);
+  if (!list.length) v.append(el("div", "empty", D.projects.length ? "Nothing matches." : "No projects yet."));
+}
+// Song boards: by status (Released -> Idea, like Notion) or by project. Drag a card to another
+// column to change it (phone: press and hold); Undo in the message. "+ New" adds into a column.
+function songBoard(v, list, by) {
+  const f = field("songs", by), cols = by === "status"
+    ? [...f.options].reverse().map((o) => ({ key: o, head: tagFor(f, o), tint: SONG_STATUS[o] }))
+    : [...D.projects.slice().sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ key: p.id, head: el("b", null, label("projects", p)) })), { key: null, head: el("b", null, "No project") }];
+  if (by === "status" && list.some((s) => !s.status)) cols.push({ key: null, head: el("b", null, "No status") });
+  const board = el("div", "cards");
+  for (const col of cols) {
+    const songs = list.filter((s) => (s[by] || null) === col.key).sort((a, b) => a.name.localeCompare(b.name));
+    const box = el("div", "col" + (col.tint ? " tint-" + col.tint : "")); box.dataset.key = col.key ?? "";
+    const h = el("div", "colh"); h.append(col.head, el("span", null, String(songs.length))); box.append(h);
+    songs.forEach((sg) => { const cd = el("div", "card scard"); cd.append(el("b", null, sg.name)); cd.onclick = () => { if (!cd.dataset.dragged) openRec("songs", sg.id); }; drag(cd, sg, by); box.append(cd); });
+    const add = el("button", "colnew", "+ New"); add.type = "button";
+    add.onclick = async () => { const n = prompt("Song title"); if (n && n.trim()) { const r = await api("POST", "songs", { name: n, [by]: col.key }); await refresh(); toastUndo(`Added: ${r.name}`, () => api("DELETE", "songs/" + r.id)); } };
+    box.append(add); board.append(box);
+  }
+  v.append(board);
+}
+function drag(c, sg, by) {
+  c.addEventListener("pointerdown", (e) => {
+    if (e.button > 0) return;
+    const sx = e.clientX, sy = e.clientY, mouse = e.pointerType === "mouse";
+    let ghost = null, over = null, armed = mouse, hold = null, lx = sx, ly = sy;
+    const move = (x, y) => { ghost.style.left = x - 40 + "px"; ghost.style.top = y - 16 + "px"; const col = document.elementFromPoint(x, y)?.closest(".col"); if (over && over !== col) over.classList.remove("drop"); over = col; if (col) col.classList.add("drop"); };
+    const start = () => { if (ghost) return; ghost = c.cloneNode(true); ghost.className = "card scard ghost"; document.body.append(ghost); move(lx, ly); c.style.opacity = ".35"; };
+    if (!mouse) hold = setTimeout(() => { armed = true; navigator.vibrate?.(15); start(); }, 350);
+    const onMove = (ev) => { lx = ev.clientX; ly = ev.clientY; if (!armed) { if (Math.hypot(lx - sx, ly - sy) > 8) { clearTimeout(hold); cleanup(); } return; } if (!ghost && Math.hypot(lx - sx, ly - sy) > 6) start(); if (ghost) { ev.preventDefault(); move(lx, ly); } };
+    const onUp = async () => {
+      clearTimeout(hold); const target = over, dragged = !!ghost; cleanup();
+      if (dragged) { c.dataset.dragged = "1"; setTimeout(() => delete c.dataset.dragged, 60); }
+      if (dragged && target) {
+        const to = target.dataset.key || null, was = sg[by] || null;
+        if (to === was) return;
+        await api("PATCH", "songs/" + sg.id, { [by]: to }); await refresh();
+        const where = by === "status" ? to || "No status" : to ? nameOf("projects", to) : "No project";
+        toastUndo(`${sg.name} → ${where}`, () => api("PATCH", "songs/" + sg.id, { [by]: was }));
+      }
+    };
+    const cleanup = () => { document.removeEventListener("pointermove", onMove); document.removeEventListener("pointerup", onUp); document.removeEventListener("pointercancel", onUp); if (ghost) ghost.remove(); ghost = null; c.style.opacity = ""; if (over) over.classList.remove("drop"); };
+    document.addEventListener("pointermove", onMove, { passive: false }); document.addEventListener("pointerup", onUp); document.addEventListener("pointercancel", onUp);
+  });
+}
+function toastUndo(text, undo) {
+  const m = $("msg"); m.replaceChildren(el("span", null, text)); m.hidden = false;
+  const b = el("button", "undo", "Undo"); b.type = "button"; b.onclick = async () => { m.hidden = true; await undo(); await refresh(); toast("Undone."); }; m.append(b);
+  clearTimeout(toast.t); toast.t = setTimeout(() => (m.hidden = true), 6000);
+}
+function renderView() {
+  const v = $("view"); v.replaceChildren(); toolbar(v, tab);
+  const list = rows(tab);
+  if (tab === "songs" && songView !== "table") songBoard(v, list, songView);
+  else if (tab === "people" && peopleView === "cards") cards(v, list);
+  else if (tab === "projects" && !(sortBy.projects && sortBy.projects.k !== "name")) projectTree(v, list);
+  else table(v, tab, list);
+}
+function render() { renderTabs(); renderView(); if (open) { if (byId(open[0], open[1])) fillPage(); else closeRec(); } }
+
+// ---------- record page ----------
+function openRec(c, id) { open = [c, id]; $("shade").hidden = false; fillPage(); $("shade").scrollTop = 0; }
+function closeRec() { open = null; $("shade").hidden = true; }
+async function save(fields) { const [c, id] = open; await api("PATCH", `${c}/${id}`, fields); $("saved") && ($("saved").textContent = "Saved."); await refresh(); }
+function editor(c, f, rec) {
+  const v = rec[f.key];
+  if (f.type === "str" || f.type === "date") {
+    const i = el("input"); i.type = f.type === "date" ? "date" : "text"; i.value = v || ""; i.onchange = () => save({ [f.key]: i.value });
+    if (f.type === "str" && /website|folder/.test(f.key) && v) { const w = el("div"); w.style.width = "100%"; w.append(i); const l = linkish(v); if (l.tagName === "A") { l.textContent = "open ↗"; l.className = "sm"; w.append(l); } return w; }
+    return i;
+  }
+  if (f.type === "text" || f.type === "lines") {
+    const t = el("textarea"); t.value = f.type === "lines" ? (v || []).join("\n") : v || "";
+    t.rows = Math.min(12, Math.max(1, t.value.split("\n").length)); t.placeholder = f.type === "lines" ? "one per line" : "";
+    t.oninput = () => (t.rows = Math.min(12, Math.max(1, t.value.split("\n").length)));
+    t.onchange = () => save({ [f.key]: f.type === "lines" ? t.value.split("\n") : t.value });
+    if (f.type === "lines" && (v || []).length && /social|link|email|phone|web/.test(f.key)) {
+      const w = el("div"); w.style.width = "100%"; w.append(t);
+      const ls = el("div", "linksv sm"); (v || []).forEach((x, i) => { if (i) ls.append(" · "); const tel = f.key === "phones" ? "tel:" + x.replace(/[^\d+]/g, "") : f.key === "emails" ? "mailto:" + x : x; const a = linkish(tel); if (a.tagName === "A") a.textContent = x; ls.append(a); });
+      w.append(ls); return w;
+    }
+    return t;
+  }
+  if (f.type === "enum" || f.type === "ref") {
+    const s = el("select"); s.append(new Option("—", ""));
+    if (f.type === "enum") f.options.forEach((o) => s.append(new Option(o, o)));
+    else {
+      const banned = f.to === c ? new Set([rec.id, ...descendants(rec.id)]) : new Set();
+      D[f.to].filter((x) => !banned.has(x.id)).sort((a, b) => a.name.localeCompare(b.name)).forEach((x) => s.append(new Option(x.name, x.id)));
+    }
+    s.value = v || ""; s.onchange = () => save({ [f.key]: s.value || null }); return s;
+  }
+  if (f.type === "multi") {
+    const w = el("div", "v");
+    f.options.forEach((o) => { const on = (v || []).includes(o), b = el("button", "chipbtn" + (on ? " on" : ""), o); b.type = "button";
+      b.onclick = () => save({ [f.key]: on ? v.filter((x) => x !== o) : [...(v || []), o] }); w.append(b); });
+    return w;
+  }
+  if (f.type === "bool") { const cb = el("input"); cb.type = "checkbox"; cb.checked = !!v; cb.onchange = () => save({ [f.key]: cb.checked }); return cb; }
+  return el("span", null, String(v ?? ""));
+}
+function descendants(id) { const out = [], st = [id]; while (st.length) { const cur = st.pop(); D.projects.filter((p) => p.parent === cur).forEach((p) => { out.push(p.id); st.push(p.id); }); } return out; }
+function relList(title, items, empty) {  // items: [{name, role, open, remove}]
+  const f = document.createDocumentFragment(); f.append(el("h2", null, title));
+  const box = el("div", "rel");
+  if (!items.length) box.append(el("div", "empty", empty));
+  items.forEach((it) => {
+    const r = el("div", "r"), nm = el("span", "nm", it.name); nm.onclick = it.open; r.append(nm);
+    if (it.role) r.append(el("span", "role", it.role));
+    if (it.extra) r.append(it.extra);
+    r.append(el("span", "sp"));
+    if (it.remove) { const x = el("button", "plain", "Remove"); x.type = "button"; x.onclick = it.remove; r.append(x); }
+    box.append(r);
+  });
+  f.append(box); return f;
+}
+function peopleLinkedTo(kind, id) {
+  return D.people.filter((p) => (p.links || []).some((l) => l.kind === kind && l.id === id)).sort((a, b) => a.name.localeCompare(b.name))
+    .map((p) => ({ name: p.name, role: p.links.find((l) => l.kind === kind && l.id === id).role, open: () => openRec("people", p.id) }));
+}
+function fillPage() {
+  const [c, id] = open, rec = byId(c, id), pg = $("page"); if (!rec) return;
+  pg.replaceChildren();
+  const bar = el("div", "pbar"); bar.append(el("span", "kind", S(c).one));
+  const close = el("button", "plain", "Close"); close.type = "button"; close.onclick = closeRec; bar.append(close); pg.append(bar);
+  const ti = el("input", "ptitle"); ti.value = rec.name; ti.setAttribute("aria-label", field(c, "name").label);
+  ti.onchange = () => ti.value.trim() && save({ name: ti.value }); pg.append(ti);
+  const props = el("div", "props");
+  S(c).fields.filter((f) => f.key !== "name").forEach((f) => { const k = el("div", "k", f.label), v = el("div", "v"); v.append(editor(c, f, rec)); props.append(k, v); });
+  pg.append(props, Object.assign(el("div", "saved"), { id: "saved" }));
+  if (c === "people") {
+    const links = rec.links || [];
+    const items = links.map((l, i) => ({ name: nameOf(LINK[l.kind], l.id), role: l.role, extra: el("span", "sm", l.kind === "org" ? "organization" : "project"),
+      open: () => openRec(LINK[l.kind], l.id), remove: () => save({ links: links.filter((_, j) => j !== i) }) }));
+    pg.append(relList("Organizations & projects", items, "Not linked to anything yet."));
+    const add = el("div", "addlink"), sel = el("select"), role = el("input"), go = el("button", "plain", "Add link");
+    sel.append(new Option("Link to…", ""));
+    for (const [kind, coll] of Object.entries(LINK)) { const og = document.createElement("optgroup"); og.label = S(coll).label; D[coll].slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((x) => og.append(new Option(x.name, kind + ":" + x.id))); sel.append(og); }
+    role.placeholder = "role (e.g. drummer, booker)"; go.type = "button";
+    go.onclick = () => { if (!sel.value) return; const [kind, lid] = sel.value.split(":"); save({ links: [...links, { kind, id: lid, role: role.value }] }); };
+    add.append(sel, role, go); pg.append(add);
+  }
+  if (c === "orgs") {
+    pg.append(relList("People", peopleLinkedTo("org", id), "No people linked. Link people from their page."));
+    pg.append(relList("Projects", D.projects.filter((p) => p.org === id).map((p) => ({ name: p.name, role: p.status, open: () => openRec("projects", p.id) })), "No projects belong to this organization."));
+  }
+  if (c === "projects") {
+    pg.append(relList("Subprojects", D.projects.filter((p) => p.parent === id).map((p) => ({ name: p.name, role: p.status, open: () => openRec("projects", p.id) })), "No subprojects."));
+    pg.append(relList("Songs", D.songs.filter((s) => s.project === id).sort((a, b) => a.name.localeCompare(b.name)).map((s) => ({ name: s.name, role: s.status, open: () => openRec("songs", s.id) })), "No songs in this project."));
+    pg.append(relList("People", peopleLinkedTo("project", id), "No people linked. Link people from their page."));
+    const add = el("button", "plain", "+ Add song here"); add.type = "button"; add.style.marginTop = "8px";
+    add.onclick = async () => { const n = prompt("Song title"); if (n && n.trim()) { await api("POST", "songs", { name: n, project: id }); refresh(); } };
+    pg.append(add);
+  }
+  const del = el("button", "plain danger", "Delete " + S(c).one.toLowerCase()); del.type = "button"; del.style.marginTop = "30px";
+  del.onclick = async () => { if (!confirm(`Delete "${rec.name}"? Links to it are removed too.`)) return; await api("DELETE", `${c}/${id}`); closeRec(); refresh(); };
+  pg.append(el("div"), del);
+}
+const LINK = { org: "orgs", project: "projects" };
+$("shade").onclick = (e) => { if (e.target === $("shade")) closeRec(); };
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) closeRec(); });
+refresh();
+
+// Jump buttons: scroll the open record/task page if there is one, else the main page.
+(() => {
+  const box = document.getElementById("jump"), shade = document.getElementById("shade");
+  const target = () => (shade && !shade.hidden ? shade : document.scrollingElement);
+  // Only touch the DOM when the answer changes, and never react to the buttons' own change
+  // (watching our own "hidden" flip would loop forever and freeze the page).
+  const update = () => { const t = target(), hide = t.scrollHeight <= t.clientHeight + 40; if (box.hidden !== hide) box.hidden = hide; };
+  let queued = false; const later = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; update(); }); } };
+  // Own quick animation (the browser's smooth scroll can't be sped up): 200 ms, ease-out.
+  const glide = (t, to) => {
+    const from = t.scrollTop, dist = to - from, t0 = performance.now(), ms = 200;
+    if (Math.abs(dist) < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) { t.scrollTop = to; return; }
+    const step = (now) => { const k = Math.min(1, (now - t0) / ms); t.scrollTop = from + dist * (1 - Math.pow(1 - k, 3)); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  };
+  document.getElementById("jumpTop").onclick = () => glide(target(), 0);
+  document.getElementById("jumpEnd").onclick = () => { const t = target(); glide(t, t.scrollHeight - t.clientHeight); };
+  addEventListener("scroll", later, { passive: true }); addEventListener("resize", later);
+  shade && shade.addEventListener("scroll", later, { passive: true });
+  const watch = new MutationObserver((recs) => { if (recs.some((r) => !box.contains(r.target) && r.target !== box)) later(); });
+  watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
+  later();
+})();
+</script>
+</body>
+</html>

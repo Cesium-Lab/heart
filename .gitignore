@@ -224,3 +224,6 @@ __marimo__/
 # Personal data exports (e.g. a Notion export to import into Tasks). Never commit these.
 backend/services/tasks/*_ExportBlock-*/
 backend/services/tasks/image*.png
+# Personal data exports (People / Music HQ / Career HQ from Notion). Never commit.
+backend/services/tasks/god/
+backend/services/hq/image*.png
