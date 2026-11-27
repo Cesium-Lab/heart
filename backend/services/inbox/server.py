@@ -1216,7 +1216,7 @@ h2 a,.nav a{color:var(--muted);font-weight:400;text-transform:none;letter-spacin
 .pingo{display:none;font-size:13px;color:var(--accent)}
 .pinbox:hover .pingo,.pinbox:focus-within .pingo{display:inline}
 form.inline{display:contents}
-</style></head><body><main>
+</style><script src="/nav.js" defer></script></head><body><main>
 <script data-nav>
 // Day buttons (← · Today · →) swap the page in place instead of a full reload, so rapid clicks
 // all register (Chrome ignores clicks while it holds the old page during a reload). The new
@@ -1246,6 +1246,7 @@ form.inline{display:contents}
     path = location.pathname;
     document.title = doc.title;
     document.body.replaceWith(document.adoptNode(doc.body));
+    window.clNav && window.clNav();
     for (const old of document.body.querySelectorAll("script")) {
       if (old.hasAttribute("data-nav")) { old.remove(); continue; }
       const sc = document.createElement("script");
@@ -1829,7 +1830,7 @@ PINS_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <style>.pcard.flash{background:var(--hl)}.pcard .atts .apick{display:none}.pins .elist{padding-left:0}
 .pcard .delfile[hidden]{display:none}.copyatt{display:none}
 /* Same room as the day page's selection bar (12px gap + ~70px bar); on phones that bar floats. */
-.pinsend{margin-top:82px}@media(max-width:899px){.pinsend{margin-top:12px}}</style></head><body class="pins"><main>
+.pinsend{margin-top:82px}@media(max-width:899px){.pinsend{margin-top:12px}}</style><script src="/nav.js" defer></script></head><body class="pins"><main>
 {logout}
 <div class="pinsnav"><a href="/inbox/">Today</a></div>
 <h1 class="title"><a href="/inbox/" title="Today">Drop a line.</a></h1>
@@ -2147,7 +2148,7 @@ button:disabled{opacity:.5;cursor:default}
 pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto;
   font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
 .g{color:#16a34a}.y{color:#ca8a04}.r{color:#dc2626;font-weight:700}.d{opacity:.6}
-</style></head><body><main>
+</style><script src="/nav.js" defer></script></head><body><main>
 <div class="top"><h1>Status</h1><button id="refresh">Refresh</button><a class="btn" href="/inbox/">Inbox</a></div>
 <div id="out"><div class="when">Checking…</div></div>
 </main>

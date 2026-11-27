@@ -466,7 +466,7 @@ def _page(title: str, body: str, style: str, logout: str, flash: str) -> bytes:
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         f'<title>{html.escape(title)}</title><meta name="robots" content="noindex">'
         '<link rel="icon" href="/favicon.svg?v=5" type="image/svg+xml">'
-        f"{style}{NOTES_CSS}</head><body><main>{logout}"
+        f"{style}{NOTES_CSS}<script src='/nav.js' defer></script></head><body><main>{logout}"
         '<div class="pinsnav"><a href="/inbox/">Inbox</a></div>'
         f"{body}{flash_html}</main></body></html>"
     ).encode()
